@@ -1,0 +1,380 @@
+/**
+ * map.js — Leaflet map, node markers, auto-fit bounds, filtering.
+ *
+ * Listens for:
+ *   "nm:nodes-updated"    — updates/creates node markers
+ *   "nm:settings-loaded"  — re-applies label/center mode settings
+ *
+ * Markers are emoji DivIcons keyed by node role:
+ *   CLIENT / CLIENT_*         → 📱
+ *   ROUTER / ROUTER_LATE / REPEATER → 📡
+ *   TRACKER / LOST_AND_FOUND  → 🐾
+ *   SENSOR                    → 📊
+ *   unknown / null            → 👻
+ *   My node                   → ★
+ *
+ * A colored dot below each emoji shows recency (green/amber/red/grey).
+ *
+ * Tile layer switcher (Street / Satellite) is built into the map.
+ * Source filter removed; only recency filter (ALL / 1H / 6H / 24H) remains.
+ */
+
+"use strict";
+
+const NMMap = (() => {
+  let _map = null;
+  let _cfg = {};
+  let _markers = new Map();     // node_id → L.marker
+  let _activeLabel = null;
+  let _firstLoad = true;
+  let _myNodeId = null;
+  let _allGpsNodes = [];        // full node list with GPS, stored for re-filtering
+
+  // Filter state
+  let _recencyHours = 0;        // 0 = show all
+  let _sliderMax    = 1;        // seeded from session_start_ts on first gauges update
+
+  // ── Init ──────────────────────────────────────────────────────
+
+  function init(containerId) {
+    _map = L.map(containerId, {
+      zoomControl: true,
+      attributionControl: true,
+    }).setView([39.5, -98.35], 4);
+
+    const osmAttr   = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    const hotAttr   = osmAttr + ' | Tiles © <a href="https://www.hotosm.org">HOT</a>';
+    const topoAttr  = osmAttr + ' | Tiles © <a href="https://opentopomap.org">OpenTopoMap</a>';
+
+    const standardLayer     = L.tileLayer("/tiles/osm/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: osmAttr,  tileSize: 256, errorTileUrl: "" });
+    const humanitarianLayer = L.tileLayer("/tiles/hot/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: hotAttr,  tileSize: 256, errorTileUrl: "" });
+    const topoLayer         = L.tileLayer("/tiles/topo/{z}/{x}/{y}.png", { maxZoom: 17, attribution: topoAttr, tileSize: 256, errorTileUrl: "" });
+
+    standardLayer.addTo(_map);
+
+    L.control.layers(
+      { "Standard": standardLayer, "Humanitarian": humanitarianLayer, "Topo": topoLayer },
+      {},
+      { position: "topright" }
+    ).addTo(_map);
+
+    _map.on("click", () => _dismissLabel());
+
+    // "Go to my node" button
+    const MyNodeControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "nm-my-node-btn");
+        btn.innerHTML = "&#8982;";
+        btn.title = "Zoom to my node";
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          _zoomToMyNode();
+        });
+        return btn;
+      },
+    });
+    new MyNodeControl().addTo(_map);
+
+    _initFilterBar();
+
+    // Re-measure after fonts/layout settle, and on any window resize
+    setTimeout(() => _map.invalidateSize(), 250);
+    window.addEventListener("resize", () => _map.invalidateSize());
+
+    document.addEventListener("nm:nodes-updated",   (e) => _handleNodes(e.detail));
+    document.addEventListener("nm:settings-loaded", (e) => { _cfg = e.detail.cfg; });
+    document.addEventListener("nm:gauges-updated",  (e) => {
+      if (e.detail.session_start_ts) _seedSliderFromSession(e.detail.session_start_ts);
+    });
+  }
+
+  // ── Filter bar: recency slider ────────────────────────────────
+
+  function _initFilterBar() {
+    const slider = document.getElementById("nm-recency-slider");
+    if (!slider) return;
+    slider.addEventListener("input", () => {
+      const v = parseInt(slider.value);
+      _recencyHours = v >= _sliderMax ? 0 : v;
+      _updateSliderLabel(v);
+      _applyFilters();
+    });
+  }
+
+  function _updateSliderLabel(v) {
+    const label = document.getElementById("nm-recency-label");
+    if (!label) return;
+    label.textContent = v >= _sliderMax ? "ALL" : _fmtHours(v);
+  }
+
+  function _fmtHours(h) {
+    if (h < 24)  return `${h}h`;
+    const d = Math.floor(h / 24), r = h % 24;
+    return r > 0 ? `${d}d ${r}h` : `${d}d`;
+  }
+
+  function _seedSliderFromSession(sessionStartTs) {
+    const sessionHours = Math.max(1, Math.ceil((Date.now() / 1000 - sessionStartTs) / 3600));
+    _applySliderMax(sessionHours);
+  }
+
+  function _applySliderMax(hours) {
+    if (hours <= _sliderMax) return;
+    _sliderMax = hours;
+    const slider = document.getElementById("nm-recency-slider");
+    if (!slider) return;
+    slider.max = _sliderMax;
+    const dl = document.getElementById("nm-recency-ticks");
+    if (dl) {
+      const marks = [1, 6, 12, 24, 48, 72, 168].filter(h => h <= _sliderMax);
+      if (!marks.includes(_sliderMax)) marks.push(_sliderMax);
+      dl.innerHTML = marks.map(h => `<option value="${h}"></option>`).join("");
+    }
+    // Keep slider at max (ALL) if it was already there
+    if (parseInt(slider.value) >= parseInt(slider.max) - 1) {
+      slider.value = _sliderMax;
+      _updateSliderLabel(_sliderMax);
+    }
+  }
+
+  function _updateSliderRange(nodes) {
+    const now = Date.now() / 1000;
+    const oldestSec = nodes.reduce((mx, n) => Math.max(mx, now - (n.last_heard || now)), 0);
+    const oldestHours = Math.max(1, Math.ceil(oldestSec / 3600));
+    _applySliderMax(oldestHours);
+  }
+
+  // ── Filter logic ──────────────────────────────────────────────
+
+  function _applyFilters() {
+    const now = Date.now() / 1000;
+    const visible = _allGpsNodes.filter(n => {
+      if (_recencyHours > 0 && (now - n.last_heard) > _recencyHours * 3600) return false;
+      return true;
+    });
+    _syncMarkers(visible);
+  }
+
+  // ── Node update ───────────────────────────────────────────────
+
+  function _zoomToMyNode() {
+    if (_myNodeId == null) return;
+    const m = _markers.get(_myNodeId);
+    if (!m) return;
+    _map.setView(m.getLatLng(), 13);
+    _showLabel(_myNodeId);
+  }
+
+  function _handleNodes(data) {
+    const { nodes, my_node_id } = data;
+    _myNodeId    = my_node_id != null ? (my_node_id >>> 0) : null;
+    _allGpsNodes = nodes.filter(n => n.lat != null && n.lon != null);
+
+    _updateSliderRange(nodes);
+    _applyFilters();
+
+    if (_firstLoad && _allGpsNodes.length > 0) {
+      _autoFitBounds(_allGpsNodes);
+      _firstLoad = false;
+    }
+  }
+
+  function _syncMarkers(visibleNodes) {
+    const seen = new Set(visibleNodes.map(n => n.node_id));
+
+    for (const node of visibleNodes) {
+      if (_markers.has(node.node_id)) {
+        _updateMarker(node);
+      } else {
+        _createMarker(node);
+      }
+    }
+
+    // Remove markers for nodes now filtered out
+    for (const [id, m] of _markers) {
+      if (!seen.has(id)) {
+        m.remove();
+        _markers.delete(id);
+        if (_activeLabel === id) _activeLabel = null;
+      }
+    }
+  }
+
+  function _createMarker(node) {
+    const isMyNode = node.is_my_node === true;
+    const m = L.marker([node.lat, node.lon], { icon: _iconForNode(node, isMyNode) });
+
+    m.bindTooltip(_labelText(node), {
+      permanent: false,
+      direction: "top",
+      className: "nm-node-label",
+      offset: [0, -38],
+    });
+
+    m.bindPopup(_popupHtml(node));
+
+    m.on("click", (e) => {
+      L.DomEvent.stopPropagation(e);
+      _showLabel(node.node_id);
+    });
+
+    m.addTo(_map);
+    _markers.set(node.node_id, m);
+    m._nmNode = node;
+  }
+
+  function _updateMarker(node) {
+    const m = _markers.get(node.node_id);
+    const isMyNode = node.is_my_node === true;
+    m.setLatLng([node.lat, node.lon]);
+    m.setIcon(_iconForNode(node, isMyNode));
+    m.setTooltipContent(_labelText(node));
+    m._nmNode = node;
+  }
+
+  // ── Drop-pin markers ──────────────────────────────────────────
+
+  // Meshtastic role enum — protobuf stores as integer; map to canonical names.
+  const _ROLE_INT_MAP = {
+    "0": "CLIENT", "1": "CLIENT_MUTE",  "2": "ROUTER",
+    "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
+    "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
+  };
+
+  function _emojiForRole(role) {
+    // null/absent = CLIENT (protobuf3 default for role field)
+    const r = (_ROLE_INT_MAP[String(role ?? "CLIENT")] || String(role ?? "CLIENT")).toUpperCase();
+    if (r === "CLIENT" || r.startsWith("CLIENT_")) return "📱";
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
+    if (r === "TRACKER" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND") return "🐾";
+    if (r === "SENSOR") return "📊";
+    return "👻";
+  }
+
+  /**
+   * Build an SVG drop-pin Leaflet DivIcon.
+   * The pin is a circle at the top tapering to a point at the bottom.
+   * The emoji sits centered in the circular head.
+   * w × h are the overall pin dimensions; the anchor point is the tip.
+   */
+  function _pinIcon(emoji, color, w, h) {
+    const cx  = w / 2;            // horizontal center
+    const r   = cx - 1;           // head radius (slightly inset for stroke)
+    const tip = h - 1;            // y of the pin tip
+    // Cubic-bezier pin path: circle top, two curved sides meeting at the tip
+    const path = `M${cx},1 C${cx - r},1 1,${cx - r + 1} 1,${cx} C1,${cx + (tip - cx) * 0.55} ${cx},${tip} ${cx},${tip} C${cx},${tip} ${w - 1},${cx + (tip - cx) * 0.55} ${w - 1},${cx} C${w - 1},${cx - r + 1} ${cx + r},1 ${cx},1 Z`;
+    const fontSize = Math.round(w * 0.52);
+    const emojiFont = "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      <path d="${path}" fill="${color}" fill-opacity="0.82" stroke="rgba(0,0,0,0.55)" stroke-width="1.5"/>
+      <text x="${cx}" y="${cx}" text-anchor="middle" dominant-baseline="middle"
+            font-size="${fontSize}" font-family="${emojiFont}">${emoji}</text>
+    </svg>`;
+
+    return L.divIcon({
+      className: "",
+      html: svg,
+      iconSize:   [w, h],
+      iconAnchor: [cx, tip],
+    });
+  }
+
+  function _iconForNode(node, isMyNode) {
+    const color = _colorForAge(node.last_heard);
+    if (isMyNode) return _pinIcon("⭐", color, 30, 44);
+    return _pinIcon(_emojiForRole(node.role), color, 24, 36);
+  }
+
+  // ── Label management ──────────────────────────────────────────
+
+  function _showLabel(nodeId) {
+    if (_activeLabel !== null && _activeLabel !== nodeId) {
+      const prev = _markers.get(_activeLabel);
+      if (prev) prev.closeTooltip();
+    }
+    const m = _markers.get(nodeId);
+    if (!m) return;
+    _activeLabel = nodeId;
+    m.openTooltip();
+    if (!_map.getBounds().contains(m.getLatLng())) {
+      _map.panTo(m.getLatLng());
+    }
+  }
+
+  function _dismissLabel() {
+    if (_activeLabel !== null) {
+      const m = _markers.get(_activeLabel);
+      if (m) m.closeTooltip();
+      _activeLabel = null;
+    }
+  }
+
+  function highlightNode(nodeId) {
+    _showLabel(nodeId);
+  }
+
+  function flyToNode(nodeId) {
+    const m = _markers.get(nodeId);
+    if (!m) return;
+    _map.flyTo(m.getLatLng(), 14);
+    _showLabel(nodeId);
+  }
+
+  // ── Colors ────────────────────────────────────────────────────
+
+  function _colorForAge(lastHeard) {
+    if (document.body.classList.contains("theme-eink")) return "#000000";
+    const ageSec = (Date.now() / 1000) - lastHeard;
+    if (ageSec < 300)  return "#3fb950";
+    if (ageSec < 1800) return "#d29922";
+    if (ageSec < 7200) return "#f85149";
+    return "#484f58";
+  }
+
+  function _labelText(node) {
+    const name = node.short_name || node.node_id_hex || "?";
+    const rssi = node.rssi != null ? ` ${node.rssi}` : "";
+    return `${name}${rssi}`;
+  }
+
+  // ── Popup ─────────────────────────────────────────────────────
+
+  function _popupHtml(node) {
+    const ts = node.last_heard
+      ? new Date(node.last_heard * 1000).toLocaleString()
+      : "—";
+    const rows = [
+      ["ID",         node.node_id_hex || "—"],
+      ["Short",      node.short_name  || "—"],
+      ["Long",       node.long_name   || "—"],
+      ["HW",         node.hardware_model || "—"],
+      ["Role",       node.role || "—"],
+      ["RSSI",       node.rssi != null ? `${node.rssi} dBm` : "—"],
+      ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
+      ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
+      ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
+      ["Packets",    node.total_packets],
+      ["Last heard", ts],
+    ];
+    const trs = rows.map(([k, v]) =>
+      `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
+    ).join("");
+    return `<table style="font-size:10px;font-family:monospace;line-height:1.4">${trs}</table>`;
+  }
+
+  // ── Bounds ────────────────────────────────────────────────────
+
+  function _autoFitBounds(gpsNodes) {
+    if (!_map || gpsNodes.length === 0) return;
+    const bounds = L.latLngBounds(gpsNodes.map(n => [n.lat, n.lon]));
+    _map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }
+
+  function invalidate() {
+    if (_map) setTimeout(() => _map.invalidateSize(), 50);
+  }
+
+  return { init, invalidate, highlightNode, flyToNode };
+})();

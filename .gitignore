@@ -1,0 +1,27 @@
+# Virtual environments
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Databases (runtime data, not source)
+NMData/*.db
+NMData/*.db-shm
+NMData/*.db-wal
+nodemonitor.db
+nodemonitor.db-shm
+nodemonitor.db-wal
+
+# TLS certificates (secrets)
+*.pem
+
+# Tile cache (large, regenerated at runtime)
+NMDisplay/tile_cache/
+
+# Claude Code settings
+.claude/
+
+# macOS
+.DS_Store

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "default_1775341256",
+    "name": "Default",
+    "db": "nodemonitor.db",
+    "connection": {
+      "type": "tcp",
+      "host": "192.168.1.25",
+      "port": 4403
+    },
+    "seed_on_connect": true,
+    "created": 1775341256,
+    "last_active": 1775399874
+  },
+  {
+    "id": "new_from_empty_1_1775398821",
+    "name": "New from empty 1",
+    "db": "new_from_empty_1_1775398821.db",
+    "connection": {
+      "type": "tcp",
+      "host": "192.168.1.25",
+      "port": 4403
+    },
+    "seed_on_connect": false,
+    "created": 1775398821,
+    "last_active": 1775484225
+  },
+  {
+    "id": "slot_9_haxx_3_1775452089",
+    "name": "slot 9 haxx (3)",
+    "db": "slot_9_haxx_3_1775452089.db",
+    "connection": {
+      "type": "tcp",
+      "host": "192.168.1.25",
+      "port": 4403
+    },
+    "seed_on_connect": false,
+    "created": 1775452089,
+    "last_active": 1775452089
+  }
+]

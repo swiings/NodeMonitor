@@ -1,0 +1,14 @@
+{
+  "id": "new_from_empty_1_1775398821",
+  "name": "New from empty 1",
+  "db": "new_from_empty_1_1775398821.db",
+  "connection": {
+    "type": "tcp",
+    "host": "192.168.1.25",
+    "port": 4403
+  },
+  "seed_on_connect": false,
+  "created": 1775398821,
+  "last_active": 1775484225,
+  "db_path": "/Users/danrosenfeld/Library/Mobile Documents/com~apple~CloudDocs/Documents/Haxx File Collection/Development Projects/NodeMonitor/NMData/new_from_empty_1_1775398821.db"
+}

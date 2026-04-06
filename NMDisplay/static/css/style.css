@@ -1,0 +1,850 @@
+/* ── Reset & base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── Color theme (default) ───────────────────────────────────── */
+body.theme-color {
+  --bg:         #0d1117;
+  --bg2:        #161b22;
+  --bg3:        #1f2733;
+  --border:     #30363d;
+  --text:       #c9d1d9;
+  --text-dim:   #6e7681;
+  --accent:     #58a6ff;
+  --green:      #3fb950;
+  --amber:      #d29922;
+  --red:        #f85149;
+  --grey:       #484f58;
+  --divider:    #21262d;
+  --header-bg:  #161b22;
+}
+
+/* ── E-ink theme (greyscale + red accent) ────────────────────── */
+/* Targets greyscale-with-red e-ink displays (e.g. Waveshare 3-color) */
+body.theme-eink {
+  --bg:         #ffffff;
+  --bg2:        #f0f0f0;
+  --bg3:        #e0e0e0;
+  --border:     #aaaaaa;
+  --text:       #000000;
+  --text-dim:   #555555;
+  --accent:     #000000;
+  --green:      #000000;
+  --amber:      #555555;
+  --red:        #cc0000;   /* red channel available on 3-color e-ink */
+  --grey:       #999999;
+  --divider:    #cccccc;
+  --header-bg:  #e0e0e0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+#nm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#nm-title {
+  font-weight: bold;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+#nm-status {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+#nm-settings-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 7px;
+  font-size: 14px;
+  line-height: 1;
+}
+#nm-settings-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* ── Gauge row (full width, below header) ────────────────────── */
+#nm-gauges {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  height: 80px;
+}
+
+/* ── Main layout (map+timeline left, lists right) ────────────── */
+#nm-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Map panel (left column: filter-bar + map + divider + timeline) */
+#nm-map-panel {
+  width: 60%;
+  min-width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#nm-map {
+  flex: 1;
+  min-height: 0;
+  background: var(--bg2);
+}
+
+.nm-gauge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+  padding: 4px 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+.nm-gauge:last-child { border-right: none; }
+
+/* Nodes gauge gets the width taken from PKT/MIN */
+#gauge-nodes { flex: 1.25; }
+/* PKT/MIN is 25% narrower than a standard gauge */
+#gauge-ppm   { flex: 0.75; }
+
+/* Roles gauge */
+#gauge-roles { flex: 1; }
+.nm-gauge-roles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+}
+.nm-gauge-role-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+.nm-role-emoji {
+  font-size: clamp(14px, 1.4vw, 20px);
+  line-height: 1;
+}
+.nm-role-num {
+  font-size: clamp(24px, 2.4vw, 37px) !important;
+}
+
+/* Hops pie gauge */
+#gauge-hops { flex: 1; }
+#gauge-hops canvas {
+  display: block;
+}
+
+/* ELAPSED uses the same smaller font as the triple NODES gauge */
+#g-elapsed {
+  font-size: clamp(24px, 2.4vw, 37px);
+}
+
+/* CLOSEST / FARTHEST names can be long (8-char hex IDs) — fixed size, no padding */
+#gauge-closest,
+#gauge-farthest {
+  padding: 2px 2px;
+}
+#g-closest-name,
+#g-farthest-name {
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.nm-gauge-tap {
+  cursor: pointer;
+}
+.nm-gauge-tap:hover {
+  background: var(--bg3);
+}
+
+.nm-gauge-num {
+  font-family: Impact, "Arial Narrow", Arial, sans-serif;
+  font-size: clamp(38px, 4.3vw, 56px);
+  line-height: 1;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+.nm-gauge-caption {
+  font-size: clamp(12px, 0.98vw, 17px);
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+/* Nodes gauge: three mini values side by side */
+.nm-gauge-triple {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.nm-gauge-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nm-gauge-mini .nm-gauge-num {
+  font-size: clamp(24px, 2.4vw, 37px);
+}
+
+.nm-gauge-sub {
+  font-size: clamp(11px, 0.83vw, 15px);
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── Map filter bar ──────────────────────────────────────────── */
+#nm-map-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.nm-filter-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#nm-recency-slider {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+}
+
+#nm-recency-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+/* ── Right (telemetry) panel ─────────────────────────────────── */
+#nm-right-panel {
+  flex: 1;
+  min-width: 150px;
+  overflow-y: auto;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+}
+
+#nm-lists-container {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Telemetry list card ─────────────────────────────────────── */
+.nm-list-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.nm-list-title {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: var(--bg2);
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+}
+
+.nm-list-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--divider);
+  font-size: 12px;
+}
+.nm-list-row:last-child { border-bottom: none; }
+.nm-list-row:hover { background: var(--bg); }
+.nm-role-icon { font-size: 11px; flex-shrink: 0; }
+
+/* Hop distribution widget */
+.nm-hop-table {
+  width: 100%;
+  border-collapse: collapse;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.nm-hop-table tr { border-bottom: 1px solid var(--divider); }
+.nm-hop-table tr:last-child { border-bottom: none; }
+.nm-hop-label {
+  width: 24px;
+  color: var(--text-dim);
+  padding: 3px 6px 3px 8px;
+  text-align: right;
+}
+.nm-hop-bar-cell {
+  width: 100%;
+  padding: 3px 4px;
+}
+.nm-hop-bar {
+  height: 8px;
+  background: var(--accent);
+  border-radius: 2px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+.nm-hop-count {
+  width: 32px;
+  text-align: right;
+  padding: 3px 8px 3px 4px;
+  color: var(--text);
+}
+
+.nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-node-meta { color: var(--text-dim); font-size: 11px; text-align: right; white-space: nowrap; }
+
+/* ── Dividers ────────────────────────────────────────────────── */
+.nm-divider {
+  background: var(--divider);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.nm-divider:hover { background: var(--accent); }
+
+.nm-divider--v {
+  width: 5px;
+  cursor: col-resize;
+  /* Expand touch target without changing visual size */
+  touch-action: none;
+  position: relative;
+}
+.nm-divider--v::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -8px; right: -8px;
+}
+
+.nm-divider--h {
+  height: 5px;
+  cursor: row-resize;
+  width: 100%;
+  touch-action: none;
+  position: relative;
+}
+.nm-divider--h::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: -8px; bottom: -8px;
+}
+
+/* ── Timeline panel (inside nm-map-panel, below h-divider) ──── */
+#nm-timeline-panel {
+  height: 120px;
+  min-height: 60px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  padding: 4px 8px 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+#nm-timeline-label {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 2px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+}
+#nm-timeline-util-label {
+  color: #d29922;
+}
+
+#nm-timeline-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── My node button ──────────────────────────────────────────── */
+.nm-my-node-btn {
+  display: block;
+  width: 30px;
+  height: 30px;
+  background: var(--bg2);
+  border: 2px solid rgba(0,0,0,0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 26px;
+  text-align: center;
+  color: var(--text);
+  padding: 0;
+}
+.nm-my-node-btn:hover { background: var(--bg3); }
+
+/* ── Leaflet label overrides ─────────────────────────────────── */
+.nm-node-label {
+  background: #ffffff !important;
+  border: 1.5px solid #111111 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
+  color: #111111 !important;
+  font-family: "Courier New", monospace !important;
+  font-size: 11px !important;
+  font-weight: bold;
+  white-space: nowrap;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
+}
+
+/* ── Settings modal ──────────────────────────────────────────── */
+#nm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#nm-modal-overlay.hidden { display: none; }
+
+#nm-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#nm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+#nm-modal-header h2 { font-size: 14px; color: var(--accent); }
+#nm-modal-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+#nm-modal-close:hover { color: var(--red); }
+
+#nm-modal-body {
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#nm-modal-body section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
+}
+
+#nm-modal-body label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+#nm-modal-body input[type="text"],
+#nm-modal-body input[type="number"],
+#nm-modal-body select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.limit-input { width: 42px; }
+
+.hint { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+
+#cfg-lists-order label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0;
+  cursor: default;
+}
+#cfg-lists-order label.dragging {
+  opacity: 0.35;
+}
+.drag-handle {
+  cursor: grab;
+  color: var(--text-dim);
+  font-size: 14px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+#nm-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.error-text { color: var(--red); font-size: 11px; flex: 1; }
+
+#nm-modal-save {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+}
+#nm-modal-save:hover { opacity: 0.85; }
+
+/* ── Log toggle button (header) ─────────────────────────────── */
+#nm-log-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+}
+#nm-log-btn:hover, #nm-log-btn.active { color: var(--accent); border-color: var(--accent); }
+
+#nm-csv-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+}
+#nm-csv-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Listener status pill (in filter bar) ───────────────────── */
+#nm-listener-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+.nm-listener-running  { color: var(--green); border-color: var(--green); }
+.nm-listener-stopped  { color: var(--text-dim); border-color: var(--border); }
+.nm-listener-error    { color: var(--red); border-color: var(--red); }
+
+@keyframes nm-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+.nm-listener-running #nm-listener-dot {
+  animation: nm-pulse 2s ease-in-out infinite;
+}
+
+/* ── Packet log panel ───────────────────────────────────────── */
+#nm-log-panel {
+  flex-shrink: 0;
+  height: 180px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+}
+#nm-log-panel.hidden { display: none; }
+
+#nm-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+#nm-log-session {
+  color: var(--text-dim);
+  font-weight: normal;
+  font-size: 10px;
+}
+
+#nm-log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  color: var(--text);
+  white-space: pre;
+}
+
+.nm-log-line         { line-height: 1.5; color: var(--text-dim); }
+.nm-log-line.recv    { color: var(--text); }
+.nm-log-line.warn    { color: var(--amber); }
+
+/* ── Sessions section ───────────────────────────────────────── */
+#cfg-sessions-list {
+  margin-bottom: 6px;
+}
+
+.nm-session-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-bottom: 4px;
+  background: var(--bg3);
+}
+.nm-session-row.active-session {
+  border-color: var(--accent);
+}
+
+.nm-session-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text);
+}
+.nm-session-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.nm-session-active-badge {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 3px;
+}
+
+/* ── New session form ───────────────────────────────────────── */
+#cfg-new-session-form {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg3);
+}
+#cfg-new-session-form.hidden { display: none; }
+
+.nm-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.nm-form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.nm-form-row label input[type="text"],
+.nm-form-row label input[type="number"],
+.nm-form-row label select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.nm-form-row label input[type="checkbox"] {
+  margin-right: 4px;
+}
+.nm-form-actions { justify-content: flex-start; gap: 8px; }
+
+/* ── Listener section ───────────────────────────────────────── */
+#cfg-listener-info {
+  margin-bottom: 8px;
+}
+.nm-listener-row {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.nm-kv-key {
+  color: var(--text-dim);
+  font-size: 11px;
+  min-width: 80px;
+}
+#cfg-listener-btns {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Button styles ──────────────────────────────────────────── */
+.nm-btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+}
+.nm-btn-primary:hover { opacity: 0.85; }
+
+.nm-btn-danger {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+}
+.nm-btn-danger:hover { opacity: 0.85; }
+
+.nm-text-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.nm-text-btn:hover { color: var(--text); border-color: var(--text); }
+
+/* ── Phone overrides (≤ 600px — iPhone portrait) ────────────── */
+@media (max-width: 600px) {
+  #nm-gauges { height: 72px; }
+
+  .nm-gauge-num {
+    font-size: clamp(18px, 5.8vw, 27px);
+  }
+  .nm-gauge-mini .nm-gauge-num {
+    font-size: clamp(13px, 4.5vw, 20px);
+  }
+  #g-elapsed {
+    font-size: clamp(13px, 4.5vw, 20px);
+  }
+  #g-closest-name,
+  #g-farthest-name {
+    font-size: clamp(10px, 3.5vw, 20px);
+  }
+  .nm-gauge-caption {
+    font-size: clamp(7px, 1.8vw, 10px);
+  }
+  .nm-gauge-sub {
+    font-size: clamp(6px, 1.5vw, 9px);
+    margin-top: 1px;
+  }
+}
+
+/* ── Scrollbar (dark theme) ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
