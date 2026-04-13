@@ -12,11 +12,23 @@ Supported connection types:
 """
 
 import json
+import logging
 import os
 from typing import Optional
 
+log = logging.getLogger(__name__)
+
+
+class FatalConnectionError(Exception):
+    """Raised for configuration errors that will not resolve by retrying."""
+
 _here = os.path.dirname(os.path.abspath(__file__))
-ACTIVE_FILE = os.path.abspath(os.path.join(_here, "..", "NMData", "active.json"))
+# NM_DATA_DIR is set by NMDisplay when running from a frozen .app bundle;
+# in dev mode it is not set, so fall back to the relative NMData path.
+_nm_data_dir = os.environ.get("NM_DATA_DIR") or os.path.abspath(
+    os.path.join(_here, "..", "NMData")
+)
+ACTIVE_FILE = os.path.join(_nm_data_dir, "active.json")
 
 _FALLBACK_CONNECTION = {"type": "tcp", "host": "192.168.1.25", "port": 4403}
 
@@ -60,6 +72,26 @@ def make_interface(conn_cfg: dict):
     elif conn_type == "ble":
         from meshtastic.ble_interface import BLEInterface
         address = conn_cfg.get("address") or None   # None → auto-detect
+
+        if address is None:
+            # Pre-scan so we can give a useful error when multiple devices are found.
+            devices = BLEInterface.scan()
+            if len(devices) == 0:
+                raise FatalConnectionError(
+                    "No Meshtastic BLE devices found in range."
+                )
+            elif len(devices) == 1:
+                address = devices[0].address
+                log.info("BLE auto-detect: selected %s [%s]", devices[0].name, address)
+            else:
+                names = ", ".join(
+                    f"{d.name or 'unnamed'} [{d.address}]" for d in devices
+                )
+                raise FatalConnectionError(
+                    f"Multiple Meshtastic BLE devices found — edit the session and "
+                    f"specify one address: {names}"
+                )
+
         return BLEInterface(address)
 
     else:

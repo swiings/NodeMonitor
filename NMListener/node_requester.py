@@ -133,6 +133,28 @@ def add(node_id_hex: str) -> None:
     _enqueue(node_id_hex)
 
 
+def requeue_unresolved(repo) -> None:
+    """
+    Re-queue all nodes in the DB that still have no short_name.
+    Clears the session's 'already requested' set first so these nodes
+    get another chance even if they were tried before.  Called when the
+    user clicks 'Repopulate Unresolved Names' in the settings panel.
+    """
+    with _lock:
+        _requested.clear()
+    try:
+        rows = repo._conn.execute(
+            "SELECT node_id FROM nodes WHERE short_name IS NULL"
+        ).fetchall()
+        count = 0
+        for row in rows:
+            _enqueue(f"!{row[0] & 0xFFFFFFFF:08x}")
+            count += 1
+        log.info("Node requester: re-queued %d unresolved node(s)", count)
+    except Exception as e:
+        log.warning("Node requester: requeue_unresolved failed: %s", e)
+
+
 def _enqueue(node_id_hex: str) -> None:
     if node_id_hex in _SKIP_IDS:
         return

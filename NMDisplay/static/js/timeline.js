@@ -9,8 +9,23 @@
 "use strict";
 
 const NMTimeline = (() => {
-  let _chart = null;
-  let _cfg = {};
+  let _chart    = null;
+  let _cfg      = {};
+  let _yHighWater = 0;  // running max; only grows, never shrinks — keeps scale stable
+
+  const MAX_SLIDER_MINUTES = 480;  // practical upper cap
+
+  // Portnum display order (bottom of stack → top) and colors.
+  // Dark palette: muted, low-brightness versions of each hue.
+  const _PORTNUM_STACK = [
+    { key: "__OTHER__",       color: "rgba(44,51,60,0.95)",   eink: "rgba(0,0,0,0.3)"  },
+    { key: "NODEINFO_APP",    color: "rgba(100,48,152,0.9)",  eink: "rgba(0,0,0,0.5)"  },
+    { key: "TELEMETRY_APP",   color: "rgba(26,76,148,0.9)",   eink: "rgba(0,0,0,0.6)"  },
+    { key: "POSITION_APP",    color: "rgba(24,100,46,0.9)",   eink: "rgba(0,0,0,0.7)"  },
+    { key: "UNKNOWN",         color: "rgba(112,78,10,0.9)",   eink: "rgba(80,80,80,0.7)"},
+    { key: "TEXT_MESSAGE_APP",color: "rgba(138,30,26,0.9)",   eink: "rgba(0,0,0,0.9)"  },
+  ];
+  const _KNOWN_PORTNUMS = new Set(_PORTNUM_STACK.map(p => p.key).filter(k => k !== "__OTHER__"));
 
   // ── Init ──────────────────────────────────────────────────────
 
@@ -26,14 +41,19 @@ const NMTimeline = (() => {
         animation: false,
         responsive: true,
         maintainAspectRatio: false,
+        // index mode: hovering any segment of a bar shows one tooltip for the whole column
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
+            // Filter out zero-count rows and the channel util line (shown separately)
+            filter: (item) => item.dataset.yAxisID !== "yChan" && item.parsed.y > 0,
             callbacks: {
-              title: (items) => {
-                const label = items[0]?.label || "";
-                return label;
-              },
+              title: (items) => items[0]?.label || "",
+              label: (item) => ` ${item.dataset.label}: ${item.parsed.y}`,
             },
           },
         },
@@ -79,33 +99,87 @@ const NMTimeline = (() => {
 
     document.addEventListener("nm:timeline-updated", (e) => _update(e.detail));
     document.addEventListener("nm:settings-loaded",  (e) => { _cfg = e.detail.cfg; });
+
+    _initTimeSlider();
+  }
+
+  // ── Time window slider (left edge of panel) ───────────────────
+
+  function _initTimeSlider() {
+    const slider = document.getElementById("nm-time-slider");
+    if (!slider) return;
+
+    // Restore from settings
+    const tsm = (_cfg.timeline || {}).time_scale_minutes || 360;
+    slider.value = tsm;
+
+    slider.addEventListener("input", () => {
+      _applySliderValue(parseInt(slider.value));
+    });
+  }
+
+  let _sliderDebounce = null;
+  function _applySliderValue(minutes) {
+    clearTimeout(_sliderDebounce);
+    _sliderDebounce = setTimeout(() => {
+      fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeline: { time_scale_minutes: minutes } }),
+      }).then(r => r.json()).then(d => {
+        if (d.updated) {
+          document.dispatchEvent(new CustomEvent("nm:settings-loaded", { detail: { cfg: d.updated } }));
+          // Immediately trigger a data refresh
+          document.dispatchEvent(new CustomEvent("nm:request-poll"));
+        }
+      });
+    }, 200);
   }
 
   // ── Update ────────────────────────────────────────────────────
 
   function _update(data) {
     if (!_chart) return;
-    const { buckets, time_scale_hours } = data;
+    const { buckets, time_scale_minutes, session_minutes } = data;
     const tlCfg = _cfg.timeline || {};
 
-    const labels = _buildLabels(buckets, time_scale_hours);
+    // Sync slider range and value from API response
+    const slider = document.getElementById("nm-time-slider");
+    if (slider) {
+      const sliderMax = Math.min(MAX_SLIDER_MINUTES, session_minutes || MAX_SLIDER_MINUTES);
+      slider.max   = sliderMax;
+      slider.value = Math.min(time_scale_minutes || 360, sliderMax);
+    }
+
+    const labels   = _buildLabels(buckets);
     const datasets = _buildDatasets(buckets, tlCfg);
 
-    // Y-axis max
-    const yMax = tlCfg.y_axis_mode === "fixed" ? (tlCfg.y_axis_max || 30) : undefined;
-    _chart.options.scales.y.max = yMax;
+    // Y-axis max — stable: never let the scale shrink between refreshes.
+    // If settings specify a fixed ceiling, respect that; otherwise ratchet up only.
+    if (tlCfg.y_axis_mode === "fixed") {
+      _chart.options.scales.y.max = tlCfg.y_axis_max || 30;
+    } else {
+      const dataMax = Math.max(0, ...buckets.map(b => b.total || 0));
+      _yHighWater = Math.max(_yHighWater, dataMax);
+      _chart.options.scales.y.max = _yHighWater || undefined;
+    }
 
-    // Thin out x-axis ticks based on time scale
-    _chart.options.scales.x.ticks.maxTicksLimit = time_scale_hours * 2 + 1;
+    // Thin out x-axis ticks: ~1 tick per 30-minute window
+    const windowMins = time_scale_minutes || 360;
+    _chart.options.scales.x.ticks.maxTicksLimit = Math.max(3, Math.round(windowMins / 30) + 1);
 
-    _chart.data.labels = labels;
+    _chart.data.labels   = labels;
     _chart.data.datasets = datasets;
     _chart.update("none");
+
+    // Align UTILIZATION label above the right y-axis tick text.
+    // After chart.update() the chartArea geometry is final — use it directly.
+    _alignUtilLabel();
   }
 
   // ── Labels ────────────────────────────────────────────────────
 
-  function _buildLabels(buckets, timeScaleHours) {
+  function _buildLabels(buckets) {
     return buckets.map((b) => {
       const d = new Date(b.minute_ts * 1000);
       const h = d.getHours().toString().padStart(2, "0");
@@ -117,29 +191,26 @@ const NMTimeline = (() => {
   // ── Datasets ──────────────────────────────────────────────────
 
   function _buildDatasets(buckets, tlCfg) {
-    const isEink = document.body.classList.contains("theme-eink");
+    const isEink    = document.body.classList.contains("theme-eink");
+    const chanColor = isEink ? "#555555" : "#d29922";
 
-    const allColor  = isEink ? "rgba(0,0,0,0.6)" : "rgba(66,133,244,0.75)";
-    const msgColor  = isEink ? "rgba(0,0,0,0.9)" : "rgba(220,50,50,0.9)";
-    const chanColor = isEink ? "#555555"          : "#d29922";
+    const datasets = [];
 
-    const datasets = [
-      {
-        label: "All Packets",
-        data: buckets.map(b => b.total),
-        backgroundColor: allColor,
-        borderWidth: 0,
-        barPercentage: 0.95,
-        categoryPercentage: 1.0,
-        stack: "pkts",
-      },
-    ];
-
-    if (tlCfg.message_accent !== false) {
+    // One stacked bar dataset per portnum in the display order (bottom → top)
+    for (const { key, color, eink } of _PORTNUM_STACK) {
       datasets.push({
-        label: "Messages",
-        data: buckets.map(b => b.messages),
-        backgroundColor: msgColor,
+        label: key === "__OTHER__" ? "Other" : key.replace(/_APP$/, "").replace(/_/g, " "),
+        data: buckets.map(b => {
+          const byPortnum = b.by_portnum || {};
+          if (key === "__OTHER__") {
+            // Sum anything not in the known set
+            return Object.entries(byPortnum)
+              .filter(([k]) => !_KNOWN_PORTNUMS.has(k))
+              .reduce((s, [, v]) => s + v, 0);
+          }
+          return byPortnum[key] || 0;
+        }),
+        backgroundColor: isEink ? eink : color,
         borderWidth: 0,
         barPercentage: 0.95,
         categoryPercentage: 1.0,
@@ -167,6 +238,31 @@ const NMTimeline = (() => {
     }
 
     return datasets;
+  }
+
+  // ── UTILIZATION label alignment ───────────────────────────────
+  // Right-aligns the label to sit above the yChan axis tick text.
+  // Chart.js exposes exact pixel geometry after each render:
+  //   _chart.chartArea.right = right edge of the plot area (where bars end)
+  //   _chart.width           = full canvas pixel width
+  // The right axis occupies [chartArea.right .. chart.width].
+  // The label bar's right edge is flush with the panel edge.
+  // The image sits between the panel edge and the canvas-wrap.
+  // So: marginRight = img.offsetWidth + (canvas.offsetWidth - chart.width)
+  //                 + (chart.width - chart.chartArea.right)
+  //               = img.offsetWidth + canvas.offsetWidth - chart.chartArea.right
+  function _alignUtilLabel() {
+    const utilLabel = document.getElementById("nm-timeline-util-label");
+    if (!utilLabel || !_chart || !_chart.chartArea) return;
+
+    const img    = document.getElementById("nm-timeline-img");
+    const wrap   = document.getElementById("nm-timeline-canvas-wrap");
+    const imgW   = (img && img.offsetWidth) ? img.offsetWidth : 0;
+    const wrapW  = wrap ? wrap.offsetWidth : _chart.width;
+
+    // Distance from the label bar's right edge to where yChan axis text aligns
+    const marginRight = imgW + (wrapW - _chart.chartArea.right);
+    utilLabel.style.marginRight = `${Math.max(0, marginRight)}px`;
   }
 
   return { init };

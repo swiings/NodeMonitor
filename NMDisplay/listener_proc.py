@@ -6,25 +6,23 @@ Stdout + stderr are captured into a rolling ring buffer (last 200 lines)
 and served via GET /api/listener/log so the browser can display a live
 packet stream.
 
-Python resolution order for running NMListener:
+Command resolution order (dev mode):
   1. NMListener/.venv/bin/python3  (NMListener's own venv, if it exists)
   2. sys.executable                 (same Python NMDisplay is running under)
+
+Frozen mode (PyInstaller .app):
+  Re-invokes this executable with --listener so launcher.py dispatches
+  to NMListener's main() inside the same bundle.
 """
 
 import collections
+import json
 import os
 import subprocess
-import sys
 import threading
 from typing import Optional
 
-_here         = os.path.dirname(os.path.abspath(__file__))
-_LISTENER_DIR = os.path.abspath(os.path.join(_here, "..", "NMListener"))
-_MAIN_PY      = os.path.join(_LISTENER_DIR, "main.py")
-
-# Prefer NMListener's own venv if present
-_VENV_PY = os.path.join(_LISTENER_DIR, ".venv", "bin", "python3")
-_PYTHON  = _VENV_PY if os.path.exists(_VENV_PY) else sys.executable
+import bundle_paths
 
 LOG_MAXLEN = 200   # lines kept in the ring buffer
 
@@ -48,9 +46,10 @@ def start() -> dict:
         _log = collections.deque(maxlen=LOG_MAXLEN)
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"   # force line-by-line stdout flush
+        env.update(bundle_paths.listener_env())
         _proc = subprocess.Popen(
-            [_PYTHON, "-u", _MAIN_PY],  # -u = unbuffered
-            cwd=_LISTENER_DIR,
+            bundle_paths.listener_cmd(),
+            cwd=bundle_paths.listener_source_dir(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             bufsize=1,
@@ -94,6 +93,20 @@ def get_log(n: int = 80) -> list[str]:
     with _lock:
         lines = list(_log)
     return lines[-n:]
+
+
+def get_runtime_info() -> dict:
+    """
+    Return the runtime info written by NMListener on connect:
+      my_node_id, my_node_short, channel_num, frequency_mhz
+    Returns empty dict if the file doesn't exist or can't be read.
+    """
+    runtime_file = os.path.join(bundle_paths.data_dir(), "listener_runtime.json")
+    try:
+        with open(runtime_file) as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 
 

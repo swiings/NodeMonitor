@@ -14,7 +14,8 @@ const NMGauges = (() => {
   let _farthestNodeId = null;
 
   function init() {
-    document.addEventListener("nm:gauges-updated", (e) => _update(e.detail));
+    document.addEventListener("nm:gauges-updated",    (e) => _update(e.detail));
+    document.addEventListener("nm:breakdown-updated", (e) => _updateBreakdown(e.detail.breakdown || []));
 
     document.getElementById("gauge-closest").addEventListener("click", () => {
       if (_closestNodeId != null) NMMap.flyToNode(_closestNodeId);
@@ -57,18 +58,21 @@ const NMGauges = (() => {
     _set("g-client-count", data.client_count ?? "—");
 
     if (data.hop_dist) {
-      _updateHopDist(data.hop_dist);
       _drawHopPie(data.hop_dist);
+    }
+    if (data.hop_dist_raw) {
+      _updateHopDistRaw(data.hop_dist_raw);
     }
   }
 
-  // Colors per bucket: 4+=accent blue, 3=green, 2=amber, 1=red-orange, 0=grey
+  // Hops-left colors: warm earth/bronze gradient (close=lighter copper, far=dark slate).
+  // Distinct from the activity bar palette (which uses violet/cobalt/forest/gold/crimson).
   const _HOP_COLORS = {
-    "4+": "#58a6ff",
-    "3":  "#3fb950",
-    "2":  "#d29922",
-    "1":  "#f0883e",
-    "0":  "#484f58",
+    "4+": "#6b9e7a",   // muted sage — most hops remaining, closest to sender
+    "3":  "#7a7a3a",   // olive
+    "2":  "#8a6020",   // dark bronze
+    "1":  "#7a3818",   // deep rust
+    "0":  "#2e3a42",   // dark blue-slate — fewest hops, most traversed
   };
 
   function _drawHopPie(dist) {
@@ -127,17 +131,34 @@ const NMGauges = (() => {
     }
   }
 
-  function _updateHopDist(dist) {
-    const buckets = ["4+", "3", "2", "1", "0"];
-    const max = Math.max(1, ...buckets.map(k => dist[k] || 0));
-    for (const k of buckets) {
-      const count = dist[k] || 0;
-      const id = k === "4+" ? "4plus" : k;
-      const countEl = document.getElementById(`hc-${id}`);
-      const barEl   = document.getElementById(`hb-${id}`);
-      if (countEl) countEl.textContent = count;
-      if (barEl)   barEl.style.width = `${Math.round((count / max) * 100)}%`;
+  // Dynamic hop-left list from raw per-value data (replaces static bucketed table)
+  function _updateHopDistRaw(distRaw) {
+    const table = document.getElementById("nm-hop-dist-table");
+    if (!table) return;
+
+    // distRaw keys are hop_limit values (strings), sorted desc = most direct first
+    const entries = Object.entries(distRaw)
+      .map(([k, v]) => ({ hopLimit: parseInt(k), count: v }))
+      .filter(e => e.count > 0)
+      .sort((a, b) => b.hopLimit - a.hopLimit);
+
+    if (entries.length === 0) {
+      table.innerHTML = "";
+      return;
     }
+
+    const max = Math.max(1, ...entries.map(e => e.count));
+    table.innerHTML = entries.map(e => {
+      const pct  = Math.round((e.count / max) * 100);
+      // Pick a color from the hop colors spectrum
+      const color = e.hopLimit >= 4 ? _HOP_COLORS["4+"]
+                  : _HOP_COLORS[String(e.hopLimit)] || _HOP_COLORS["0"];
+      return `<tr>
+        <td class="nm-hop-label">${e.hopLimit}</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color}"></div></td>
+        <td class="nm-hop-count">${e.count}</td>
+      </tr>`;
+    }).join("");
   }
 
   function _set(id, value) {
@@ -151,6 +172,50 @@ const NMGauges = (() => {
     if (n >= 10_000)    return `${(n / 1_000).toFixed(0)}K`;
     if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
     return String(n);
+  }
+
+  // Packet Breakdown list — colors per portnum
+  const _PKT_COLORS = {
+    "TEXT_MESSAGE_APP": "var(--red)",
+    "POSITION_APP":     "var(--green)",
+    "TELEMETRY_APP":    "var(--accent)",
+    "NODEINFO_APP":     "var(--purple)",
+    "UNKNOWN":          "var(--amber)",
+  };
+
+  function _pktColor(portnum) {
+    return _PKT_COLORS[portnum] || "var(--text-dim)";
+  }
+
+  function _pktLabel(portnum) {
+    const labels = {
+      "TEXT_MESSAGE_APP": "TEXT MSG",
+      "POSITION_APP":     "POSITION",
+      "TELEMETRY_APP":    "TELEMETRY",
+      "NODEINFO_APP":     "NODE INFO",
+      "UNKNOWN":          "ENCRYPTED",
+    };
+    return labels[portnum] || portnum.replace(/_APP$/, "").replace(/_/g, " ");
+  }
+
+  function _updateBreakdown(rows) {
+    const table = document.getElementById("nm-pkt-breakdown-table");
+    if (!table) return;
+    if (!rows || rows.length === 0) {
+      table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
+      return;
+    }
+    const maxCount = Math.max(1, ...rows.map(r => r.count));
+    table.innerHTML = rows.map(r => {
+      const pct = Math.round((r.count / maxCount) * 100);
+      const color = _pktColor(r.portnum);
+      const label = _pktLabel(r.portnum);
+      return `<tr>
+        <td class="nm-hop-label" style="color:${color}">${label}</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
+        <td class="nm-hop-count">${r.count}</td>
+      </tr>`;
+    }).join("");
   }
 
   // Elapsed time since first packet

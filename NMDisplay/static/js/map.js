@@ -30,9 +30,11 @@ const NMMap = (() => {
   let _myNodeId = null;
   let _allGpsNodes = [];        // full node list with GPS, stored for re-filtering
 
-  // Filter state
-  let _recencyHours = 0;        // 0 = show all
-  let _sliderMax    = 1;        // seeded from session_start_ts on first gauges update
+  // Hop filter state
+  // _maxHopsFilter: max hops-traversed to show; Infinity = show all (ALL position)
+  let _maxHopsFilter = Infinity;
+  let _dataMaxHopLimit = 0;     // highest hop_limit seen in current node set
+  let _filterIndicator = null;  // Leaflet control showing active hop filter
 
   // ── Init ──────────────────────────────────────────────────────
 
@@ -76,6 +78,16 @@ const NMMap = (() => {
     });
     new MyNodeControl().addTo(_map);
 
+    // Hop filter active indicator
+    const FilterIndicator = L.Control.extend({
+      options: { position: "bottomleft" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "nm-hop-filter-indicator hidden");
+        return div;
+      },
+    });
+    _filterIndicator = new FilterIndicator().addTo(_map);
+
     _initFilterBar();
 
     // Re-measure after fonts/layout settle, and on any window resize
@@ -84,76 +96,92 @@ const NMMap = (() => {
 
     document.addEventListener("nm:nodes-updated",   (e) => _handleNodes(e.detail));
     document.addEventListener("nm:settings-loaded", (e) => { _cfg = e.detail.cfg; });
-    document.addEventListener("nm:gauges-updated",  (e) => {
-      if (e.detail.session_start_ts) _seedSliderFromSession(e.detail.session_start_ts);
-    });
   }
 
-  // ── Filter bar: recency slider ────────────────────────────────
+  // ── Filter bar: hop count slider ──────────────────────────────
 
   function _initFilterBar() {
-    const slider = document.getElementById("nm-recency-slider");
+    const slider = document.getElementById("nm-hop-slider");
     if (!slider) return;
     slider.addEventListener("input", () => {
       const v = parseInt(slider.value);
-      _recencyHours = v >= _sliderMax ? 0 : v;
-      _updateSliderLabel(v);
+      const maxTraversed = _dataMaxHopLimit;  // same as slider.max - 1
+      _maxHopsFilter = (v > maxTraversed) ? Infinity : v;
+      _updateSliderLabel(v, maxTraversed);
       _applyFilters();
     });
   }
 
-  function _updateSliderLabel(v) {
-    const label = document.getElementById("nm-recency-label");
+  function _updateSliderLabel(v, maxTraversed) {
+    const label = document.getElementById("nm-hop-label");
     if (!label) return;
-    label.textContent = v >= _sliderMax ? "ALL" : _fmtHours(v);
+    if (v > maxTraversed) {
+      label.textContent = "ALL";
+    } else if (v === 0) {
+      label.textContent = "Direct";
+    } else {
+      label.textContent = `≤ ${v} hop${v === 1 ? "" : "s"}`;
+    }
   }
 
-  function _fmtHours(h) {
-    if (h < 24)  return `${h}h`;
-    const d = Math.floor(h / 24), r = h % 24;
-    return r > 0 ? `${d}d ${r}h` : `${d}d`;
-  }
+  function _updateHopSliderRange(nodes) {
+    // Compute the highest hop_limit in the data to determine "direct"
+    // hops_traversed = _dataMaxHopLimit - node.hop_limit
+    const hopLimits = nodes
+      .map(n => n.hop_limit)
+      .filter(v => v != null);
+    if (hopLimits.length === 0) return;
 
-  function _seedSliderFromSession(sessionStartTs) {
-    const sessionHours = Math.max(1, Math.ceil((Date.now() / 1000 - sessionStartTs) / 3600));
-    _applySliderMax(sessionHours);
-  }
+    const maxHopLimit = Math.max(...hopLimits);
+    if (maxHopLimit === _dataMaxHopLimit) return;  // no change
+    _dataMaxHopLimit = maxHopLimit;
 
-  function _applySliderMax(hours) {
-    if (hours <= _sliderMax) return;
-    _sliderMax = hours;
-    const slider = document.getElementById("nm-recency-slider");
+    const slider = document.getElementById("nm-hop-slider");
     if (!slider) return;
-    slider.max = _sliderMax;
-    const dl = document.getElementById("nm-recency-ticks");
-    if (dl) {
-      const marks = [1, 6, 12, 24, 48, 72, 168].filter(h => h <= _sliderMax);
-      if (!marks.includes(_sliderMax)) marks.push(_sliderMax);
-      dl.innerHTML = marks.map(h => `<option value="${h}"></option>`).join("");
-    }
-    // Keep slider at max (ALL) if it was already there
-    if (parseInt(slider.value) >= parseInt(slider.max) - 1) {
-      slider.value = _sliderMax;
-      _updateSliderLabel(_sliderMax);
-    }
-  }
 
-  function _updateSliderRange(nodes) {
-    const now = Date.now() / 1000;
-    const oldestSec = nodes.reduce((mx, n) => Math.max(mx, now - (n.last_heard || now)), 0);
-    const oldestHours = Math.max(1, Math.ceil(oldestSec / 3600));
-    _applySliderMax(oldestHours);
+    const maxTraversed = _dataMaxHopLimit;  // e.g., if maxHopLimit=3, max traversed = 3
+    const sliderMax = maxTraversed + 1;     // +1 for the ALL position
+
+    slider.max = sliderMax;
+
+    const dl = document.getElementById("nm-hop-ticks");
+    if (dl) {
+      const marks = [];
+      for (let i = 0; i <= maxTraversed; i++) marks.push(i);
+      marks.push(sliderMax);  // ALL position
+      dl.innerHTML = marks.map(v => `<option value="${v}"></option>`).join("");
+    }
+
+    // If slider is at ALL (max), keep it there
+    if (parseInt(slider.value) >= parseInt(slider.max) - 1) {
+      slider.value = sliderMax;
+      _updateSliderLabel(sliderMax, maxTraversed);
+      _maxHopsFilter = Infinity;
+    }
   }
 
   // ── Filter logic ──────────────────────────────────────────────
 
   function _applyFilters() {
-    const now = Date.now() / 1000;
     const visible = _allGpsNodes.filter(n => {
-      if (_recencyHours > 0 && (now - n.last_heard) > _recencyHours * 3600) return false;
-      return true;
+      if (_maxHopsFilter === Infinity) return true;
+      const hopLimit = n.hop_limit != null ? n.hop_limit : 0;
+      const traversed = _dataMaxHopLimit - hopLimit;
+      return traversed <= _maxHopsFilter;
     });
     _syncMarkers(visible);
+
+    // Update filter indicator badge
+    if (_filterIndicator) {
+      const el = _filterIndicator.getContainer();
+      if (!el) return;
+      if (_maxHopsFilter === Infinity) {
+        el.classList.add("hidden");
+      } else {
+        el.classList.remove("hidden");
+        el.textContent = _maxHopsFilter === 0 ? "⬦ Direct only" : `⬦ ≤ ${_maxHopsFilter} hop${_maxHopsFilter === 1 ? "" : "s"}`;
+      }
+    }
   }
 
   // ── Node update ───────────────────────────────────────────────
@@ -171,7 +199,7 @@ const NMMap = (() => {
     _myNodeId    = my_node_id != null ? (my_node_id >>> 0) : null;
     _allGpsNodes = nodes.filter(n => n.lat != null && n.lon != null);
 
-    _updateSliderRange(nodes);
+    _updateHopSliderRange(nodes);
     _applyFilters();
 
     if (_firstLoad && _allGpsNodes.length > 0) {
@@ -230,6 +258,7 @@ const NMMap = (() => {
     m.setLatLng([node.lat, node.lon]);
     m.setIcon(_iconForNode(node, isMyNode));
     m.setTooltipContent(_labelText(node));
+    m.setPopupContent(_popupHtml(node));
     m._nmNode = node;
   }
 
@@ -345,12 +374,22 @@ const NMMap = (() => {
     const ts = node.last_heard
       ? new Date(node.last_heard * 1000).toLocaleString()
       : "—";
+
+    const hopsAway = (node.hop_limit != null && _dataMaxHopLimit > 0)
+      ? (_dataMaxHopLimit - node.hop_limit)
+      : null;
+    const distMi = node.distance_km != null
+      ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
+      : null;
+
     const rows = [
       ["ID",         node.node_id_hex || "—"],
       ["Short",      node.short_name  || "—"],
       ["Long",       node.long_name   || "—"],
       ["HW",         node.hardware_model || "—"],
       ["Role",       node.role || "—"],
+      ["Hops away",  hopsAway != null ? hopsAway : "—"],
+      ["Distance",   distMi || "—"],
       ["RSSI",       node.rssi != null ? `${node.rssi} dBm` : "—"],
       ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
       ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],

@@ -9,10 +9,21 @@ the portnum-specific handler.
 import time
 from typing import Optional
 
+import config
 from db.repository import Repository
 from store.counters import MessageCounter
 from store.node_store import NodeStore
 from store.timeline import PacketTimeline
+
+# Reference node ID — packets from this node are excluded from DB writes
+# and timeline counts. Set via set_my_node() when the listener connects.
+_my_node_id: Optional[int] = None
+
+
+def set_my_node(node_id: Optional[int]) -> None:
+    """Called by listener on connect with the reference node's integer ID."""
+    global _my_node_id
+    _my_node_id = node_id
 
 
 def get_rx_position(interface) -> tuple[Optional[float], Optional[float]]:
@@ -82,29 +93,36 @@ def handle_generic(
     from_id = _to_int(from_id)
     to_id = _to_int(to_id) if to_id is not None else None
 
-    # Ensure node exists
+    # Skip packets originating from the reference node itself
+    if _my_node_id is not None and from_id == _my_node_id:
+        return
+
+    # Always update in-memory node store and the live DB view (nodes table,
+    # timeline buckets) so gauges and the map stay current regardless of the
+    # save-packet-data flag.
     node_store.upsert(from_id, rssi=rssi, snr=snr, hop_limit=hop_limit)
     repo.upsert_node(from_id, rssi=rssi, snr=snr, hop_limit=hop_limit, last_heard=rx_time)
 
-    # Insert into packets table
-    repo.insert_packet(
-        rx_time=rx_time,
-        from_node_id=from_id,
-        to_node_id=to_id,
-        portnum=portnum,
-        portnum_int=portnum_int,
-        hop_limit=hop_limit,
-        rx_rssi=rssi,
-        rx_snr=snr,
-        rx_lat=rx_lat,
-        rx_lon=rx_lon,
-        payload_raw=None,
-        payload_dict=decoded if decoded else None,
-    )
-
-    # Increment per-minute timeline
+    # Increment per-minute timeline (in-memory + DB aggregate)
     minute_ts = timeline.record(portnum, rx_time)
     repo.increment_timeline(minute_ts, portnum)
+
+    # Insert raw packet row only when saving is enabled
+    if config.SAVE_PACKET_DATA:
+        repo.insert_packet(
+            rx_time=rx_time,
+            from_node_id=from_id,
+            to_node_id=to_id,
+            portnum=portnum,
+            portnum_int=portnum_int,
+            hop_limit=hop_limit,
+            rx_rssi=rssi,
+            rx_snr=snr,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            payload_raw=None,
+            payload_dict=decoded if decoded else None,
+        )
 
 
 def handle_text_message(

@@ -144,7 +144,8 @@ const NMTelemetry = (() => {
           ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
           : "no GPS";
       case "big_sig":
-        return node.rssi != null ? `${node.rssi} dBm` : "—";
+        if (node.rssi == null) return "—";
+        return node.snr != null ? `${node.rssi}/${node.snr}` : `${node.rssi} dBm`;
       case "most_pkts":
         return `${node.total_packets} pkts`;
       case "msgs_sent":

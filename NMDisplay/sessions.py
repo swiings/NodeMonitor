@@ -16,8 +16,9 @@ import re
 import time
 from typing import Optional
 
-_here = os.path.dirname(os.path.abspath(__file__))
-NMDATA_DIR    = os.path.abspath(os.path.join(_here, "..", "NMData"))
+import bundle_paths
+
+NMDATA_DIR    = bundle_paths.data_dir()
 SESSIONS_FILE = os.path.join(NMDATA_DIR, "sessions.json")
 ACTIVE_FILE   = os.path.join(NMDATA_DIR, "active.json")
 
@@ -53,13 +54,25 @@ def get_db_path() -> str:
     return active.get("db_path") or os.path.join(NMDATA_DIR, active["db"])
 
 
-def create(name: str, connection: dict, seed_on_connect: bool = True) -> dict:
+def create(name: str, connection: dict, seed_on_connect: bool = True,
+           save_packet_data: bool = True) -> dict:
     """Create a new session, activate it, and return it."""
     sessions = load_all()
-    session = _make_session(name, connection, seed_on_connect)
+    session = _make_session(name, connection, seed_on_connect, save_packet_data=save_packet_data)
     sessions.append(session)
     _save_all(sessions)
     return _write_active(session)
+
+
+def patch_active_flag(key: str, value) -> None:
+    """Update a single flag in active.json (without touching sessions.json).
+    Used for mid-session toggles like save_packet_data."""
+    active = get_active()
+    active[key] = value
+    tmp = ACTIVE_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(active, f, indent=2)
+    os.replace(tmp, ACTIVE_FILE)
 
 
 def activate(session_id: str) -> dict:
@@ -101,7 +114,7 @@ def _bootstrap() -> list[dict]:
 
 
 def _make_session(name: str, connection: dict, seed_on_connect: bool,
-                  db: Optional[str] = None) -> dict:
+                  db: Optional[str] = None, save_packet_data: bool = True) -> dict:
     ts = int(time.time())
     slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
     sid = f"{slug}_{ts}"
@@ -111,6 +124,7 @@ def _make_session(name: str, connection: dict, seed_on_connect: bool,
         "db": db or f"{sid}.db",
         "connection": connection,
         "seed_on_connect": seed_on_connect,
+        "save_packet_data": save_packet_data,
         "created": ts,
         "last_active": ts,
     }

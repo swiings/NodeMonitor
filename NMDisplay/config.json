@@ -1,28 +1,30 @@
 {
-  "my_node_id": 1236768924,
+  "my_node_id": null,
   "telemetry_lists": {
     "enabled_lists": [
       "last_heard",
       "nearby",
       "most_pkts",
       "big_sig",
+      "msgs_rcvd",
       "msgs_sent"
     ],
     "limits": {
       "last_heard": 5,
       "nearby": 5,
-      "big_sig": 5,
-      "most_pkts": 5,
+      "big_sig": 3,
+      "most_pkts": 3,
       "msgs_sent": 3,
-      "msgs_rcvd": 5,
+      "msgs_rcvd": 3,
       "dead_end": 3
     }
   },
   "timeline": {
-    "time_scale_hours": 1,
+    "time_scale_minutes": 17,
     "y_axis_mode": "auto",
     "y_axis_max": 30,
-    "message_accent": true
+    "message_accent": true,
+    "time_scale_hours": 1
   },
   "map": {
     "zoom": 11,

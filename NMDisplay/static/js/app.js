@@ -23,6 +23,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function boot() {
+  // Prevent browser pinch-to-zoom on the whole page.
+  // On macOS Chrome, trackpad pinch = wheel event with ctrlKey.
+  // On iOS Safari, it's a touchmove with 2 fingers (Safari ignores user-scalable=no).
+  // Leaflet map zoom is unaffected — it's implemented in JS, not a browser default.
+  document.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) e.preventDefault();
+  }, { passive: false });
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+
   _cfg = await fetchSettings();
   applyTheme(_cfg);
 
@@ -39,9 +50,12 @@ async function boot() {
   restorePanelSizes();
   initSettingsModal();
   initLogPanel();
+  initCsvModal();
 
   // Give browser time to finish flex layout before Leaflet measures
   setTimeout(() => { NMMap.invalidate(); NMTelemetry.checkWidth(); }, 400);
+
+  document.addEventListener("nm:request-poll", () => pollAll());
 
   startPollLoop(_cfg.display.poll_interval_seconds);
   startListenerStatusLoop();
@@ -77,24 +91,27 @@ function startPollLoop(intervalSec) {
 async function pollAll() {
   try {
     const gq = _geoQuery();
-    const [nodesResp, listsResp, timelineResp, gaugesResp] = await Promise.all([
+    const [nodesResp, listsResp, timelineResp, gaugesResp, brkResp] = await Promise.all([
       fetch(`/api/nodes${gq}`),
       fetch(`/api/telemetry_lists${gq}`),
       fetch("/api/timeline"),
       fetch(`/api/gauges${gq}`),
+      fetch("/api/packet_breakdown"),
     ]);
 
-    const [nodesData, listsData, timelineData, gaugesData] = await Promise.all([
+    const [nodesData, listsData, timelineData, gaugesData, brkData] = await Promise.all([
       nodesResp.json(),
       listsResp.json(),
       timelineResp.json(),
       gaugesResp.json(),
+      brkResp.json(),
     ]);
 
-    document.dispatchEvent(new CustomEvent("nm:nodes-updated",    { detail: nodesData }));
-    document.dispatchEvent(new CustomEvent("nm:lists-updated",    { detail: listsData }));
-    document.dispatchEvent(new CustomEvent("nm:timeline-updated", { detail: timelineData }));
-    document.dispatchEvent(new CustomEvent("nm:gauges-updated",   { detail: gaugesData }));
+    document.dispatchEvent(new CustomEvent("nm:nodes-updated",     { detail: nodesData }));
+    document.dispatchEvent(new CustomEvent("nm:lists-updated",     { detail: listsData }));
+    document.dispatchEvent(new CustomEvent("nm:timeline-updated",  { detail: timelineData }));
+    document.dispatchEvent(new CustomEvent("nm:gauges-updated",    { detail: gaugesData }));
+    document.dispatchEvent(new CustomEvent("nm:breakdown-updated", { detail: brkData }));
 
     _lastPollOk = Date.now();
     setStatus(`${nodesData.nodes.length} nodes · updated ${_timeStr()}`);
@@ -162,14 +179,19 @@ async function _pollListenerStatus() {
 
 function _applyListenerStatus(data) {
   const pill  = document.getElementById("nm-listener-status");
-  const dot   = document.getElementById("nm-listener-dot");
   const label = document.getElementById("nm-listener-label");
   if (!pill) return;
 
   pill.className = "";
   if (data.state === "running") {
     pill.classList.add("nm-listener-running");
-    label.textContent = "LISTENER RUNNING";
+    // Show node/channel/frequency if available
+    if (data.my_node_short && data.channel_num != null) {
+      const freq = data.frequency_mhz != null ? ` (${data.frequency_mhz}MHz)` : "";
+      label.textContent = `Listening to ${data.my_node_short} on Ch ${data.channel_num}${freq}`;
+    } else {
+      label.textContent = "LISTENER RUNNING";
+    }
   } else if (data.state === "error") {
     pill.classList.add("nm-listener-error");
     label.textContent = "LISTENER ERROR";
@@ -179,27 +201,38 @@ function _applyListenerStatus(data) {
   }
 
   // Update modal listener section if open
-  const stateEl = document.getElementById("cfg-listener-state");
-  const sessEl  = document.getElementById("cfg-listener-session");
-  const connEl  = document.getElementById("cfg-listener-conn");
+  const stateEl   = document.getElementById("cfg-listener-state");
+  const sessEl    = document.getElementById("cfg-listener-session");
+  const connEl    = document.getElementById("cfg-listener-conn");
+  const saveEl    = document.getElementById("cfg-save-data");
+  const runtimeEl = document.getElementById("cfg-my-node-runtime");
+
   if (stateEl) stateEl.textContent = data.state.toUpperCase();
   if (sessEl)  sessEl.textContent  = data.session_name || "—";
   if (connEl && data.connection) {
     const c = data.connection;
-    if (c.type === "tcp")    connEl.textContent = `TCP ${c.host}:${c.port || 4403}`;
+    if (c.type === "tcp")         connEl.textContent = `TCP ${c.host}:${c.port || 4403}`;
     else if (c.type === "serial") connEl.textContent = `Serial ${c.dev || "auto"}`;
     else if (c.type === "ble")    connEl.textContent = `BLE ${c.address || "auto"}`;
     else connEl.textContent = c.type || "—";
+  }
+  if (saveEl && data.save_packet_data != null) {
+    saveEl.checked = data.save_packet_data;
+  }
+  if (runtimeEl && data.my_node_short) {
+    runtimeEl.textContent = `Detected: ${data.my_node_short} (${data.my_node_id ? "!" + (data.my_node_id >>> 0).toString(16).padStart(8,"0") : "—"})`;
   }
 }
 
 // ── Log panel ───────────────────────────────────────────────────
 
 function initLogPanel() {
-  const btn = document.getElementById("nm-log-btn");
+  const btn    = document.getElementById("nm-log-btn");
+  const divLog = document.getElementById("nm-divider-log");
   btn.addEventListener("click", () => {
     _logVisible = !_logVisible;
     document.getElementById("nm-log-panel").classList.toggle("hidden", !_logVisible);
+    if (divLog) divLog.classList.toggle("hidden", !_logVisible);
     btn.classList.toggle("active", _logVisible);
     NMMap.invalidate();
     if (_logVisible) {
@@ -231,8 +264,11 @@ function _renderLog(lines) {
 
   body.innerHTML = lines.map(l => {
     let cls = "dim";
-    if (l.includes(" RECV "))                              cls = "recv";
-    else if (l.includes("ERROR") || l.includes("WARNING")) cls = "warn";
+    if (l.includes("ERROR") || l.includes("WARNING")) {
+      cls = "warn";
+    } else if (l.includes(" RECV ")) {
+      cls = "recv " + _portnumClass(l);
+    }
     return `<div class="nm-log-line ${cls}">${_escHtml(l)}</div>`;
   }).join("");
 
@@ -249,13 +285,29 @@ function _escHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Derive a CSS class from the portnum token in a RECV log line.
+// Log format: "[timestamp] RECV PORTNUM_NAME   from=..."
+function _portnumClass(line) {
+  const m = line.match(/RECV\s+(\S+)/);
+  if (!m) return "pkt-other";
+  const pn = m[1];
+  if (pn === "TEXT_MESSAGE_APP")  return "pkt-text";
+  if (pn === "POSITION_APP")      return "pkt-position";
+  if (pn === "TELEMETRY_APP")     return "pkt-telemetry";
+  if (pn === "NODEINFO_APP")      return "pkt-nodeinfo";
+  if (pn === "UNKNOWN")           return "pkt-unknown";
+  return "pkt-other";
+}
+
 // ── Draggable dividers ──────────────────────────────────────────
 
 function initDraggables() {
   const vDiv          = document.getElementById("nm-divider-v");
   const hDiv          = document.getElementById("nm-divider-h");
+  const logDiv        = document.getElementById("nm-divider-log");
   const mapPanel      = document.getElementById("nm-map-panel");
   const timelinePanel = document.getElementById("nm-timeline-panel");
+  const logPanel      = document.getElementById("nm-log-panel");
 
   _makeDraggable(vDiv, (dx, _dy) => {
     let newW = mapPanel.offsetWidth + dx;
@@ -273,6 +325,14 @@ function initDraggables() {
     newH = Math.max(60, Math.min(300, newH));
     timelinePanel.style.height = newH + "px";
     NMMap.invalidate();
+    savePanelSizes();
+  });
+
+  _makeDraggable(logDiv, (_dx, dy) => {
+    let newH = logPanel.offsetHeight - dy;
+    const maxH = Math.floor(window.innerHeight * 0.5);
+    newH = Math.max(60, Math.min(maxH, newH));
+    logPanel.style.height = newH + "px";
     savePanelSizes();
   });
 }
@@ -326,15 +386,21 @@ function _makeDraggable(el, onDrag) {
 function savePanelSizes() {
   const mapPanel      = document.getElementById("nm-map-panel");
   const timelinePanel = document.getElementById("nm-timeline-panel");
+  const logPanel      = document.getElementById("nm-log-panel");
   localStorage.setItem("nm-map-width",       mapPanel.offsetWidth);
   localStorage.setItem("nm-timeline-height", timelinePanel.offsetHeight);
+  if (!logPanel.classList.contains("hidden")) {
+    localStorage.setItem("nm-log-height", logPanel.offsetHeight);
+  }
 }
 
 function restorePanelSizes() {
   const mapW      = localStorage.getItem("nm-map-width");
   const timelineH = localStorage.getItem("nm-timeline-height");
+  const logH      = localStorage.getItem("nm-log-height");
   if (mapW)      document.getElementById("nm-map-panel").style.width       = mapW + "px";
   if (timelineH) document.getElementById("nm-timeline-panel").style.height = timelineH + "px";
+  if (logH)      document.getElementById("nm-log-panel").style.height      = logH + "px";
   NMMap.invalidate();
 }
 
@@ -373,6 +439,40 @@ function initSettingsModal() {
   _initNewSessionForm();
   _initListenerButtons();
   _initListDragging();
+  _initSaveDataToggle();
+  _initRequeuButton();
+}
+
+function _initSaveDataToggle() {
+  const cb = document.getElementById("cfg-save-data");
+  if (!cb) return;
+  cb.addEventListener("change", async () => {
+    await fetch("/api/sessions/active/save_packet_data", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ save_packet_data: cb.checked }),
+    });
+  });
+}
+
+function _initRequeuButton() {
+  const btn    = document.getElementById("cfg-requeue-nodes");
+  const status = document.getElementById("cfg-requeue-status");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    if (status) status.textContent = "Queuing…";
+    try {
+      await fetch("/api/listener/requeue-nodes", { method: "POST" });
+      if (status) status.textContent = "Queued!";
+    } catch (_) {
+      if (status) status.textContent = "Error";
+    }
+    setTimeout(() => {
+      btn.disabled = false;
+      if (status) status.textContent = "";
+    }, 3000);
+  });
 }
 
 // ── Sessions in modal ───────────────────────────────────────────
@@ -442,30 +542,102 @@ window._activateSession = _activateSession;
 window._deleteSession   = _deleteSession;
 
 function _initNewSessionForm() {
-  const openBtn  = document.getElementById("cfg-new-session-btn");
-  const form     = document.getElementById("cfg-new-session-form");
+  const openBtn   = document.getElementById("cfg-new-session-btn");
+  const form      = document.getElementById("cfg-new-session-form");
   const cancelBtn = document.getElementById("ns-cancel-btn");
   const createBtn = document.getElementById("ns-create-btn");
-  const typeEl   = document.getElementById("ns-type");
+  const typeEl    = document.getElementById("ns-type");
 
   openBtn.addEventListener("click", () => {
+    const opening = form.classList.contains("hidden");
     form.classList.toggle("hidden");
+    if (opening) _updateConnFields();
   });
   cancelBtn.addEventListener("click", () => {
     form.classList.add("hidden");
     document.getElementById("ns-error").textContent = "";
   });
 
-  // Show/hide connection sub-fields based on type
   typeEl.addEventListener("change", _updateConnFields);
+
+  // Serial detect button
+  const serialDetectBtn = document.getElementById("ns-serial-detect");
+  if (serialDetectBtn) {
+    serialDetectBtn.addEventListener("click", async () => {
+      serialDetectBtn.textContent = "…";
+      serialDetectBtn.disabled = true;
+      try {
+        const resp = await fetch("/api/listener/scan/serial");
+        const data = await resp.json();
+        const devInput = document.getElementById("ns-dev");
+        const list = document.getElementById("ns-serial-list");
+        list.innerHTML = (data.ports || []).map(p =>
+          `<option value="${_escHtml(p.device)}">${_escHtml(p.device)} — ${_escHtml(p.description)}</option>`
+        ).join("");
+        if (data.ports && data.ports.length === 1) devInput.value = data.ports[0].device;
+      } catch (_) {}
+      serialDetectBtn.textContent = "Detect";
+      serialDetectBtn.disabled = false;
+    });
+  }
+
+  // BLE scan button
+  const bleScanBtn = document.getElementById("ns-ble-scan");
+  if (bleScanBtn) {
+    bleScanBtn.addEventListener("click", async () => {
+      bleScanBtn.textContent = "Scanning…";
+      bleScanBtn.disabled = true;
+      const resultsEl = document.getElementById("ns-ble-results");
+      if (resultsEl) {
+        resultsEl.classList.remove("hidden");
+        resultsEl.innerHTML = `<div class="nm-hint-inline">Scanning for Meshtastic devices (~10s)…</div>`;
+      }
+      try {
+        const resp = await fetch("/api/listener/scan/ble");
+        const data = await resp.json();
+        const bleList = document.getElementById("ns-ble-list");
+        bleList.innerHTML = (data.devices || []).map(d =>
+          `<option value="${_escHtml(d.address)}">${_escHtml(d.name || d.address)}</option>`
+        ).join("");
+        if (resultsEl) {
+          if (data.error) {
+            resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Error: ${_escHtml(data.error)}</div>`;
+          } else if (data.devices && data.devices.length > 0) {
+            resultsEl.innerHTML = data.devices.map(d =>
+              `<div class="nm-scan-item" data-addr="${_escHtml(d.address)}">
+                <strong>${_escHtml(d.name || "unnamed")}</strong>
+                <span class="nm-hint-inline">${_escHtml(d.address)}</span>
+              </div>`
+            ).join("");
+            resultsEl.querySelectorAll(".nm-scan-item").forEach(el => {
+              el.addEventListener("click", () => {
+                document.getElementById("ns-ble-address").value = el.dataset.addr;
+                resultsEl.querySelectorAll(".nm-scan-item").forEach(x => x.style.background = "");
+                el.style.background = "var(--bg3)";
+              });
+            });
+          } else {
+            resultsEl.innerHTML = `<div class="nm-hint-inline">No Meshtastic devices found</div>`;
+          }
+        }
+      } catch (err) {
+        if (resultsEl) {
+          resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Scan failed: ${_escHtml(String(err))}</div>`;
+        }
+      }
+      bleScanBtn.textContent = "Scan";
+      bleScanBtn.disabled = false;
+    });
+  }
 
   createBtn.addEventListener("click", async () => {
     const errEl = document.getElementById("ns-error");
     errEl.textContent = "";
 
-    const name = document.getElementById("ns-name").value.trim();
-    const type = document.getElementById("ns-type").value;
-    const seed = document.getElementById("ns-seed").checked;
+    const name     = document.getElementById("ns-name").value.trim();
+    const type     = document.getElementById("ns-type").value;
+    const seed     = document.getElementById("ns-seed").checked;
+    const saveData = document.getElementById("ns-save-data")?.checked ?? true;
 
     let connection = { type };
     if (type === "tcp") {
@@ -482,13 +654,14 @@ function _initNewSessionForm() {
     const resp = await fetch("/api/sessions/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, connection, seed_on_connect: seed }),
+      body: JSON.stringify({ name, connection, seed_on_connect: seed, save_packet_data: saveData }),
     });
     const data = await resp.json();
     if (!resp.ok) { errEl.textContent = data.error; return; }
 
     form.classList.add("hidden");
     document.getElementById("ns-name").value = "";
+    document.getElementById("ns-ble-results")?.classList.add("hidden");
     await _loadSessions();
     pollAll();
   });
@@ -549,7 +722,8 @@ function populateModal(cfg) {
     inp.value = limits[inp.dataset.list] || 5;
   });
 
-  document.getElementById("cfg-time-scale").value = cfg.timeline.time_scale_hours;
+  const tsm = cfg.timeline.time_scale_minutes || (cfg.timeline.time_scale_hours || 6) * 60;
+  document.getElementById("cfg-time-scale").value = tsm;
   document.getElementById("cfg-y-axis-mode").value = cfg.timeline.y_axis_mode;
   document.getElementById("cfg-y-axis-max").value = cfg.timeline.y_axis_max;
   document.getElementById("cfg-msg-accent").checked = cfg.timeline.message_accent;
@@ -580,7 +754,7 @@ function readModal() {
     my_node_id: myNodeId,
     telemetry_lists: { enabled_lists: enabled, limits },
     timeline: {
-      time_scale_hours: parseInt(document.getElementById("cfg-time-scale").value),
+      time_scale_minutes: parseInt(document.getElementById("cfg-time-scale").value),
       y_axis_mode: document.getElementById("cfg-y-axis-mode").value,
       y_axis_max: parseInt(document.getElementById("cfg-y-axis-max").value) || 30,
       message_accent: document.getElementById("cfg-msg-accent").checked,
@@ -662,4 +836,43 @@ function _initListDragging() {
     if (_touchSrc) _touchSrc.classList.remove("dragging");
     _touchSrc = null;
   });
+}
+
+// ── CSV Export modal ─────────────────────────────────────────────
+
+function initCsvModal() {
+  const csvBtn   = document.getElementById("nm-csv-btn");
+  const modal    = document.getElementById("nm-csv-modal");
+  const closeBtn = document.getElementById("nm-csv-modal-close");
+  if (!csvBtn || !modal) return;
+
+  csvBtn.addEventListener("click", async () => {
+    await _loadCsvSessions();
+    modal.classList.remove("hidden");
+  });
+  closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.add("hidden"); });
+}
+
+async function _loadCsvSessions() {
+  const list = document.getElementById("nm-csv-session-list");
+  if (!list) return;
+  list.innerHTML = `<li class="nm-hint-inline">Loading…</li>`;
+  try {
+    const resp = await fetch("/api/sessions/exportable");
+    const data = await resp.json();
+    list.innerHTML = (data.sessions || []).map(s => {
+      const dateStr = s.created ? new Date(s.created * 1000).toLocaleString() : "—";
+      const disabled = !s.db_exists ? ' class="nm-csv-no-data"' : "";
+      return `<li${disabled}>
+        <span class="nm-csv-name">${_escHtml(s.name)}</span>
+        <span class="nm-csv-date">${dateStr}</span>
+        ${s.db_exists
+          ? `<a class="nm-text-btn" href="/api/sessions/${_escHtml(s.id)}/export/nodes.csv" download>Export CSV</a>`
+          : `<span class="nm-hint-inline">no data</span>`}
+      </li>`;
+    }).join("");
+  } catch (_) {
+    list.innerHTML = `<li class="nm-hint-inline">Failed to load sessions</li>`;
+  }
 }

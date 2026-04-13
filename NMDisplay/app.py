@@ -12,12 +12,14 @@ import csv
 import io
 import ipaddress
 import os
+import re
 import socket
 import time
 
 import requests as req_lib
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
+import bundle_paths
 import listener_proc
 import queries
 import sessions as sess_mod
@@ -41,8 +43,8 @@ def _ensure_ssl_cert() -> tuple[str, str]:
     first run; subsequent runs reuse the existing files so the browser only
     needs to accept it once.
     """
-    cert_path = os.path.join(_here, "cert.pem")
-    key_path  = os.path.join(_here, "key.pem")
+    cert_path = os.path.join(bundle_paths.display_dir(), "cert.pem")
+    key_path  = os.path.join(bundle_paths.display_dir(), "key.pem")
     if os.path.exists(cert_path) and os.path.exists(key_path):
         return cert_path, key_path
 
@@ -94,8 +96,19 @@ def _ensure_ssl_cert() -> tuple[str, str]:
 
 app = Flask(__name__)
 
-_here = os.path.dirname(os.path.abspath(__file__))
-TILE_CACHE_DIR = os.path.join(_here, "tile_cache")
+
+def _effective_my_node_id():
+    """
+    Return the reference node's integer ID.
+    Prefers the runtime value written by NMListener on connect
+    (listener_runtime.json); falls back to the manual override in settings.
+    """
+    runtime = listener_proc.get_runtime_info()
+    if runtime.get("my_node_id") is not None:
+        return runtime["my_node_id"]
+    return cfg_mod.load().get("my_node_id")
+
+TILE_CACHE_DIR = os.path.join(bundle_paths.display_dir(), "tile_cache")
 
 TILE_PROVIDERS = {
     "osm":  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -121,8 +134,7 @@ def index():
 
 @app.route("/api/nodes")
 def api_nodes():
-    cfg = cfg_mod.load()
-    my_node_id = cfg.get("my_node_id")
+    my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
         my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
@@ -147,7 +159,8 @@ def api_nodes():
 @app.route("/api/telemetry_lists")
 def api_telemetry_lists():
     cfg = cfg_mod.load()
-    my_node_id = cfg.get("my_node_id")
+    my_node_id = _effective_my_node_id()
+    cfg["my_node_id"] = my_node_id  # ensure telemetry list builder uses runtime value
     conn = queries.get_conn()
     try:
         my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
@@ -165,24 +178,30 @@ def api_telemetry_lists():
 @app.route("/api/timeline")
 def api_timeline():
     cfg = cfg_mod.load()
-    time_scale = cfg.get("timeline", {}).get("time_scale_hours", 6)
-    my_node_id = cfg.get("my_node_id")
+    tl_cfg = cfg.get("timeline", {})
+    # Support both old time_scale_hours and new time_scale_minutes
+    if "time_scale_minutes" in tl_cfg:
+        time_scale_minutes = int(tl_cfg["time_scale_minutes"])
+    else:
+        time_scale_minutes = int(tl_cfg.get("time_scale_hours", 6)) * 60
+    time_scale_minutes = max(15, min(1440, time_scale_minutes))
+    my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
-        buckets = queries.get_timeline(conn, time_scale, my_node_id)
+        buckets, session_minutes = queries.get_timeline(conn, time_scale_minutes, my_node_id)
     finally:
         conn.close()
     return jsonify({
-        "buckets": buckets,
-        "time_scale_hours": time_scale,
-        "server_time": int(time.time()),
+        "buckets":          buckets,
+        "time_scale_minutes": time_scale_minutes,
+        "session_minutes":  session_minutes,
+        "server_time":      int(time.time()),
     })
 
 
 @app.route("/api/gauges")
 def api_gauges():
-    cfg = cfg_mod.load()
-    my_node_id = cfg.get("my_node_id")
+    my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
         my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
@@ -196,45 +215,99 @@ def api_gauges():
     return jsonify(data)
 
 
+@app.route("/api/packet_breakdown")
+def api_packet_breakdown():
+    my_node_id = _effective_my_node_id()
+    conn = queries.get_conn()
+    try:
+        rows = queries.get_packet_breakdown(conn, my_node_id)
+    finally:
+        conn.close()
+    return jsonify({"breakdown": rows})
+
+
 # ------------------------------------------------------------------
 # Export API
 # ------------------------------------------------------------------
 
+_CSV_FIELDS = [
+    "node_id_hex", "short_name", "long_name", "hardware_model", "role",
+    "first_seen", "last_heard", "seeded",
+    "lat", "lon", "altitude_m",
+    "rssi", "snr", "battery_level", "voltage", "hop_limit",
+    "total_packets", "sent_count", "received_count", "dead_end_count",
+    "distance_km",
+]
+
+
+def _build_nodes_csv(conn) -> str:
+    nodes = queries.get_all_nodes(conn, None, None)
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=_CSV_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(nodes)
+    return buf.getvalue()
+
+
 @app.route("/api/export/nodes.csv")
 def api_export_nodes():
-    cfg = cfg_mod.load()
-    my_node_id = cfg.get("my_node_id")
+    """Export the active session's nodes as CSV."""
     conn = queries.get_conn()
     try:
-        my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
-        blat = request.args.get("blat", type=float)
-        blon = request.args.get("blon", type=float)
-        if blat is not None and blon is not None:
-            my_lat, my_lon = blat, blon
-        nodes = queries.get_all_nodes(conn, my_lat, my_lon)
+        csv_data = _build_nodes_csv(conn)
     finally:
         conn.close()
 
-    fields = [
-        "node_id_hex", "short_name", "long_name", "hardware_model", "role",
-        "first_seen", "last_heard", "seeded",
-        "lat", "lon", "altitude_m",
-        "rssi", "snr", "battery_level", "voltage", "hop_limit",
-        "total_packets", "sent_count", "received_count", "dead_end_count",
-        "distance_km",
-    ]
-
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(nodes)
-
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"nodes_{timestamp}.csv"
-
     return Response(
-        buf.getvalue(),
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=nodes_{timestamp}.csv"},
+    )
+
+
+@app.route("/api/sessions/exportable")
+def api_sessions_exportable():
+    """Return all sessions with an indicator of whether their DB file exists."""
+    import bundle_paths as bp
+    all_sessions = sess_mod.load_all()
+    result = []
+    for s in all_sessions:
+        db_path = os.path.join(bp.data_dir(), s["db"])
+        result.append({
+            "id": s["id"],
+            "name": s["name"],
+            "created": s.get("created"),
+            "db_exists": os.path.exists(db_path),
+        })
+    return jsonify({"sessions": result})
+
+
+@app.route("/api/sessions/<session_id>/export/nodes.csv")
+def api_session_export_nodes(session_id):
+    """Export a specific session's nodes as CSV."""
+    import bundle_paths as bp
+    all_sessions = sess_mod.load_all()
+    session = next((s for s in all_sessions if s["id"] == session_id), None)
+    if session is None:
+        abort(404)
+    db_path = os.path.join(bp.data_dir(), session["db"])
+    if not os.path.exists(db_path):
+        abort(404)
+
+    conn = queries.get_conn_for_path(db_path)
+    try:
+        csv_data = _build_nodes_csv(conn)
+    finally:
+        conn.close()
+
+    slug = re.sub(r"[^a-z0-9]+", "_", session["name"].lower()).strip("_")
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"nodes_{slug}_{timestamp}.csv"
+    return Response(
+        csv_data,
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
@@ -289,7 +362,8 @@ def api_sessions_new():
         conn_cfg["port"] = int(conn_cfg.get("port") or 4403)
 
     seed = bool(data.get("seed_on_connect", True))
-    session = sess_mod.create(name, conn_cfg, seed_on_connect=seed)
+    save = bool(data.get("save_packet_data", True))
+    session = sess_mod.create(name, conn_cfg, seed_on_connect=seed, save_packet_data=save)
     return jsonify({"session": session})
 
 
@@ -325,6 +399,9 @@ def api_listener_status():
     active = sess_mod.get_active()
     st["session_name"] = active.get("name", "—")
     st["connection"] = active.get("connection", {})
+    st["save_packet_data"] = active.get("save_packet_data", True)
+    # Merge in runtime info (node name, channel, frequency) written by NMListener on connect
+    st.update(listener_proc.get_runtime_info())
     return jsonify(st)
 
 
@@ -342,6 +419,86 @@ def api_listener_stop():
 def api_listener_log():
     n = min(int(request.args.get("n", 80)), 200)
     return jsonify({"lines": listener_proc.get_log(n)})
+
+
+@app.route("/api/listener/requeue-nodes", methods=["POST"])
+def api_listener_requeue_nodes():
+    """Write the requeue trigger file; NMListener picks it up within 5 s."""
+    import bundle_paths as bp
+    trigger = os.path.join(bp.data_dir(), ".requeue_trigger")
+    try:
+        open(trigger, "w").close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sessions/active/save_packet_data", methods=["PATCH"])
+def api_patch_save_packet_data():
+    """Toggle save_packet_data for the active session immediately."""
+    data = request.get_json(force=True, silent=True) or {}
+    value = data.get("save_packet_data")
+    if not isinstance(value, bool):
+        return jsonify({"error": "save_packet_data must be a boolean"}), 400
+    sess_mod.patch_active_flag("save_packet_data", value)
+    return jsonify({"ok": True, "save_packet_data": value})
+
+
+@app.route("/api/listener/scan/serial")
+def api_scan_serial():
+    """Return a list of available serial ports (USB-connected nodes)."""
+    ports = []
+    try:
+        import serial.tools.list_ports
+        for p in serial.tools.list_ports.comports():
+            ports.append({"device": p.device, "description": p.description or ""})
+    except Exception as e:
+        return jsonify({"error": str(e), "ports": []}), 200
+    return jsonify({"ports": ports})
+
+
+@app.route("/api/listener/scan/ble")
+def api_scan_ble():
+    """Scan for nearby Meshtastic BLE devices. Delegates to NMListener's Python
+    (which has meshtastic+bleak installed) via subprocess to avoid CoreBluetooth
+    thread restrictions inside the Flask process."""
+    import json as _json
+    import subprocess
+    import sys
+
+    ld = bundle_paths.listener_source_dir()
+    venv_py = os.path.join(ld, ".venv", "bin", "python3")
+    python = venv_py if os.path.exists(venv_py) else sys.executable
+
+    scan_code = (
+        "import json, sys\n"
+        "try:\n"
+        "    from meshtastic.ble_interface import BLEInterface\n"
+        "    devices = BLEInterface.scan()\n"
+        "    print(json.dumps([{'name': d.name or '', 'address': d.address}"
+        " for d in devices]))\n"
+        "except Exception as e:\n"
+        "    print(json.dumps({'error': str(e)}))\n"
+    )
+
+    try:
+        proc = subprocess.run(
+            [python, "-c", scan_code],
+            capture_output=True, text=True, timeout=15,
+            cwd=ld,
+        )
+        raw = proc.stdout.strip()
+        if not raw:
+            err = proc.stderr.strip() or "No output from scan"
+            return jsonify({"error": err, "devices": []}), 200
+        data = _json.loads(raw)
+        if isinstance(data, dict) and "error" in data:
+            return jsonify({"error": data["error"], "devices": []}), 200
+        return jsonify({"devices": data})
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Scan timed out after 15s", "devices": []}), 200
+    except Exception as e:
+        return jsonify({"error": str(e), "devices": []}), 200
 
 
 # ------------------------------------------------------------------
@@ -375,9 +532,9 @@ def tile(provider, z, x, y):
 # Entry point
 # ------------------------------------------------------------------
 
-if __name__ == "__main__":
+def run_server() -> None:
+    """Start the Flask server. Blocks until the server exits."""
     import logging
-    # Suppress per-request GET lines from werkzeug — only show errors
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
     os.makedirs(TILE_CACHE_DIR, exist_ok=True)
@@ -390,3 +547,7 @@ if __name__ == "__main__":
     print("  (Accept the self-signed cert warning on first visit)\n")
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True,
             ssl_context=(cert, key))
+
+
+if __name__ == "__main__":
+    run_server()

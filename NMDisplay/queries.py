@@ -3,6 +3,7 @@ import os
 import sqlite3
 import time
 
+import bundle_paths
 import sessions as _sessions
 
 
@@ -11,8 +12,11 @@ def get_conn() -> sqlite3.Connection:
     WAL mode is already set by NMListener. Creates the schema if the DB
     is brand-new (new session, NMListener hasn't connected yet)."""
     db_path = _sessions.get_db_path()
-    # Touch the file and create schema if needed — must do this before
-    # setting query_only, which blocks all writes including DDL.
+    return get_conn_for_path(db_path)
+
+
+def get_conn_for_path(db_path: str) -> sqlite3.Connection:
+    """Open a read-only connection to an arbitrary session DB by path."""
     _ensure_schema(db_path)
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.execute("PRAGMA query_only=ON;")
@@ -23,10 +27,8 @@ def get_conn() -> sqlite3.Connection:
 
 def _ensure_schema(db_path: str) -> None:
     """Create tables if they don't exist. No-op on an established DB."""
-    import os, sys
-    # Resolve NMListener's db/schema.py relative to this file
-    listener_dir = os.path.join(os.path.dirname(__file__), "..", "NMListener")
-    listener_dir = os.path.abspath(listener_dir)
+    import sys
+    listener_dir = bundle_paths.listener_source_dir()
     if listener_dir not in sys.path:
         sys.path.insert(0, listener_dir)
     try:
@@ -268,6 +270,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "1":  hop_raw.get(1, 0),
         "0":  hop_raw.get(0, 0),
     }
+    # Raw individual hop_limit counts for the dynamic list (no bucketing)
+    hop_dist_raw = {str(k): v for k, v in sorted(hop_raw.items(), reverse=True)}
 
     return {
         "direct_count":       direct,
@@ -280,20 +284,21 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "session_packets":    session_packets,
         "session_start_ts":   first_pkt_ts,
         "hop_dist":           hop_dist,
+        "hop_dist_raw":       hop_dist_raw,
         "router_count":       router_count,
         "client_count":       client_count,
     }
 
 
-def get_timeline(conn, time_scale_hours: int, my_node_id=None) -> list[dict]:
+def get_timeline(conn, time_scale_minutes: int, my_node_id=None) -> tuple[list[dict], int]:
     """
-    Return zero-filled per-minute buckets for the given time window.
-    Each bucket: {minute_ts, total, messages, channel_util}
-    channel_util is the most recent reading from my_node_id within each minute,
-    or null if no reading exists for that bucket.
+    Return (buckets, session_minutes).
+    Each bucket: {minute_ts, total, messages, channel_util, by_portnum}
+    by_portnum is a dict of {portnum: count} for each portnum in that minute.
+    session_minutes is the span from first packet to now (min 15).
     """
     now = int(time.time())
-    since_ts = now - time_scale_hours * 3600
+    since_ts = now - time_scale_minutes * 60
 
     rows = conn.execute(
         """
@@ -305,16 +310,21 @@ def get_timeline(conn, time_scale_hours: int, my_node_id=None) -> list[dict]:
         (since_ts,),
     ).fetchall()
 
-    # Aggregate into dicts keyed by minute_ts
+    # Aggregate per minute
     totals: dict[int, int] = {}
     messages: dict[int, int] = {}
+    by_portnum: dict[int, dict[str, int]] = {}
     for row in rows:
         m = row["minute_ts"]
+        p = row["portnum"] or "UNKNOWN"
         totals[m] = totals.get(m, 0) + row["count"]
-        if row["portnum"] == "TEXT_MESSAGE_APP":
+        if p == "TEXT_MESSAGE_APP":
             messages[m] = messages.get(m, 0) + row["count"]
+        if m not in by_portnum:
+            by_portnum[m] = {}
+        by_portnum[m][p] = by_portnum[m].get(p, 0) + row["count"]
 
-    # Channel utilization from my node — most recent reading per minute bucket
+    # Channel utilization from my node
     chan_util: dict[int, float] = {}
     if my_node_id is not None:
         try:
@@ -335,6 +345,16 @@ def get_timeline(conn, time_scale_hours: int, my_node_id=None) -> list[dict]:
         except sqlite3.OperationalError:
             pass
 
+    # Session span
+    try:
+        first_pkt = conn.execute("SELECT MIN(rx_time) FROM packets").fetchone()[0]
+    except sqlite3.OperationalError:
+        first_pkt = None
+    if first_pkt:
+        session_minutes = max(15, int((now - first_pkt) / 60) + 1)
+    else:
+        session_minutes = 15
+
     # Zero-fill every minute in the window
     now_min = (now // 60) * 60
     since_min = (since_ts // 60) * 60
@@ -342,10 +362,35 @@ def get_timeline(conn, time_scale_hours: int, my_node_id=None) -> list[dict]:
     t = since_min
     while t <= now_min:
         result.append({
-            "minute_ts":   t,
-            "total":       totals.get(t, 0),
-            "messages":    messages.get(t, 0),
+            "minute_ts":    t,
+            "total":        totals.get(t, 0),
+            "messages":     messages.get(t, 0),
             "channel_util": chan_util.get(t, None),
+            "by_portnum":   by_portnum.get(t, {}),
         })
         t += 60
-    return result
+    return result, session_minutes
+
+
+def get_packet_breakdown(conn, my_node_id=None) -> list[dict]:
+    """
+    Return packet counts grouped by portnum, sorted by count descending.
+    Reference node packets are excluded via my_node_id.
+    UNKNOWN portnum = encrypted / undecodeable packets.
+    """
+    excl = my_node_id if my_node_id is not None else -1
+    try:
+        rows = conn.execute(
+            """
+            SELECT portnum, COUNT(*) AS cnt
+            FROM packets
+            WHERE from_node_id != :excl
+            GROUP BY portnum
+            ORDER BY cnt DESC
+            """,
+            {"excl": excl},
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+
+    return [{"portnum": row["portnum"], "count": row["cnt"]} for row in rows]

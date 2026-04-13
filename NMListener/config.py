@@ -4,6 +4,9 @@ config.py — NMListener runtime configuration.
 Reads NMData/active.json (written by NMDisplay/sessions.py) so that session
 and connection settings are shared between the two apps. If active.json is
 absent (standalone operation), falls back to the hardcoded TCP defaults below.
+
+reload() re-reads active.json at runtime so that flags like save_packet_data
+can be toggled mid-session from the NMDisplay UI.
 """
 
 import os
@@ -33,9 +36,26 @@ DB_PATH = (
 # Stored per-session in active.json; defaults to True.
 SEED_ON_CONNECT = _active.get("seed_on_connect", True)
 
+# ── Packet persistence ───────────────────────────────────────────────
+# When False, raw packet rows are NOT written to the packets table.
+# Nodes, timeline buckets, and in-memory stats continue to update so
+# the live display stays current.  Can be toggled mid-session by the UI
+# (NMDisplay patches active.json; reload() picks up the change within 5 s).
+SAVE_PACKET_DATA: bool = bool(_active.get("save_packet_data", True))
+
 # ── Reconnect backoff ────────────────────────────────────────────────
 RECONNECT_DELAY_INITIAL = 5    # seconds
 RECONNECT_DELAY_MAX     = 60   # seconds
 
 # ── Console output ───────────────────────────────────────────────────
 PACKET_LOG_VERBOSE = True
+
+
+def reload() -> None:
+    """Re-read active.json and update mutable runtime flags."""
+    global SAVE_PACKET_DATA
+    try:
+        fresh = load_active()
+        SAVE_PACKET_DATA = bool(fresh.get("save_packet_data", True))
+    except Exception:
+        pass

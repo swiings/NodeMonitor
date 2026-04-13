@@ -5,7 +5,9 @@ Call register() once after each new TCPInterface is created.
 Call unregister() before closing the interface and reconnecting.
 """
 
+import json
 import logging
+import os
 import threading
 import time
 
@@ -31,6 +33,18 @@ _seed_on_connect: bool = True
 
 # Signals main loop when the connection drops
 connection_lost_event = threading.Event()
+
+# NMData path — mirrors connection.py logic
+_here = os.path.dirname(os.path.abspath(__file__))
+_nm_data_dir = os.environ.get("NM_DATA_DIR") or os.path.abspath(
+    os.path.join(_here, "..", "NMData")
+)
+_RUNTIME_FILE   = os.path.join(_nm_data_dir, "listener_runtime.json")
+_REQUEUE_TRIGGER = os.path.join(_nm_data_dir, ".requeue_trigger")
+
+# Background polling thread state
+_poll_thread: threading.Thread | None = None
+_poll_stop = threading.Event()
 
 
 # ------------------------------------------------------------------
@@ -68,6 +82,13 @@ def _on_receive(packet: dict, interface) -> None:
 def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
     log.info("Connected to Meshtastic node")
     connection_lost_event.clear()
+
+    # Capture reference node identity and write runtime file
+    my_node_id = _read_my_node_id(interface)
+    _write_runtime_info(interface, my_node_id)
+    packet_handler.set_my_node(my_node_id)
+    log.info("Reference node ID: %s", f"!{my_node_id:08x}" if my_node_id else "unknown")
+
     if _repo is not None and _seed_on_connect:
         seeder.seed_nodes(interface, _repo, _node_store)
     elif _repo is not None:
@@ -75,11 +96,14 @@ def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
     if _repo is not None:
         node_requester.start(interface, _repo, _node_store, seed_on_connect=_seed_on_connect)
 
+    _start_poll_thread()
+
 
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
     log.warning("Connection to Meshtastic node lost")
     connection_lost_event.set()
     node_requester.stop()
+    _stop_poll_thread()
 
 
 # ------------------------------------------------------------------
@@ -109,6 +133,7 @@ def register(
 
 def unregister() -> None:
     global _repo, _node_store, _timeline, _msg_counter, _seed_on_connect
+    _stop_poll_thread()
     node_requester.stop()
     for fn, topic in [
         (_on_receive, "meshtastic.receive"),
@@ -124,6 +149,100 @@ def unregister() -> None:
     _timeline = None
     _msg_counter = None
     _seed_on_connect = True
+
+
+# ------------------------------------------------------------------
+# Background polling (config reload + requeue trigger)
+# ------------------------------------------------------------------
+
+def _start_poll_thread() -> None:
+    global _poll_thread
+    _poll_stop.clear()
+    _poll_thread = threading.Thread(target=_poll_loop, daemon=True, name="nm-poll")
+    _poll_thread.start()
+
+
+def _stop_poll_thread() -> None:
+    _poll_stop.set()
+
+
+def _poll_loop() -> None:
+    """Every 5 s: reload active.json flags and check for requeue trigger."""
+    while not _poll_stop.wait(5):
+        # Reload save_packet_data flag
+        try:
+            config.reload()
+        except Exception:
+            pass
+
+        # Requeue trigger
+        if os.path.exists(_REQUEUE_TRIGGER):
+            try:
+                os.remove(_REQUEUE_TRIGGER)
+                if _repo is not None:
+                    node_requester.requeue_unresolved(_repo)
+                    log.info("Re-queued unresolved nodes for name lookup")
+            except Exception:
+                log.exception("Error processing requeue trigger")
+
+
+# ------------------------------------------------------------------
+# Runtime info helpers
+# ------------------------------------------------------------------
+
+def _read_my_node_id(interface) -> int | None:
+    try:
+        return interface.myInfo.my_node_num
+    except (AttributeError, TypeError):
+        return None
+
+
+def _write_runtime_info(interface, my_node_id: int | None) -> None:
+    info: dict = {}
+    if my_node_id is not None:
+        info["my_node_id"] = my_node_id
+
+        # Short name from node cache
+        try:
+            my_hex = f"!{my_node_id:08x}"
+            node_data = (interface.nodes or {}).get(my_hex, {})
+            info["my_node_short"] = node_data.get("user", {}).get("shortName") or ""
+        except Exception:
+            info["my_node_short"] = ""
+
+        # LoRa channel + frequency
+        try:
+            lora = interface.localNode.localConfig.lora
+            info["channel_num"] = int(lora.channel_num)
+            freq = _compute_frequency(lora)
+            if freq is not None:
+                info["frequency_mhz"] = freq
+        except Exception:
+            pass
+
+    try:
+        with open(_RUNTIME_FILE, "w") as f:
+            json.dump(info, f)
+        log.debug("Wrote %s", _RUNTIME_FILE)
+    except Exception:
+        log.warning("Could not write listener_runtime.json")
+
+
+def _compute_frequency(lora) -> float | None:
+    """Compute centre frequency in MHz from LoRa config."""
+    # Try meshtastic's own utility first (available in some library versions)
+    try:
+        from meshtastic import util as mu
+        return round(mu.compute_freq(lora.channel_num, lora.modem_preset), 3)
+    except Exception:
+        pass
+    # Fallback: US 902–928 MHz, default LongFast spacing 0.425 MHz, base 906.875
+    try:
+        base_mhz = 906.875
+        spacing  = 0.425
+        return round(base_mhz + int(lora.channel_num) * spacing, 3)
+    except Exception:
+        return None
 
 
 # ------------------------------------------------------------------

@@ -1,0 +1,40 @@
+name: Build macOS App (Intel)
+
+# Trigger manually from the GitHub Actions UI (Actions → Build macOS App → Run workflow)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13    # GitHub's Intel x86_64 macOS runner
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r NMDisplay/requirements.txt
+          pip install -r NMListener/requirements.txt
+
+      - name: Build NodeMonitor.app
+        run: pyinstaller NodeMonitor.spec
+
+      - name: Zip the .app for download
+        run: |
+          cd dist
+          zip -r NodeMonitor-macos-intel.zip NodeMonitor.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NodeMonitor-macos-intel
+          path: dist/NodeMonitor-macos-intel.zip
+          retention-days: 30

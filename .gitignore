@@ -14,6 +14,11 @@ nodemonitor.db
 nodemonitor.db-shm
 nodemonitor.db-wal
 
+# Runtime session state (machine-specific: BLE addresses, IPs, absolute paths)
+NMData/active.json
+NMData/sessions.json
+NMData/listener_runtime.json
+
 # TLS certificates (secrets)
 *.pem
 

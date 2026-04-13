@@ -25,7 +25,7 @@ DEFAULTS = {
     },
 
     "timeline": {
-        "time_scale_hours": 6,
+        "time_scale_minutes": 360,
         "y_axis_mode": "auto",
         "y_axis_max": 30,
         "message_accent": True
@@ -52,7 +52,13 @@ def load() -> dict:
         return _deep_copy(DEFAULTS)
     with open(CONFIG_PATH, "r") as f:
         user = json.load(f)
-    return _deep_merge(DEFAULTS, user)
+    cfg = _deep_merge(DEFAULTS, user)
+    # Migrate legacy time_scale_hours → time_scale_minutes
+    tl = cfg.get("timeline", {})
+    if "time_scale_minutes" not in tl and "time_scale_hours" in tl:
+        tl["time_scale_minutes"] = int(tl["time_scale_hours"]) * 60
+        cfg["timeline"] = tl
+    return cfg
 
 
 def save(config: dict) -> None:
@@ -72,8 +78,12 @@ def validate_and_merge(current: dict, patch: dict) -> tuple[dict, list[str]]:
     errors = []
 
     tl = merged.get("timeline", {})
-    if tl.get("time_scale_hours") not in (1, 6, 24):
-        errors.append("timeline.time_scale_hours must be 1, 6, or 24")
+    # Accept legacy time_scale_hours in a patch, convert to minutes
+    if "time_scale_hours" in patch.get("timeline", {}):
+        merged["timeline"]["time_scale_minutes"] = int(tl.get("time_scale_hours", 6)) * 60
+    tsm = tl.get("time_scale_minutes", 360)
+    if not isinstance(tsm, int) or not (15 <= tsm <= 1440):
+        errors.append("timeline.time_scale_minutes must be integer 15–1440")
     if tl.get("y_axis_mode") not in ("auto", "fixed"):
         errors.append("timeline.y_axis_mode must be 'auto' or 'fixed'")
 

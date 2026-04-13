@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Node Monitor">
@@ -17,7 +17,7 @@
     <span id="nm-title">Meshtastic Node Monitor</span>
     <span id="nm-status"></span>
     <button id="nm-log-btn" title="Toggle packet log">LOG</button>
-    <a id="nm-csv-btn" href="/api/export/nodes.csv" download title="Export nodes to CSV">CSV</a>
+    <button id="nm-csv-btn" title="Export nodes to CSV">CSV</button>
     <button id="nm-settings-btn" title="Settings">&#9881;</button>
   </header>
 
@@ -27,15 +27,15 @@
       <div class="nm-gauge-triple">
         <div class="nm-gauge-mini">
           <div class="nm-gauge-num" id="g-direct">—</div>
-          <div class="nm-gauge-sub">DIR</div>
+          <div class="nm-gauge-dist">DIR</div>
         </div>
         <div class="nm-gauge-mini">
           <div class="nm-gauge-num" id="g-active">—</div>
-          <div class="nm-gauge-sub">ACT</div>
+          <div class="nm-gauge-dist">ACT</div>
         </div>
         <div class="nm-gauge-mini">
           <div class="nm-gauge-num" id="g-total">—</div>
-          <div class="nm-gauge-sub">TOT</div>
+          <div class="nm-gauge-dist">TOT</div>
         </div>
       </div>
       <div class="nm-gauge-caption">NODES</div>
@@ -70,12 +70,12 @@
     <div class="nm-gauge nm-gauge-tap" id="gauge-closest">
       <div class="nm-gauge-caption">CLOSEST</div>
       <div class="nm-gauge-num" id="g-closest-name">—</div>
-      <div class="nm-gauge-sub" id="g-closest-dist"></div>
+      <div class="nm-gauge-dist" id="g-closest-dist"></div>
     </div>
     <div class="nm-gauge nm-gauge-tap" id="gauge-farthest">
       <div class="nm-gauge-caption">FARTHEST</div>
       <div class="nm-gauge-num" id="g-farthest-name">—</div>
-      <div class="nm-gauge-sub" id="g-farthest-dist"></div>
+      <div class="nm-gauge-dist" id="g-farthest-dist"></div>
     </div>
     <div class="nm-gauge" id="gauge-hops">
       <canvas id="gauge-hops-canvas"></canvas>
@@ -90,11 +90,11 @@
     <div id="nm-map-panel">
 
       <div id="nm-map-filter-bar">
-        <span class="nm-filter-label">HEARD</span>
-        <input type="range" id="nm-recency-slider" min="1" max="72" value="72"
-               list="nm-recency-ticks" step="1">
-        <datalist id="nm-recency-ticks"></datalist>
-        <span id="nm-recency-label">ALL</span>
+        <span class="nm-filter-label">HOPS</span>
+        <input type="range" id="nm-hop-slider" min="0" max="10" value="10"
+               list="nm-hop-ticks" step="1">
+        <datalist id="nm-hop-ticks"></datalist>
+        <span id="nm-hop-label">ALL</span>
         <!-- Listener status pill (right side) -->
         <div id="nm-listener-status" class="nm-listener-stopped" title="Listener status">
           <span id="nm-listener-dot">●</span>
@@ -108,37 +108,63 @@
 
       <div id="nm-timeline-panel">
         <div id="nm-timeline-label">PACKET ACTIVITY<span id="nm-timeline-util-label">UTILIZATION</span></div>
-        <canvas id="nm-timeline-canvas"></canvas>
+        <div id="nm-timeline-body">
+          <input type="range" id="nm-time-slider" min="15" max="480" value="360"
+                 title="Time window" orient="vertical">
+          <div id="nm-timeline-inner">
+            <div id="nm-timeline-canvas-wrap">
+              <canvas id="nm-timeline-canvas"></canvas>
+            </div>
+            <img id="nm-timeline-img" src="/static/images/HaxxLabs.png" alt=""
+                 onerror="this.style.display='none'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Log panel lives inside the left column so the right panel fills full page height -->
+      <div id="nm-divider-log" class="nm-divider nm-divider--h hidden" title="Drag to resize log"></div>
+      <div id="nm-log-panel" class="hidden">
+        <div id="nm-log-header">
+          <span>PACKET LOG</span>
+          <span id="nm-log-session"></span>
+        </div>
+        <div id="nm-log-body"></div>
       </div>
 
     </div>
 
     <div id="nm-divider-v" class="nm-divider nm-divider--v" title="Drag to resize"></div>
 
-    <!-- Right: telemetry lists, full height -->
+    <!-- Right: telemetry lists, full page height -->
     <div id="nm-right-panel">
       <div id="nm-lists-container"></div>
       <div id="nm-hop-dist" class="nm-list-card">
         <div class="nm-list-title">HOPS LEFT</div>
-        <table class="nm-hop-table">
-          <tr><td class="nm-hop-label">4+</td><td class="nm-hop-bar-cell"><div class="nm-hop-bar" id="hb-4plus"></div></td><td class="nm-hop-count" id="hc-4plus">—</td></tr>
-          <tr><td class="nm-hop-label">3</td><td class="nm-hop-bar-cell"><div class="nm-hop-bar" id="hb-3"></div></td><td class="nm-hop-count" id="hc-3">—</td></tr>
-          <tr><td class="nm-hop-label">2</td><td class="nm-hop-bar-cell"><div class="nm-hop-bar" id="hb-2"></div></td><td class="nm-hop-count" id="hc-2">—</td></tr>
-          <tr><td class="nm-hop-label">1</td><td class="nm-hop-bar-cell"><div class="nm-hop-bar" id="hb-1"></div></td><td class="nm-hop-count" id="hc-1">—</td></tr>
-          <tr><td class="nm-hop-label">0</td><td class="nm-hop-bar-cell"><div class="nm-hop-bar" id="hb-0"></div></td><td class="nm-hop-count" id="hc-0">—</td></tr>
+        <table class="nm-hop-table" id="nm-hop-dist-table">
+          <!-- Populated dynamically by gauges.js -->
+        </table>
+      </div>
+      <div id="nm-pkt-breakdown" class="nm-list-card">
+        <div class="nm-list-title">PACKET BREAKDOWN</div>
+        <table class="nm-hop-table" id="nm-pkt-breakdown-table">
+          <!-- Populated by gauges.js -->
         </table>
       </div>
     </div>
 
   </div>
 
-  <!-- ── Packet log panel (collapsible, full width) ──────────────── -->
-  <div id="nm-log-panel" class="hidden">
-    <div id="nm-log-header">
-      <span>PACKET LOG</span>
-      <span id="nm-log-session"></span>
+  <!-- ── CSV Export modal ────────────────────────────────────────── -->
+  <div id="nm-csv-modal" class="nm-modal-overlay hidden">
+    <div class="nm-modal-box">
+      <div class="nm-modal-box-header">
+        <h3>Export Session Data</h3>
+        <button id="nm-csv-modal-close">&times;</button>
+      </div>
+      <ul id="nm-csv-session-list" class="nm-csv-list">
+        <!-- Populated by JS -->
+      </ul>
     </div>
-    <div id="nm-log-body"></div>
   </div>
 
   <!-- ── Settings modal ──────────────────────────────────────────── -->
@@ -178,17 +204,29 @@
             <!-- Serial fields -->
             <div id="ns-serial-fields" class="nm-form-row hidden">
               <label>Device path (blank = auto-detect)
-                <input type="text" id="ns-dev" placeholder="/dev/tty.usbserial-0001">
+                <div class="nm-input-row">
+                  <input type="text" id="ns-dev" placeholder="/dev/tty.usbserial-0001">
+                  <button type="button" id="ns-serial-detect" class="nm-text-btn nm-scan-btn">Detect</button>
+                </div>
               </label>
+              <datalist id="ns-serial-list"></datalist>
             </div>
             <!-- BLE fields -->
             <div id="ns-ble-fields" class="nm-form-row hidden">
               <label>Address (blank = auto-detect)
-                <input type="text" id="ns-ble-address" placeholder="AA:BB:CC:DD:EE:FF">
+                <div class="nm-input-row">
+                  <input type="text" id="ns-ble-address" placeholder="AA:BB:CC:DD:EE:FF" list="ns-ble-list">
+                  <button type="button" id="ns-ble-scan" class="nm-text-btn nm-scan-btn">Scan</button>
+                </div>
               </label>
+              <datalist id="ns-ble-list"></datalist>
+              <div id="ns-ble-results" class="nm-scan-results hidden"></div>
             </div>
             <div class="nm-form-row">
               <label><input type="checkbox" id="ns-seed" checked> Seed node list from device on connect</label>
+            </div>
+            <div class="nm-form-row">
+              <label><input type="checkbox" id="ns-save-data" checked> Save packet data to database</label>
             </div>
             <div class="nm-form-row nm-form-actions">
               <button id="ns-create-btn" class="nm-btn-primary">Create Session</button>
@@ -219,14 +257,22 @@
             <button id="cfg-listener-start" class="nm-btn-primary">Start</button>
             <button id="cfg-listener-stop"  class="nm-btn-danger">Stop</button>
           </div>
+          <div class="nm-form-row" style="margin-top:8px">
+            <label><input type="checkbox" id="cfg-save-data" checked> Save packet data to database</label>
+          </div>
         </section>
 
         <!-- ── My Node ───────────────────────────────────────────── -->
         <section>
           <h3>My Node</h3>
-          <label>Reference node for NEARBY sort &amp; map centering
+          <p class="hint" id="cfg-my-node-runtime">Detected: —</p>
+          <label>Manual override (optional — use if auto-detect is wrong)
             <input type="text" id="cfg-my-node-id" placeholder="!aabbccdd or blank">
           </label>
+          <div class="nm-form-row" style="margin-top:6px">
+            <button id="cfg-requeue-nodes" class="nm-text-btn">Repopulate Unresolved Names</button>
+            <span id="cfg-requeue-status" class="nm-hint-inline"></span>
+          </div>
         </section>
 
         <!-- ── Map ──────────────────────────────────────────────── -->
@@ -274,13 +320,19 @@
         <!-- ── Timeline ──────────────────────────────────────────── -->
         <section>
           <h3>Timeline</h3>
-          <label>Time scale
+          <label>Time window
             <select id="cfg-time-scale">
-              <option value="1">1 hour</option>
-              <option value="6">6 hours</option>
-              <option value="24">24 hours</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="240">4 hours</option>
+              <option value="360">6 hours</option>
+              <option value="720">12 hours</option>
+              <option value="1440">24 hours</option>
             </select>
           </label>
+          <p class="hint">Also adjustable via the slider on the timeline panel.</p>
           <label>Y-axis mode
             <select id="cfg-y-axis-mode">
               <option value="auto">Auto-scale</option>

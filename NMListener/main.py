@@ -16,7 +16,7 @@ import time
 
 import config
 import listener
-from connection import make_interface, summary as conn_summary
+from connection import make_interface, summary as conn_summary, FatalConnectionError
 from db.repository import Repository
 from db.schema import create_tables
 from store.counters import MessageCounter
@@ -70,6 +70,11 @@ def main() -> None:
 
         except KeyboardInterrupt:
             print("\nShutting down.")
+            break
+
+        except FatalConnectionError as exc:
+            log.error("Fatal: %s", exc)
+            log.error("Fix the session config in NMDisplay and restart the listener.")
             break
 
         except Exception as exc:
