@@ -23,6 +23,7 @@
 
 const NMMap = (() => {
   let _map = null;
+  let _cluster = null;          // L.markerClusterGroup
   let _cfg = {};
   let _markers = new Map();     // node_id → L.marker
   let _activeLabel = null;
@@ -60,6 +61,25 @@ const NMMap = (() => {
       { position: "topright" }
     ).addTo(_map);
 
+    L.control.scale({ position: "bottomright", imperial: true, metric: false, maxWidth: 200 }).addTo(_map);
+
+    if (typeof L.markerClusterGroup === "function") {
+      _cluster = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+      });
+      _map.addLayer(_cluster);
+    } else {
+      console.warn("MarkerCluster plugin not loaded — clustering disabled.");
+      // Shim: proxy addLayer/removeLayer to the map directly
+      _cluster = {
+        addLayer:    (m) => m.addTo(_map),
+        removeLayer: (m) => m.remove(),
+        zoomToShowLayer: (m, cb) => { _map.flyTo(m.getLatLng(), 14); cb && cb(); },
+      };
+    }
+
     _map.on("click", () => _dismissLabel());
 
     // "Go to my node" button
@@ -77,6 +97,34 @@ const NMMap = (() => {
       },
     });
     new MyNodeControl().addTo(_map);
+
+    // Fullscreen toggle button
+    const FullscreenControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "nm-my-node-btn");
+        btn.innerHTML = "⛶";
+        btn.title = "Toggle fullscreen";
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          const el = document.getElementById("nm-map");
+          if (!document.fullscreenElement) {
+            el.requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        });
+        return btn;
+      },
+    });
+    new FullscreenControl().addTo(_map);
+
+    document.addEventListener("fullscreenchange", () => {
+      // Fire twice: once to snap the size immediately, again after the
+      // browser finishes its fullscreen transition animation (~300ms).
+      setTimeout(() => _map.invalidateSize(), 50);
+      setTimeout(() => _map.invalidateSize(), 350);
+    });
 
     // Hop filter active indicator
     const FilterIndicator = L.Control.extend({
@@ -222,7 +270,7 @@ const NMMap = (() => {
     // Remove markers for nodes now filtered out
     for (const [id, m] of _markers) {
       if (!seen.has(id)) {
-        m.remove();
+        _cluster.removeLayer(m);
         _markers.delete(id);
         if (_activeLabel === id) _activeLabel = null;
       }
@@ -247,7 +295,7 @@ const NMMap = (() => {
       _showLabel(node.node_id);
     });
 
-    m.addTo(_map);
+    _cluster.addLayer(m);
     _markers.set(node.node_id, m);
     m._nmNode = node;
   }
@@ -271,49 +319,55 @@ const NMMap = (() => {
     "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
   };
 
-  function _emojiForRole(role) {
-    // null/absent = CLIENT (protobuf3 default for role field)
-    const r = (_ROLE_INT_MAP[String(role ?? "CLIENT")] || String(role ?? "CLIENT")).toUpperCase();
-    if (r === "CLIENT" || r.startsWith("CLIENT_")) return "📱";
-    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
-    if (r === "TRACKER" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND") return "🐾";
-    if (r === "SENSOR") return "📊";
-    return "👻";
+  // Role → { color, letter } for marker display
+  function _roleStyle(role) {
+    const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "REPEATER")
+      return { color: "#e05252", letter: "R" };
+    if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
+      return { color: "#3fb950", letter: "T" };
+    if (r === "SENSOR")
+      return { color: "#d29922", letter: "S" };
+    if (r === "CLIENT" || r.startsWith("CLIENT_"))
+      return { color: "#58a6ff", letter: "C" };
+    return { color: "#6e7681", letter: "?" };
   }
 
-  /**
-   * Build an SVG drop-pin Leaflet DivIcon.
-   * The pin is a circle at the top tapering to a point at the bottom.
-   * The emoji sits centered in the circular head.
-   * w × h are the overall pin dimensions; the anchor point is the tip.
-   */
-  function _pinIcon(emoji, color, w, h) {
-    const cx  = w / 2;            // horizontal center
-    const r   = cx - 1;           // head radius (slightly inset for stroke)
-    const tip = h - 1;            // y of the pin tip
-    // Cubic-bezier pin path: circle top, two curved sides meeting at the tip
-    const path = `M${cx},1 C${cx - r},1 1,${cx - r + 1} 1,${cx} C1,${cx + (tip - cx) * 0.55} ${cx},${tip} ${cx},${tip} C${cx},${tip} ${w - 1},${cx + (tip - cx) * 0.55} ${w - 1},${cx} C${w - 1},${cx - r + 1} ${cx + r},1 ${cx},1 Z`;
-    const fontSize = Math.round(w * 0.52);
-    const emojiFont = "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
 
+  /**
+   * Classic Leaflet-style teardrop marker as a tinted SVG DivIcon.
+   * Role letter (or ★ for my node) is centered in the circular head.
+   */
+  function _pinIcon(color, label) {
+    const w = 25, h = 41, cx = w / 2;
+    const r = cx - 1;
+    const bodyH = h * 0.62;
+    const fontSize = label === "★" ? 13 : 11;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-      <path d="${path}" fill="${color}" fill-opacity="0.82" stroke="rgba(0,0,0,0.55)" stroke-width="1.5"/>
-      <text x="${cx}" y="${cx}" text-anchor="middle" dominant-baseline="middle"
-            font-size="${fontSize}" font-family="${emojiFont}">${emoji}</text>
+      <ellipse cx="${cx + 1}" cy="${h - 2}" rx="${cx * 0.55}" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <path d="M${cx},${h - 2}
+               C${cx},${h - 2} 2,${bodyH * 0.75} 2,${r + 1}
+               A${r},${r} 0 1 1 ${w - 2},${r + 1}
+               C${w - 2},${bodyH * 0.75} ${cx},${h - 2} Z"
+            fill="${color}" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+      <text x="${cx}" y="${r + 2}" text-anchor="middle" dominant-baseline="middle"
+            font-size="${fontSize}" font-weight="bold" font-family="'Courier New',monospace"
+            fill="white" stroke="rgba(0,0,0,0.4)" stroke-width="0.5">${label}</text>
     </svg>`;
 
     return L.divIcon({
       className: "",
       html: svg,
-      iconSize:   [w, h],
-      iconAnchor: [cx, tip],
+      iconSize:    [w, h],
+      iconAnchor:  [cx, h - 2],
+      popupAnchor: [0, -h + 4],
     });
   }
 
   function _iconForNode(node, isMyNode) {
-    const color = _colorForAge(node.last_heard);
-    if (isMyNode) return _pinIcon("⭐", color, 30, 44);
-    return _pinIcon(_emojiForRole(node.role), color, 24, 36);
+    if (isMyNode) return _pinIcon("#d4a017", "★");
+    const { color, letter } = _roleStyle(node.role);
+    return _pinIcon(color, letter);
   }
 
   // ── Label management ──────────────────────────────────────────
@@ -347,20 +401,15 @@ const NMMap = (() => {
   function flyToNode(nodeId) {
     const m = _markers.get(nodeId);
     if (!m) return;
-    _map.flyTo(m.getLatLng(), 14);
-    _showLabel(nodeId);
+    // zoomToShowLayer expands any cluster containing the marker,
+    // then calls the callback once the marker is visible.
+    _cluster.zoomToShowLayer(m, () => {
+      _showLabel(nodeId);
+    });
   }
 
   // ── Colors ────────────────────────────────────────────────────
 
-  function _colorForAge(lastHeard) {
-    if (document.body.classList.contains("theme-eink")) return "#000000";
-    const ageSec = (Date.now() / 1000) - lastHeard;
-    if (ageSec < 300)  return "#3fb950";
-    if (ageSec < 1800) return "#d29922";
-    if (ageSec < 7200) return "#f85149";
-    return "#484f58";
-  }
 
   function _labelText(node) {
     const name = node.short_name || node.node_id_hex || "?";

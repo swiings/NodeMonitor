@@ -306,7 +306,7 @@ function initDraggables() {
   const hDiv          = document.getElementById("nm-divider-h");
   const logDiv        = document.getElementById("nm-divider-log");
   const mapPanel      = document.getElementById("nm-map-panel");
-  const timelinePanel = document.getElementById("nm-timeline-panel");
+  const timelineRow   = document.getElementById("nm-timeline-row");
   const logPanel      = document.getElementById("nm-log-panel");
 
   _makeDraggable(vDiv, (dx, _dy) => {
@@ -321,9 +321,9 @@ function initDraggables() {
   });
 
   _makeDraggable(hDiv, (_dx, dy) => {
-    let newH = timelinePanel.offsetHeight - dy;
+    let newH = timelineRow.offsetHeight - dy;
     newH = Math.max(60, Math.min(300, newH));
-    timelinePanel.style.height = newH + "px";
+    timelineRow.style.height = newH + "px";
     NMMap.invalidate();
     savePanelSizes();
   });
@@ -384,11 +384,11 @@ function _makeDraggable(el, onDrag) {
 // ── Panel size persistence ──────────────────────────────────────
 
 function savePanelSizes() {
-  const mapPanel      = document.getElementById("nm-map-panel");
-  const timelinePanel = document.getElementById("nm-timeline-panel");
-  const logPanel      = document.getElementById("nm-log-panel");
+  const mapPanel    = document.getElementById("nm-map-panel");
+  const timelineRow = document.getElementById("nm-timeline-row");
+  const logPanel    = document.getElementById("nm-log-panel");
   localStorage.setItem("nm-map-width",       mapPanel.offsetWidth);
-  localStorage.setItem("nm-timeline-height", timelinePanel.offsetHeight);
+  localStorage.setItem("nm-timeline-height", timelineRow.offsetHeight);
   if (!logPanel.classList.contains("hidden")) {
     localStorage.setItem("nm-log-height", logPanel.offsetHeight);
   }
@@ -398,9 +398,9 @@ function restorePanelSizes() {
   const mapW      = localStorage.getItem("nm-map-width");
   const timelineH = localStorage.getItem("nm-timeline-height");
   const logH      = localStorage.getItem("nm-log-height");
-  if (mapW)      document.getElementById("nm-map-panel").style.width       = mapW + "px";
-  if (timelineH) document.getElementById("nm-timeline-panel").style.height = timelineH + "px";
-  if (logH)      document.getElementById("nm-log-panel").style.height      = logH + "px";
+  if (mapW)      document.getElementById("nm-map-panel").style.width      = mapW + "px";
+  if (timelineH) document.getElementById("nm-timeline-row").style.height  = timelineH + "px";
+  if (logH)      document.getElementById("nm-log-panel").style.height     = logH + "px";
   NMMap.invalidate();
 }
 

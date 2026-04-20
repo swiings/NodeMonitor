@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="Node Monitor">
   <title>Meshtastic Node Monitor</title>
   <link rel="stylesheet" href="/static/vendor/leaflet.css">
+  <link rel="stylesheet" href="/static/vendor/MarkerCluster.css">
+  <link rel="stylesheet" href="/static/vendor/MarkerCluster.Default.css">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="theme-{{ cfg.display.theme }}">
@@ -106,18 +108,22 @@
 
       <div id="nm-divider-h" class="nm-divider nm-divider--h" title="Drag to resize"></div>
 
-      <div id="nm-timeline-panel">
-        <div id="nm-timeline-label">PACKET ACTIVITY<span id="nm-timeline-util-label">UTILIZATION</span></div>
-        <div id="nm-timeline-body">
-          <input type="range" id="nm-time-slider" min="15" max="480" value="360"
-                 title="Time window" orient="vertical">
-          <div id="nm-timeline-inner">
-            <div id="nm-timeline-canvas-wrap">
-              <canvas id="nm-timeline-canvas"></canvas>
+      <div id="nm-timeline-row">
+        <div id="nm-timeline-panel">
+          <div id="nm-timeline-label">PACKET ACTIVITY<span id="nm-timeline-util-label">UTILIZATION</span></div>
+          <div id="nm-timeline-body">
+            <input type="range" id="nm-time-slider" min="15" max="480" value="360"
+                   title="Time window" orient="vertical">
+            <div id="nm-timeline-inner">
+              <div id="nm-timeline-canvas-wrap">
+                <canvas id="nm-timeline-canvas"></canvas>
+              </div>
             </div>
-            <img id="nm-timeline-img" src="/static/images/HaxxLabs.png" alt=""
-                 onerror="this.style.display='none'">
           </div>
+        </div>
+        <div id="nm-brand-panel">
+          <img id="nm-timeline-img" src="/static/images/HaxxLabs.png" alt=""
+               onerror="this.style.display='none'">
         </div>
       </div>
 
@@ -369,6 +375,7 @@
 
   <!-- ── Scripts ─────────────────────────────────────────────────── -->
   <script src="/static/vendor/leaflet.js" defer></script>
+  <script src="/static/vendor/leaflet.markercluster.js" defer></script>
   <script src="/static/vendor/chart.umd.min.js" defer></script>
   <script src="/static/js/map.js" defer></script>
   <script src="/static/js/telemetry.js" defer></script>

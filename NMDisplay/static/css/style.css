@@ -119,6 +119,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;   /* prevents timeline row from pushing past available height */
 }
 
 #nm-map {
@@ -346,7 +347,7 @@ body {
 .nm-hop-table tr:last-child { border-bottom: none; }
 .nm-hop-label {
   width: 24px;
-  color: var(--text-dim);
+  color: var(--text);
   padding: 3px 6px 3px 8px;
   text-align: right;
 }
@@ -369,7 +370,7 @@ body {
 }
 
 .nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nm-node-meta { color: var(--text-dim); font-size: 11px; text-align: right; white-space: nowrap; }
+.nm-node-meta { color: var(--text); font-size: 11px; text-align: right; white-space: nowrap; }
 
 /* ── Dividers ────────────────────────────────────────────────── */
 .nm-divider {
@@ -407,15 +408,38 @@ body {
   top: -8px; bottom: -8px;
 }
 
-/* ── Timeline panel (inside nm-map-panel, below h-divider) ──── */
-#nm-timeline-panel {
+/* ── Timeline row: activity panel + brand panel side by side ─── */
+#nm-timeline-row {
+  display: flex;
+  flex-direction: row;
   height: 120px;
   min-height: 60px;
   flex-shrink: 0;
+  overflow: hidden;   /* hard clip — nothing escapes the row */
+}
+
+#nm-timeline-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;       /* fill the row exactly */
   background: var(--bg2);
   padding: 4px 8px 4px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* Brand image panel — width driven by image aspect ratio at panel height */
+#nm-brand-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  padding: 6px;
+  flex-shrink: 0;
+  width: auto;
 }
 
 #nm-timeline-label {
@@ -479,12 +503,10 @@ body {
 }
 
 #nm-timeline-img {
-  width: auto;
-  max-height: 100%;
-  object-fit: contain;
-  flex-shrink: 0;
   display: block;
-  align-self: center;   /* vertically center within the flex row */
+  height: 100%;
+  width: auto;
+  object-fit: contain;
 }
 
 /* ── My node button ──────────────────────────────────────────── */
@@ -503,6 +525,12 @@ body {
   padding: 0;
 }
 .nm-my-node-btn:hover { background: var(--bg3); }
+
+/* ── Map fullscreen ──────────────────────────────────────────── */
+#nm-map:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+}
 
 /* ── Leaflet label overrides ─────────────────────────────────── */
 .nm-node-label {
@@ -1070,6 +1098,15 @@ body {
   color: var(--text-dim);
   margin-left: 4px;
 }
+
+/* ── MarkerCluster overrides ─────────────────────────────────── */
+.marker-cluster-small       { background-color: rgba(181,226,140,0.85); }
+.marker-cluster-small div   { background-color: rgba(110,204, 57,0.9);  }
+.marker-cluster-medium      { background-color: rgba(241,211, 87,0.85); }
+.marker-cluster-medium div  { background-color: rgba(240,194, 12,0.9);  }
+.marker-cluster-large       { background-color: rgba(253,156,115,0.85); }
+.marker-cluster-large div   { background-color: rgba(241,128, 23,0.9);  }
+.marker-cluster div         { font-weight: bold; color: #222; }
 
 /* ── Scrollbar (dark theme) ──────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }

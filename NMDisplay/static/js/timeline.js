@@ -199,7 +199,9 @@ const NMTimeline = (() => {
     // One stacked bar dataset per portnum in the display order (bottom → top)
     for (const { key, color, eink } of _PORTNUM_STACK) {
       datasets.push({
-        label: key === "__OTHER__" ? "Other" : key.replace(/_APP$/, "").replace(/_/g, " "),
+        label: key === "__OTHER__" ? "Other"
+             : key === "UNKNOWN"    ? "Encrypted"
+             : key.replace(/_APP$/, "").replace(/_/g, " "),
         data: buckets.map(b => {
           const byPortnum = b.by_portnum || {};
           if (key === "__OTHER__") {
@@ -241,27 +243,18 @@ const NMTimeline = (() => {
   }
 
   // ── UTILIZATION label alignment ───────────────────────────────
-  // Right-aligns the label to sit above the yChan axis tick text.
-  // Chart.js exposes exact pixel geometry after each render:
-  //   _chart.chartArea.right = right edge of the plot area (where bars end)
-  //   _chart.width           = full canvas pixel width
-  // The right axis occupies [chartArea.right .. chart.width].
-  // The label bar's right edge is flush with the panel edge.
-  // The image sits between the panel edge and the canvas-wrap.
-  // So: marginRight = img.offsetWidth + (canvas.offsetWidth - chart.width)
-  //                 + (chart.width - chart.chartArea.right)
-  //               = img.offsetWidth + canvas.offsetWidth - chart.chartArea.right
+  // Right-aligns the UTILIZATION label above the yChan axis tick text.
+  // The image is now in its own sibling panel (#nm-brand-panel) outside
+  // the canvas wrapper, so the offset is just the right-axis width:
+  //   marginRight = wrapW - chartArea.right
   function _alignUtilLabel() {
     const utilLabel = document.getElementById("nm-timeline-util-label");
     if (!utilLabel || !_chart || !_chart.chartArea) return;
 
-    const img    = document.getElementById("nm-timeline-img");
-    const wrap   = document.getElementById("nm-timeline-canvas-wrap");
-    const imgW   = (img && img.offsetWidth) ? img.offsetWidth : 0;
-    const wrapW  = wrap ? wrap.offsetWidth : _chart.width;
+    const wrap  = document.getElementById("nm-timeline-canvas-wrap");
+    const wrapW = wrap ? wrap.offsetWidth : _chart.width;
 
-    // Distance from the label bar's right edge to where yChan axis text aligns
-    const marginRight = imgW + (wrapW - _chart.chartArea.right);
+    const marginRight = wrapW - _chart.chartArea.right;
     utilLabel.style.marginRight = `${Math.max(0, marginRight)}px`;
   }
 

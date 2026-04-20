@@ -1,5 +1,5 @@
 {
-  "my_node_id": null,
+  "my_node_id": 1236768924,
   "telemetry_lists": {
     "enabled_lists": [
       "last_heard",
@@ -20,7 +20,7 @@
     }
   },
   "timeline": {
-    "time_scale_minutes": 17,
+    "time_scale_minutes": 60,
     "y_axis_mode": "auto",
     "y_axis_max": 30,
     "message_accent": true,
