@@ -544,6 +544,10 @@ function initActivateModal() {
   const activateBtn = document.getElementById("af-activate-btn");
   const typeEl     = document.getElementById("af-type");
 
+  // Guard: if any element is missing the HTML is stale — skip silently so the
+  // rest of boot() (log panel, CSV modal) still initialises correctly.
+  if (!modal || !closeBtn || !cancelBtn || !activateBtn || !typeEl) return;
+
   const _hide = () => {
     modal.classList.add("hidden");
     document.getElementById("af-ble-results")?.classList.add("hidden");
@@ -660,6 +664,8 @@ function _updateActivateConnFields() {
 }
 
 function _showActivateModal(sessionId) {
+  const modal = document.getElementById("nm-activate-modal");
+  if (!modal) return;  // HTML not yet refreshed
   const session = _activeSessions.find(s => s.id === sessionId);
   if (!session) return;
   _activatingSessionId = sessionId;
