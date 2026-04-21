@@ -67,6 +67,26 @@ def make_interface(conn_cfg: dict):
     elif conn_type == "serial":
         from meshtastic.serial_interface import SerialInterface
         dev = conn_cfg.get("dev") or None   # None → auto-detect
+
+        if dev is None:
+            # Pre-scan so we can resolve ambiguity before meshtastic raises
+            # "Multiple serial ports detected" and refuses to continue.
+            try:
+                import serial.tools.list_ports
+                ports = [p.device for p in serial.tools.list_ports.comports()]
+                if len(ports) == 1:
+                    dev = ports[0]
+                    log.info("Serial auto-detect: selected %s", dev)
+                elif len(ports) > 1:
+                    dev = ports[0]
+                    log.warning(
+                        "Multiple serial ports detected %s — using %s. "
+                        "Pin a specific device in the session config to override.",
+                        ports, dev,
+                    )
+            except Exception:
+                pass  # fall through; SerialInterface will handle 0-port case
+
         return SerialInterface(dev)
 
     elif conn_type == "ble":
