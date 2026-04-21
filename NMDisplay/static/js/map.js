@@ -334,29 +334,23 @@ const NMMap = (() => {
   }
 
   /**
-   * Classic Leaflet-style teardrop marker as an HTML DivIcon.
-   * Emoji (or ★ for my node) floats over the colored pin head.
-   * No drop shadow per design spec.
+   * Leaflet-style teardrop marker as a pure SVG DivIcon.
+   * Emoji (or ★ for my node) rendered via SVG <text> — no shadow.
    */
   function _pinIcon(color, emoji) {
     const isstar = emoji === "★";
-    const html = `<div style="position:relative;width:25px;height:41px">
-      <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41" style="position:absolute;top:0;left:0">
-        <path d="M12.5,39
-                 C12.5,39 2,25.5 2,13.5
-                 A10.5,10.5 0 1 1 23,13.5
-                 C23,25.5 12.5,39 Z"
-              fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1.5"/>
-      </svg>
-      <span style="position:absolute;top:1px;left:0;width:25px;text-align:center;
-                   font-size:${isstar ? "13px" : "12px"};line-height:25px;
-                   font-family:'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',sans-serif;
-                   pointer-events:none;user-select:none">${emoji}</span>
-    </div>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
+      <path d="M12.5,39 C12.5,39 2,25.5 2,13.5 A10.5,10.5 0 1 1 23,13.5 C23,25.5 12.5,39 Z"
+            fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1.5"/>
+      <text x="12.5" y="14" text-anchor="middle" dominant-baseline="middle"
+            font-size="${isstar ? "13" : "11"}"
+            font-family="Apple Color Emoji,Noto Color Emoji,Segoe UI Emoji,Twemoji Mozilla,sans-serif"
+            fill="white">${emoji}</text>
+    </svg>`;
 
     return L.divIcon({
       className: "",
-      html,
+      html: svg,
       iconSize:    [25, 41],
       iconAnchor:  [12, 39],
       popupAnchor: [0, -37],
