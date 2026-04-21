@@ -441,6 +441,7 @@ function initSettingsModal() {
   _initListDragging();
   _initSaveDataToggle();
   _initRequeuButton();
+  initActivateModal();
 }
 
 function _initSaveDataToggle() {
@@ -514,19 +515,11 @@ function _renderSessions() {
         <div class="nm-session-meta">${connStr} · ${created}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:4px">
-        ${!isActive ? `<button class="nm-text-btn" onclick="_activateSession('${s.id}')">Activate</button>` : ""}
+        ${!isActive ? `<button class="nm-text-btn" onclick="_showActivateModal('${s.id}')">Activate</button>` : ""}
         ${!isActive ? `<button class="nm-text-btn" style="color:var(--red)" onclick="_deleteSession('${s.id}','${_escHtml(s.name)}')">Del</button>` : ""}
       </div>
     </div>`;
   }).join("");
-}
-
-async function _activateSession(sessionId) {
-  const resp = await fetch(`/api/sessions/${sessionId}/activate`, { method: "POST" });
-  const data = await resp.json();
-  if (!resp.ok) { alert(data.error); return; }
-  await _loadSessions();
-  pollAll();
 }
 
 async function _deleteSession(sessionId, name) {
@@ -538,8 +531,155 @@ async function _deleteSession(sessionId, name) {
 }
 
 // Expose to inline onclick handlers
-window._activateSession = _activateSession;
 window._deleteSession   = _deleteSession;
+
+// ── Activate Session modal ──────────────────────────────────────
+
+let _activatingSessionId = null;
+
+function initActivateModal() {
+  const modal      = document.getElementById("nm-activate-modal");
+  const closeBtn   = document.getElementById("nm-activate-close");
+  const cancelBtn  = document.getElementById("af-cancel-btn");
+  const activateBtn = document.getElementById("af-activate-btn");
+  const typeEl     = document.getElementById("af-type");
+
+  const _hide = () => {
+    modal.classList.add("hidden");
+    document.getElementById("af-ble-results")?.classList.add("hidden");
+    document.getElementById("af-error").textContent = "";
+    _activatingSessionId = null;
+  };
+
+  closeBtn.addEventListener("click", _hide);
+  cancelBtn.addEventListener("click", _hide);
+  modal.addEventListener("click", e => { if (e.target === modal) _hide(); });
+
+  typeEl.addEventListener("change", _updateActivateConnFields);
+
+  // Serial detect
+  const detectBtn = document.getElementById("af-serial-detect");
+  if (detectBtn) {
+    detectBtn.addEventListener("click", async () => {
+      detectBtn.textContent = "…";
+      detectBtn.disabled = true;
+      try {
+        const resp = await fetch("/api/listener/scan/serial");
+        const data = await resp.json();
+        const devInput = document.getElementById("af-dev");
+        if (data.ports && data.ports.length === 1) devInput.value = data.ports[0].device;
+      } catch (_) {}
+      detectBtn.textContent = "Detect";
+      detectBtn.disabled = false;
+    });
+  }
+
+  // BLE scan
+  const bleScanBtn = document.getElementById("af-ble-scan");
+  if (bleScanBtn) {
+    bleScanBtn.addEventListener("click", async () => {
+      bleScanBtn.textContent = "Scanning…";
+      bleScanBtn.disabled = true;
+      const resultsEl = document.getElementById("af-ble-results");
+      if (resultsEl) {
+        resultsEl.classList.remove("hidden");
+        resultsEl.innerHTML = `<div class="nm-hint-inline">Scanning for Meshtastic devices (~10s)…</div>`;
+      }
+      try {
+        const resp = await fetch("/api/listener/scan/ble");
+        const data = await resp.json();
+        if (resultsEl) {
+          if (data.error) {
+            resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Error: ${_escHtml(data.error)}</div>`;
+          } else if (data.devices && data.devices.length > 0) {
+            resultsEl.innerHTML = data.devices.map(d =>
+              `<div class="nm-scan-item" data-addr="${_escHtml(d.address)}">
+                <strong>${_escHtml(d.name || "unnamed")}</strong>
+                <span class="nm-hint-inline">${_escHtml(d.address)}</span>
+              </div>`
+            ).join("");
+            resultsEl.querySelectorAll(".nm-scan-item").forEach(el => {
+              el.addEventListener("click", () => {
+                document.getElementById("af-ble-address").value = el.dataset.addr;
+                resultsEl.querySelectorAll(".nm-scan-item").forEach(x => x.style.background = "");
+                el.style.background = "var(--bg3)";
+              });
+            });
+          } else {
+            resultsEl.innerHTML = `<div class="nm-hint-inline">No Meshtastic devices found</div>`;
+          }
+        }
+      } catch (err) {
+        if (resultsEl) {
+          resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Scan failed: ${_escHtml(String(err))}</div>`;
+        }
+      }
+      bleScanBtn.textContent = "Scan";
+      bleScanBtn.disabled = false;
+    });
+  }
+
+  // Confirm activate
+  activateBtn.addEventListener("click", async () => {
+    if (!_activatingSessionId) return;
+    const errEl = document.getElementById("af-error");
+    errEl.textContent = "";
+
+    const type = document.getElementById("af-type").value;
+    let connection = { type };
+    if (type === "tcp") {
+      connection.host = document.getElementById("af-host").value.trim();
+      connection.port = parseInt(document.getElementById("af-port").value) || 4403;
+    } else if (type === "serial") {
+      const dev = document.getElementById("af-dev").value.trim();
+      if (dev) connection.dev = dev;
+    } else if (type === "ble") {
+      const addr = document.getElementById("af-ble-address").value.trim();
+      if (addr) connection.address = addr;
+    }
+
+    const resp = await fetch(`/api/sessions/${_activatingSessionId}/activate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connection }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error; return; }
+
+    _hide();
+    await _loadSessions();
+    pollAll();
+  });
+}
+
+function _updateActivateConnFields() {
+  const type = document.getElementById("af-type").value;
+  document.getElementById("af-tcp-fields").classList.toggle("hidden",    type !== "tcp");
+  document.getElementById("af-serial-fields").classList.toggle("hidden", type !== "serial");
+  document.getElementById("af-ble-fields").classList.toggle("hidden",    type !== "ble");
+}
+
+function _showActivateModal(sessionId) {
+  const session = _activeSessions.find(s => s.id === sessionId);
+  if (!session) return;
+  _activatingSessionId = sessionId;
+
+  const c = session.connection || {};
+  const type = c.type || "tcp";
+
+  document.getElementById("nm-activate-title").textContent = `Activate: ${session.name}`;
+  document.getElementById("af-type").value = type;
+  document.getElementById("af-host").value = c.host || "";
+  document.getElementById("af-port").value = c.port || 4403;
+  document.getElementById("af-dev").value  = c.dev  || "";
+  document.getElementById("af-ble-address").value = c.address || "";
+  document.getElementById("af-error").textContent = "";
+  document.getElementById("af-ble-results")?.classList.add("hidden");
+
+  _updateActivateConnFields();
+  document.getElementById("nm-activate-modal").classList.remove("hidden");
+}
+window._showActivateModal = _showActivateModal;
 
 function _initNewSessionForm() {
   const openBtn   = document.getElementById("cfg-new-session-btn");
@@ -864,11 +1004,13 @@ async function _loadCsvSessions() {
     list.innerHTML = (data.sessions || []).map(s => {
       const dateStr = s.created ? new Date(s.created * 1000).toLocaleString() : "—";
       const disabled = !s.db_exists ? ' class="nm-csv-no-data"' : "";
+      const sid = _escHtml(s.id);
+      const sname = _escHtml(s.name);
       return `<li${disabled}>
-        <span class="nm-csv-name">${_escHtml(s.name)}</span>
+        <span class="nm-csv-name">${sname}</span>
         <span class="nm-csv-date">${dateStr}</span>
         ${s.db_exists
-          ? `<a class="nm-text-btn" href="/api/sessions/${_escHtml(s.id)}/export/nodes.csv" download>Export CSV</a>`
+          ? `<button class="nm-text-btn" onclick="_downloadCsv('/api/sessions/${sid}/export/nodes.csv','nodes_${sid}.csv')">Export CSV</button>`
           : `<span class="nm-hint-inline">no data</span>`}
       </li>`;
     }).join("");
@@ -876,3 +1018,21 @@ async function _loadCsvSessions() {
     list.innerHTML = `<li class="nm-hint-inline">Failed to load sessions</li>`;
   }
 }
+
+async function _downloadCsv(url, filename) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+  } catch (err) {
+    alert(`CSV export failed: ${err.message}`);
+  }
+}
+window._downloadCsv = _downloadCsv;

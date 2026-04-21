@@ -222,7 +222,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         excl = my_node_id if my_node_id is not None else -1
         rows = conn.execute(
             """
-            SELECT node_id, short_name,
+            SELECT node_id, short_name, role,
                    haversine(lat, lon, :lat, :lon) AS dist_km
             FROM nodes
             WHERE lat IS NOT NULL AND lon IS NOT NULL
@@ -235,7 +235,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
             def _fmt(row):
                 name = row["short_name"] or f"!{row['node_id'] & 0xFFFFFFFF:08x}"
                 mi = round((row["dist_km"] or 0) * 0.621371, 1)
-                return {"node_id": row["node_id"], "short_name": name, "distance_mi": mi}
+                return {"node_id": row["node_id"], "short_name": name, "distance_mi": mi, "role": row["role"]}
             closest  = _fmt(rows[0])
             farthest = _fmt(rows[-1])
 
@@ -270,8 +270,19 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "1":  hop_raw.get(1, 0),
         "0":  hop_raw.get(0, 0),
     }
+    # Packets with NULL hop_limit — protobuf3 omits 0-value fields, so many
+    # 0-hops-remaining packets arrive without a hop_limit field and are stored
+    # as NULL. Count them separately and surface as "?" in the hop distribution.
+    null_hop_row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM packets WHERE hop_limit IS NULL AND from_node_id != ?",
+        (excl_hop,)
+    ).fetchone()
+    null_hop_count = null_hop_row["cnt"] if null_hop_row else 0
+
     # Raw individual hop_limit counts for the dynamic list (no bucketing)
     hop_dist_raw = {str(k): v for k, v in sorted(hop_raw.items(), reverse=True)}
+    if null_hop_count:
+        hop_dist_raw["?"] = null_hop_count
 
     return {
         "direct_count":       direct,

@@ -319,55 +319,54 @@ const NMMap = (() => {
     "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
   };
 
-  // Role → { color, letter } for marker display
+  // Role → { color, emoji } for marker display
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
-    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "REPEATER")
-      return { color: "#e05252", letter: "R" };
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
+      return { color: "#e05252", emoji: "📡" };
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
-      return { color: "#3fb950", letter: "T" };
+      return { color: "#3fb950", emoji: "🐾" };
     if (r === "SENSOR")
-      return { color: "#d29922", letter: "S" };
+      return { color: "#d29922", emoji: "📊" };
     if (r === "CLIENT" || r.startsWith("CLIENT_"))
-      return { color: "#58a6ff", letter: "C" };
-    return { color: "#6e7681", letter: "?" };
+      return { color: "#58a6ff", emoji: "📱" };
+    return { color: "#6e7681", emoji: "👻" };
   }
 
-
   /**
-   * Classic Leaflet-style teardrop marker as a tinted SVG DivIcon.
-   * Role letter (or ★ for my node) is centered in the circular head.
+   * Classic Leaflet-style teardrop marker as an HTML DivIcon.
+   * Emoji (or ★ for my node) floats over the colored pin head.
+   * No drop shadow per design spec.
    */
-  function _pinIcon(color, label) {
-    const w = 25, h = 41, cx = w / 2;
-    const r = cx - 1;
-    const bodyH = h * 0.62;
-    const fontSize = label === "★" ? 13 : 11;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-      <ellipse cx="${cx + 1}" cy="${h - 2}" rx="${cx * 0.55}" ry="3" fill="rgba(0,0,0,0.25)"/>
-      <path d="M${cx},${h - 2}
-               C${cx},${h - 2} 2,${bodyH * 0.75} 2,${r + 1}
-               A${r},${r} 0 1 1 ${w - 2},${r + 1}
-               C${w - 2},${bodyH * 0.75} ${cx},${h - 2} Z"
-            fill="${color}" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
-      <text x="${cx}" y="${r + 2}" text-anchor="middle" dominant-baseline="middle"
-            font-size="${fontSize}" font-weight="bold" font-family="'Courier New',monospace"
-            fill="white" stroke="rgba(0,0,0,0.4)" stroke-width="0.5">${label}</text>
-    </svg>`;
+  function _pinIcon(color, emoji) {
+    const isstar = emoji === "★";
+    const html = `<div style="position:relative;width:25px;height:41px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41" style="position:absolute;top:0;left:0">
+        <path d="M12.5,39
+                 C12.5,39 2,25.5 2,13.5
+                 A10.5,10.5 0 1 1 23,13.5
+                 C23,25.5 12.5,39 Z"
+              fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1.5"/>
+      </svg>
+      <span style="position:absolute;top:1px;left:0;width:25px;text-align:center;
+                   font-size:${isstar ? "13px" : "12px"};line-height:25px;
+                   font-family:'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',sans-serif;
+                   pointer-events:none;user-select:none">${emoji}</span>
+    </div>`;
 
     return L.divIcon({
       className: "",
-      html: svg,
-      iconSize:    [w, h],
-      iconAnchor:  [cx, h - 2],
-      popupAnchor: [0, -h + 4],
+      html,
+      iconSize:    [25, 41],
+      iconAnchor:  [12, 39],
+      popupAnchor: [0, -37],
     });
   }
 
   function _iconForNode(node, isMyNode) {
     if (isMyNode) return _pinIcon("#d4a017", "★");
-    const { color, letter } = _roleStyle(node.role);
-    return _pinIcon(color, letter);
+    const { color, emoji } = _roleStyle(node.role);
+    return _pinIcon(color, emoji);
   }
 
   // ── Label management ──────────────────────────────────────────

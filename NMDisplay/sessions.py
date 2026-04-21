@@ -75,14 +75,18 @@ def patch_active_flag(key: str, value) -> None:
     os.replace(tmp, ACTIVE_FILE)
 
 
-def activate(session_id: str) -> dict:
-    """Switch the active session. Returns the activated session."""
+def activate(session_id: str, connection_override: Optional[dict] = None) -> dict:
+    """Switch the active session. Returns the activated session.
+    If connection_override is provided the session's stored connection is
+    updated in sessions.json so the next activation remembers it."""
     sessions = load_all()
     now = int(time.time())
     target = None
     for s in sessions:
         if s["id"] == session_id:
             s["last_active"] = now
+            if connection_override:
+                s["connection"] = connection_override
             target = s
     if target is None:
         raise ValueError(f"Session not found: {session_id}")

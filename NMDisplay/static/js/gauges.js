@@ -25,6 +25,21 @@ const NMGauges = (() => {
     });
   }
 
+  // Role → emoji (mirrors map.js mapping)
+  const _GAUGE_ROLE_INT_MAP = {
+    "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",
+    "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
+    "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
+  };
+  function _roleEmoji(role) {
+    const r = (_GAUGE_ROLE_INT_MAP[String(role ?? "0")] || String(role || "CLIENT")).toUpperCase();
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
+    if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")    return "🐾";
+    if (r === "SENSOR")  return "📊";
+    if (r === "CLIENT" || r.startsWith("CLIENT_")) return "📱";
+    return "👻";
+  }
+
   function _update(data) {
     _set("g-direct", data.direct_count ?? "—");
     _set("g-active", data.active_count  ?? "—");
@@ -36,7 +51,7 @@ const NMGauges = (() => {
 
     if (data.closest) {
       _closestNodeId = data.closest.node_id;
-      _set("g-closest-name", data.closest.short_name);
+      _set("g-closest-name", `${_roleEmoji(data.closest.role)} ${data.closest.short_name}`);
       _set("g-closest-dist", `${data.closest.distance_mi} mi`);
     } else {
       _closestNodeId = null;
@@ -46,7 +61,7 @@ const NMGauges = (() => {
 
     if (data.farthest) {
       _farthestNodeId = data.farthest.node_id;
-      _set("g-farthest-name", data.farthest.short_name);
+      _set("g-farthest-name", `${_roleEmoji(data.farthest.role)} ${data.farthest.short_name}`);
       _set("g-farthest-dist", `${data.farthest.distance_mi} mi`);
     } else {
       _farthestNodeId = null;
@@ -136,21 +151,24 @@ const NMGauges = (() => {
     const table = document.getElementById("nm-hop-dist-table");
     if (!table) return;
 
-    // distRaw keys are hop_limit values (strings), sorted desc = most direct first
-    const entries = Object.entries(distRaw)
+    // Separate the "?" (null hop_limit) entry from numeric entries
+    const nullCount = distRaw["?"] || 0;
+    const numericEntries = Object.entries(distRaw)
+      .filter(([k]) => k !== "?")
       .map(([k, v]) => ({ hopLimit: parseInt(k), count: v }))
       .filter(e => e.count > 0)
       .sort((a, b) => b.hopLimit - a.hopLimit);
 
-    if (entries.length === 0) {
+    if (numericEntries.length === 0 && !nullCount) {
       table.innerHTML = "";
       return;
     }
 
-    const max = Math.max(1, ...entries.map(e => e.count));
-    table.innerHTML = entries.map(e => {
-      const pct  = Math.round((e.count / max) * 100);
-      // Pick a color from the hop colors spectrum
+    const allCounts = [...numericEntries.map(e => e.count), nullCount].filter(Boolean);
+    const max = Math.max(1, ...allCounts);
+
+    const numericRows = numericEntries.map(e => {
+      const pct   = Math.round((e.count / max) * 100);
       const color = e.hopLimit >= 4 ? _HOP_COLORS["4+"]
                   : _HOP_COLORS[String(e.hopLimit)] || _HOP_COLORS["0"];
       return `<tr>
@@ -159,6 +177,19 @@ const NMGauges = (() => {
         <td class="nm-hop-count">${e.count}</td>
       </tr>`;
     }).join("");
+
+    // "?" row: packets with no hop_limit field (protobuf omits 0-value fields,
+    // so many 0-hops-remaining packets land here)
+    const nullRow = nullCount ? (() => {
+      const pct = Math.round((nullCount / max) * 100);
+      return `<tr title="hop_limit not reported — includes packets where hop_limit=0 was omitted by protobuf">
+        <td class="nm-hop-label" style="color:var(--text-dim)">?</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:var(--text-dim);opacity:0.5"></div></td>
+        <td class="nm-hop-count" style="color:var(--text-dim)">${nullCount}</td>
+      </tr>`;
+    })() : "";
+
+    table.innerHTML = numericRows + nullRow;
   }
 
   function _set(id, value) {

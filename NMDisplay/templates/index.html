@@ -160,6 +160,54 @@
 
   </div>
 
+  <!-- ── Activate Session modal ─────────────────────────────────── -->
+  <div id="nm-activate-modal" class="nm-modal-overlay hidden">
+    <div class="nm-modal-box">
+      <div class="nm-modal-box-header">
+        <h3 id="nm-activate-title">Activate Session</h3>
+        <button id="nm-activate-close">&times;</button>
+      </div>
+      <div class="nm-form-row">
+        <label>Connection
+          <select id="af-type">
+            <option value="tcp">TCP (network)</option>
+            <option value="serial">Serial (USB)</option>
+            <option value="ble">Bluetooth LE</option>
+          </select>
+        </label>
+      </div>
+      <!-- TCP fields -->
+      <div id="af-tcp-fields" class="nm-form-row">
+        <label>Host<input type="text" id="af-host" placeholder="192.168.1.25"></label>
+        <label>Port<input type="number" id="af-port" value="4403" min="1" max="65535"></label>
+      </div>
+      <!-- Serial fields -->
+      <div id="af-serial-fields" class="nm-form-row hidden">
+        <label>Device path (blank = auto-detect)
+          <div class="nm-input-row">
+            <input type="text" id="af-dev" placeholder="/dev/tty.usbserial-0001">
+            <button type="button" id="af-serial-detect" class="nm-text-btn nm-scan-btn">Detect</button>
+          </div>
+        </label>
+      </div>
+      <!-- BLE fields -->
+      <div id="af-ble-fields" class="nm-form-row hidden">
+        <label>Address (blank = auto-detect)
+          <div class="nm-input-row">
+            <input type="text" id="af-ble-address" placeholder="AA:BB:CC:DD:EE:FF">
+            <button type="button" id="af-ble-scan" class="nm-text-btn nm-scan-btn">Scan</button>
+          </div>
+        </label>
+        <div id="af-ble-results" class="nm-scan-results hidden"></div>
+      </div>
+      <div class="nm-form-row nm-form-actions">
+        <button id="af-activate-btn" class="nm-btn-primary">Activate</button>
+        <button id="af-cancel-btn" class="nm-text-btn">Cancel</button>
+        <span id="af-error" class="error-text"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ── CSV Export modal ────────────────────────────────────────── -->
   <div id="nm-csv-modal" class="nm-modal-overlay hidden">
     <div class="nm-modal-box">

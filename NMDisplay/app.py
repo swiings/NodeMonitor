@@ -346,6 +346,12 @@ def api_sessions_list():
 
 @app.route("/api/sessions/new", methods=["POST"])
 def api_sessions_new():
+    # Cannot create a new session while the listener is running — the new
+    # session's connection config won't take effect until the listener restarts.
+    st = listener_proc.status()
+    if st["state"] == "running":
+        return jsonify({"error": "Stop the listener before creating a new session."}), 409
+
     data = request.get_json(force=True, silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
@@ -373,8 +379,18 @@ def api_sessions_activate(session_id):
     st = listener_proc.status()
     if st["state"] == "running":
         return jsonify({"error": "Stop the listener before switching sessions."}), 409
+    data = request.get_json(force=True, silent=True) or {}
+    conn_override = data.get("connection") or None
+    # Validate connection override if provided
+    if conn_override is not None:
+        if conn_override.get("type") not in ("tcp", "serial", "ble"):
+            return jsonify({"error": "connection.type must be tcp, serial, or ble"}), 400
+        if conn_override["type"] == "tcp":
+            if not conn_override.get("host"):
+                return jsonify({"error": "connection.host is required for TCP"}), 400
+            conn_override["port"] = int(conn_override.get("port") or 4403)
     try:
-        session = sess_mod.activate(session_id)
+        session = sess_mod.activate(session_id, connection_override=conn_override)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     return jsonify({"session": session})
