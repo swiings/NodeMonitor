@@ -357,19 +357,9 @@ def api_sessions_new():
     if not name:
         return jsonify({"error": "name is required"}), 400
 
-    conn_cfg = data.get("connection")
-    if not conn_cfg or conn_cfg.get("type") not in ("tcp", "serial", "ble"):
-        return jsonify({"error": "connection.type must be tcp, serial, or ble"}), 400
-
-    # Validate TCP-specific fields
-    if conn_cfg["type"] == "tcp":
-        if not conn_cfg.get("host"):
-            return jsonify({"error": "connection.host is required for TCP"}), 400
-        conn_cfg["port"] = int(conn_cfg.get("port") or 4403)
-
     seed = bool(data.get("seed_on_connect", True))
     save = bool(data.get("save_packet_data", True))
-    session = sess_mod.create(name, conn_cfg, seed_on_connect=seed, save_packet_data=save)
+    session = sess_mod.create(name, {"type": "serial"}, seed_on_connect=seed, save_packet_data=save)
     return jsonify({"session": session})
 
 
@@ -379,18 +369,8 @@ def api_sessions_activate(session_id):
     st = listener_proc.status()
     if st["state"] == "running":
         return jsonify({"error": "Stop the listener before switching sessions."}), 409
-    data = request.get_json(force=True, silent=True) or {}
-    conn_override = data.get("connection") or None
-    # Validate connection override if provided
-    if conn_override is not None:
-        if conn_override.get("type") not in ("tcp", "serial", "ble"):
-            return jsonify({"error": "connection.type must be tcp, serial, or ble"}), 400
-        if conn_override["type"] == "tcp":
-            if not conn_override.get("host"):
-                return jsonify({"error": "connection.host is required for TCP"}), 400
-            conn_override["port"] = int(conn_override.get("port") or 4403)
     try:
-        session = sess_mod.activate(session_id, connection_override=conn_override)
+        session = sess_mod.activate(session_id)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     return jsonify({"session": session})

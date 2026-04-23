@@ -22,7 +22,7 @@ NMDATA_DIR    = bundle_paths.data_dir()
 SESSIONS_FILE = os.path.join(NMDATA_DIR, "sessions.json")
 ACTIVE_FILE   = os.path.join(NMDATA_DIR, "active.json")
 
-_DEFAULT_CONNECTION = {"type": "tcp", "host": "192.168.1.25", "port": 4403}
+_DEFAULT_CONNECTION = {"type": "serial"}
 
 
 # ------------------------------------------------------------------
@@ -75,18 +75,14 @@ def patch_active_flag(key: str, value) -> None:
     os.replace(tmp, ACTIVE_FILE)
 
 
-def activate(session_id: str, connection_override: Optional[dict] = None) -> dict:
-    """Switch the active session. Returns the activated session.
-    If connection_override is provided the session's stored connection is
-    updated in sessions.json so the next activation remembers it."""
+def activate(session_id: str) -> dict:
+    """Switch the active session. Returns the activated session."""
     sessions = load_all()
     now = int(time.time())
     target = None
     for s in sessions:
         if s["id"] == session_id:
             s["last_active"] = now
-            if connection_override:
-                s["connection"] = connection_override
             target = s
     if target is None:
         raise ValueError(f"Session not found: {session_id}")

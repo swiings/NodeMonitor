@@ -34,7 +34,17 @@ async function boot() {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
-  _cfg = await fetchSettings();
+  // Register all UI handlers first — before any fetch() that might hang or throw.
+  initDraggables();
+  initSettingsModal();
+  initLogPanel();
+  initCsvModal();
+
+  try {
+    _cfg = await fetchSettings();
+  } catch (_) {
+    _cfg = {};
+  }
   applyTheme(_cfg);
 
   document.dispatchEvent(new CustomEvent("nm:settings-loaded", { detail: { cfg: _cfg } }));
@@ -46,18 +56,14 @@ async function boot() {
   NMTimeline.init("nm-timeline-canvas");
   NMGauges.init();
 
-  initDraggables();
   restorePanelSizes();
-  initSettingsModal();
-  initLogPanel();
-  initCsvModal();
 
   // Give browser time to finish flex layout before Leaflet measures
   setTimeout(() => { NMMap.invalidate(); NMTelemetry.checkWidth(); }, 400);
 
   document.addEventListener("nm:request-poll", () => pollAll());
 
-  startPollLoop(_cfg.display.poll_interval_seconds);
+  startPollLoop((_cfg.display || {}).poll_interval_seconds || 30);
   startListenerStatusLoop();
 }
 
@@ -145,7 +151,7 @@ async function saveSettings(patch) {
 // ── Theme ───────────────────────────────────────────────────────
 
 function applyTheme(cfg) {
-  document.body.className = `theme-${cfg.display.theme}`;
+  document.body.className = `theme-${(cfg.display || {}).theme || "color"}`;
 }
 
 // ── Status bar ──────────────────────────────────────────────────
@@ -542,15 +548,11 @@ function initActivateModal() {
   const closeBtn   = document.getElementById("nm-activate-close");
   const cancelBtn  = document.getElementById("af-cancel-btn");
   const activateBtn = document.getElementById("af-activate-btn");
-  const typeEl     = document.getElementById("af-type");
 
-  // Guard: if any element is missing the HTML is stale — skip silently so the
-  // rest of boot() (log panel, CSV modal) still initialises correctly.
-  if (!modal || !closeBtn || !cancelBtn || !activateBtn || !typeEl) return;
+  if (!modal || !closeBtn || !cancelBtn || !activateBtn) return;
 
   const _hide = () => {
     modal.classList.add("hidden");
-    document.getElementById("af-ble-results")?.classList.add("hidden");
     document.getElementById("af-error").textContent = "";
     _activatingSessionId = null;
   };
@@ -559,93 +561,15 @@ function initActivateModal() {
   cancelBtn.addEventListener("click", _hide);
   modal.addEventListener("click", e => { if (e.target === modal) _hide(); });
 
-  typeEl.addEventListener("change", _updateActivateConnFields);
-
-  // Serial detect
-  const detectBtn = document.getElementById("af-serial-detect");
-  if (detectBtn) {
-    detectBtn.addEventListener("click", async () => {
-      detectBtn.textContent = "…";
-      detectBtn.disabled = true;
-      try {
-        const resp = await fetch("/api/listener/scan/serial");
-        const data = await resp.json();
-        const devInput = document.getElementById("af-dev");
-        if (data.ports && data.ports.length === 1) devInput.value = data.ports[0].device;
-      } catch (_) {}
-      detectBtn.textContent = "Detect";
-      detectBtn.disabled = false;
-    });
-  }
-
-  // BLE scan
-  const bleScanBtn = document.getElementById("af-ble-scan");
-  if (bleScanBtn) {
-    bleScanBtn.addEventListener("click", async () => {
-      bleScanBtn.textContent = "Scanning…";
-      bleScanBtn.disabled = true;
-      const resultsEl = document.getElementById("af-ble-results");
-      if (resultsEl) {
-        resultsEl.classList.remove("hidden");
-        resultsEl.innerHTML = `<div class="nm-hint-inline">Scanning for Meshtastic devices (~10s)…</div>`;
-      }
-      try {
-        const resp = await fetch("/api/listener/scan/ble");
-        const data = await resp.json();
-        if (resultsEl) {
-          if (data.error) {
-            resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Error: ${_escHtml(data.error)}</div>`;
-          } else if (data.devices && data.devices.length > 0) {
-            resultsEl.innerHTML = data.devices.map(d =>
-              `<div class="nm-scan-item" data-addr="${_escHtml(d.address)}">
-                <strong>${_escHtml(d.name || "unnamed")}</strong>
-                <span class="nm-hint-inline">${_escHtml(d.address)}</span>
-              </div>`
-            ).join("");
-            resultsEl.querySelectorAll(".nm-scan-item").forEach(el => {
-              el.addEventListener("click", () => {
-                document.getElementById("af-ble-address").value = el.dataset.addr;
-                resultsEl.querySelectorAll(".nm-scan-item").forEach(x => x.style.background = "");
-                el.style.background = "var(--bg3)";
-              });
-            });
-          } else {
-            resultsEl.innerHTML = `<div class="nm-hint-inline">No Meshtastic devices found</div>`;
-          }
-        }
-      } catch (err) {
-        if (resultsEl) {
-          resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Scan failed: ${_escHtml(String(err))}</div>`;
-        }
-      }
-      bleScanBtn.textContent = "Scan";
-      bleScanBtn.disabled = false;
-    });
-  }
-
-  // Confirm activate
   activateBtn.addEventListener("click", async () => {
     if (!_activatingSessionId) return;
     const errEl = document.getElementById("af-error");
     errEl.textContent = "";
 
-    const type = document.getElementById("af-type").value;
-    let connection = { type };
-    if (type === "tcp") {
-      connection.host = document.getElementById("af-host").value.trim();
-      connection.port = parseInt(document.getElementById("af-port").value) || 4403;
-    } else if (type === "serial") {
-      const dev = document.getElementById("af-dev").value.trim();
-      if (dev) connection.dev = dev;
-    } else if (type === "ble") {
-      const addr = document.getElementById("af-ble-address").value.trim();
-      if (addr) connection.address = addr;
-    }
-
     const resp = await fetch(`/api/sessions/${_activatingSessionId}/activate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ connection }),
+      body: JSON.stringify({}),
     });
     const data = await resp.json();
     if (!resp.ok) { errEl.textContent = data.error; return; }
@@ -656,34 +580,16 @@ function initActivateModal() {
   });
 }
 
-function _updateActivateConnFields() {
-  const type = document.getElementById("af-type").value;
-  document.getElementById("af-tcp-fields").classList.toggle("hidden",    type !== "tcp");
-  document.getElementById("af-serial-fields").classList.toggle("hidden", type !== "serial");
-  document.getElementById("af-ble-fields").classList.toggle("hidden",    type !== "ble");
-}
-
 function _showActivateModal(sessionId) {
   const modal = document.getElementById("nm-activate-modal");
-  if (!modal) return;  // HTML not yet refreshed
+  if (!modal) return;
   const session = _activeSessions.find(s => s.id === sessionId);
   if (!session) return;
   _activatingSessionId = sessionId;
 
-  const c = session.connection || {};
-  const type = c.type || "tcp";
-
   document.getElementById("nm-activate-title").textContent = `Activate: ${session.name}`;
-  document.getElementById("af-type").value = type;
-  document.getElementById("af-host").value = c.host || "";
-  document.getElementById("af-port").value = c.port || 4403;
-  document.getElementById("af-dev").value  = c.dev  || "";
-  document.getElementById("af-ble-address").value = c.address || "";
   document.getElementById("af-error").textContent = "";
-  document.getElementById("af-ble-results")?.classList.add("hidden");
-
-  _updateActivateConnFields();
-  document.getElementById("nm-activate-modal").classList.remove("hidden");
+  modal.classList.remove("hidden");
 }
 window._showActivateModal = _showActivateModal;
 
@@ -692,132 +598,34 @@ function _initNewSessionForm() {
   const form      = document.getElementById("cfg-new-session-form");
   const cancelBtn = document.getElementById("ns-cancel-btn");
   const createBtn = document.getElementById("ns-create-btn");
-  const typeEl    = document.getElementById("ns-type");
 
-  openBtn.addEventListener("click", () => {
-    const opening = form.classList.contains("hidden");
-    form.classList.toggle("hidden");
-    if (opening) _updateConnFields();
-  });
+  openBtn.addEventListener("click", () => form.classList.toggle("hidden"));
   cancelBtn.addEventListener("click", () => {
     form.classList.add("hidden");
     document.getElementById("ns-error").textContent = "";
   });
-
-  typeEl.addEventListener("change", _updateConnFields);
-
-  // Serial detect button
-  const serialDetectBtn = document.getElementById("ns-serial-detect");
-  if (serialDetectBtn) {
-    serialDetectBtn.addEventListener("click", async () => {
-      serialDetectBtn.textContent = "…";
-      serialDetectBtn.disabled = true;
-      try {
-        const resp = await fetch("/api/listener/scan/serial");
-        const data = await resp.json();
-        const devInput = document.getElementById("ns-dev");
-        const list = document.getElementById("ns-serial-list");
-        list.innerHTML = (data.ports || []).map(p =>
-          `<option value="${_escHtml(p.device)}">${_escHtml(p.device)} — ${_escHtml(p.description)}</option>`
-        ).join("");
-        if (data.ports && data.ports.length === 1) devInput.value = data.ports[0].device;
-      } catch (_) {}
-      serialDetectBtn.textContent = "Detect";
-      serialDetectBtn.disabled = false;
-    });
-  }
-
-  // BLE scan button
-  const bleScanBtn = document.getElementById("ns-ble-scan");
-  if (bleScanBtn) {
-    bleScanBtn.addEventListener("click", async () => {
-      bleScanBtn.textContent = "Scanning…";
-      bleScanBtn.disabled = true;
-      const resultsEl = document.getElementById("ns-ble-results");
-      if (resultsEl) {
-        resultsEl.classList.remove("hidden");
-        resultsEl.innerHTML = `<div class="nm-hint-inline">Scanning for Meshtastic devices (~10s)…</div>`;
-      }
-      try {
-        const resp = await fetch("/api/listener/scan/ble");
-        const data = await resp.json();
-        const bleList = document.getElementById("ns-ble-list");
-        bleList.innerHTML = (data.devices || []).map(d =>
-          `<option value="${_escHtml(d.address)}">${_escHtml(d.name || d.address)}</option>`
-        ).join("");
-        if (resultsEl) {
-          if (data.error) {
-            resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Error: ${_escHtml(data.error)}</div>`;
-          } else if (data.devices && data.devices.length > 0) {
-            resultsEl.innerHTML = data.devices.map(d =>
-              `<div class="nm-scan-item" data-addr="${_escHtml(d.address)}">
-                <strong>${_escHtml(d.name || "unnamed")}</strong>
-                <span class="nm-hint-inline">${_escHtml(d.address)}</span>
-              </div>`
-            ).join("");
-            resultsEl.querySelectorAll(".nm-scan-item").forEach(el => {
-              el.addEventListener("click", () => {
-                document.getElementById("ns-ble-address").value = el.dataset.addr;
-                resultsEl.querySelectorAll(".nm-scan-item").forEach(x => x.style.background = "");
-                el.style.background = "var(--bg3)";
-              });
-            });
-          } else {
-            resultsEl.innerHTML = `<div class="nm-hint-inline">No Meshtastic devices found</div>`;
-          }
-        }
-      } catch (err) {
-        if (resultsEl) {
-          resultsEl.innerHTML = `<div class="nm-hint-inline" style="color:var(--red)">Scan failed: ${_escHtml(String(err))}</div>`;
-        }
-      }
-      bleScanBtn.textContent = "Scan";
-      bleScanBtn.disabled = false;
-    });
-  }
 
   createBtn.addEventListener("click", async () => {
     const errEl = document.getElementById("ns-error");
     errEl.textContent = "";
 
     const name     = document.getElementById("ns-name").value.trim();
-    const type     = document.getElementById("ns-type").value;
     const seed     = document.getElementById("ns-seed").checked;
     const saveData = document.getElementById("ns-save-data")?.checked ?? true;
-
-    let connection = { type };
-    if (type === "tcp") {
-      connection.host = document.getElementById("ns-host").value.trim();
-      connection.port = parseInt(document.getElementById("ns-port").value) || 4403;
-    } else if (type === "serial") {
-      const dev = document.getElementById("ns-dev").value.trim();
-      if (dev) connection.dev = dev;
-    } else if (type === "ble") {
-      const addr = document.getElementById("ns-ble-address").value.trim();
-      if (addr) connection.address = addr;
-    }
 
     const resp = await fetch("/api/sessions/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, connection, seed_on_connect: seed, save_packet_data: saveData }),
+      body: JSON.stringify({ name, seed_on_connect: seed, save_packet_data: saveData }),
     });
     const data = await resp.json();
     if (!resp.ok) { errEl.textContent = data.error; return; }
 
     form.classList.add("hidden");
     document.getElementById("ns-name").value = "";
-    document.getElementById("ns-ble-results")?.classList.add("hidden");
     await _loadSessions();
     pollAll();
   });
-}
-
-function _updateConnFields() {
-  const type = document.getElementById("ns-type").value;
-  document.getElementById("ns-tcp-fields").classList.toggle("hidden",    type !== "tcp");
-  document.getElementById("ns-serial-fields").classList.toggle("hidden", type !== "serial");
-  document.getElementById("ns-ble-fields").classList.toggle("hidden",    type !== "ble");
 }
 
 // ── Listener control in modal ───────────────────────────────────
