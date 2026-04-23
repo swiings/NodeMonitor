@@ -9,11 +9,14 @@ Shared module for ChanScan and NodeMonitor.  Scans /dev/ttyACM* and
            Identified by a successful Meshtastic library handshake.
 
   HAXX  — Heltec ESP32 V4 running custom RadioLib/ChanScan firmware.
-           Identified by a plaintext banner or response on connect.
+           Identified by elimination: accessible port that is not SNAX.
 
-The two probes run sequentially per port:
-  1. HAXX raw-text probe first (fast, 2 s max, no library side-effects).
-  2. Meshtastic probe only on ports that didn't respond as HAXX (4 s max).
+Algorithm (two phases):
+  Phase 1 — Meshtastic probe each port (up to MESHTASTIC_TIMEOUT_SECS each).
+             First port that passes → SNAX.
+  Phase 2 — After a brief grace period (HAXX_GRACE_SECS) to let any
+             Meshtastic probe threads release ports, any remaining accessible
+             port → HAXX.
 
 A file-lock + /tmp cache serialises concurrent calls so that ChanScan and
 NodeMonitor starting simultaneously don't fight over ports.
@@ -25,10 +28,9 @@ Usage:
     # Values are None if that device was not found.
 
 Environment overrides:
-    HAXX_SIGNATURE          substring to look for in HAXX banner (default: "HAXX")
-                            set to "" to accept *any* printable-text response
-    MESHTASTIC_TIMEOUT_SECS seconds to wait for Meshtastic handshake (default: 4)
-    HAXX_LISTEN_SECS        seconds to listen for HAXX banner (default: 2)
+    MESHTASTIC_TIMEOUT_SECS  seconds to wait for Meshtastic handshake (default: 5)
+    HAXX_GRACE_SECS          seconds to wait after probes before checking HAXX
+                             port accessibility (default: 1)
 """
 
 import fcntl
@@ -45,11 +47,8 @@ log = logging.getLogger(__name__)
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
 BAUD_RATE          = 115200
-MESHTASTIC_TIMEOUT = float(os.environ.get("MESHTASTIC_TIMEOUT_SECS", "4"))
-HAXX_LISTEN        = float(os.environ.get("HAXX_LISTEN_SECS", "2"))
-# Substring to find in the HAXX device's serial output.
-# Set HAXX_SIGNATURE="" to treat any printable-text response as HAXX.
-HAXX_SIGNATURE     = os.environ.get("HAXX_SIGNATURE", "HAXX")
+MESHTASTIC_TIMEOUT = float(os.environ.get("MESHTASTIC_TIMEOUT_SECS", "5"))
+HAXX_GRACE         = float(os.environ.get("HAXX_GRACE_SECS", "1"))
 
 # ── Inter-process result cache ────────────────────────────────────────────────
 _LOCK_FILE   = "/tmp/device_discovery.lock"
@@ -63,47 +62,6 @@ def _scan_ports() -> list[str]:
     return sorted(glob.glob("/dev/ttyACM*") + glob.glob("/dev/ttyUSB*"))
 
 
-# ── HAXX probe ────────────────────────────────────────────────────────────────
-
-def _probe_haxx(port: str) -> bool:
-    """
-    Open port at BAUD_RATE, send a bare newline to elicit a response, then
-    read lines for up to HAXX_LISTEN seconds.
-
-    Returns True if a line containing HAXX_SIGNATURE is received (or if
-    HAXX_SIGNATURE is empty and any printable-ASCII line is received).
-
-    Meshtastic devices speak binary protobuf and won't emit printable text
-    in response to a stray newline, so False here reliably means "not HAXX".
-    """
-    try:
-        with serial.Serial(port, BAUD_RATE, timeout=0.4) as ser:
-            ser.reset_input_buffer()
-            ser.write(b"\r\n")          # prod firmware for a banner/prompt
-            deadline = time.monotonic() + HAXX_LISTEN
-            while time.monotonic() < deadline:
-                raw = ser.readline()
-                if not raw:
-                    ser.write(b"\r\n")  # nudge again if quiet
-                    continue
-                text = raw.decode("utf-8", errors="ignore").strip()
-                if not text:
-                    continue
-                # Reject lines that contain non-printable bytes (binary protocol)
-                if not all(0x20 <= ord(c) < 0x7F or c in "\t" for c in text):
-                    log.debug("HAXX probe [%s]: binary data — not HAXX", port)
-                    return False
-                log.debug("HAXX probe [%s]: %r", port, text)
-                sig = HAXX_SIGNATURE.strip()
-                if not sig or sig.lower() in text.lower():
-                    return True
-    except serial.SerialException as exc:
-        log.debug("HAXX probe could not open %s: %s", port, exc)
-    except Exception as exc:
-        log.debug("HAXX probe error on %s: %s", port, exc)
-    return False
-
-
 # ── Meshtastic probe ──────────────────────────────────────────────────────────
 
 def _probe_meshtastic(port: str) -> bool:
@@ -111,15 +69,14 @@ def _probe_meshtastic(port: str) -> bool:
     Attempt a Meshtastic SerialInterface connection on port in a daemon thread.
     Returns True if the handshake completes within MESHTASTIC_TIMEOUT seconds.
 
-    Only called on ports that didn't respond to the HAXX probe, so we avoid
-    running this on the HAXX device (which would leave an orphaned thread
-    holding the port).
+    The thread is always daemonised so it can never block process exit, but
+    after a timeout we sleep HAXX_GRACE_SECS before touching the port again
+    so the thread has time to clean up and release it.
     """
-    result   = [False]
+    result    = [False]
     iface_ref = [None]
 
     def _attempt():
-        # Suppress meshtastic's verbose startup logging during the probe
         mesh_log = logging.getLogger("meshtastic")
         orig_level = mesh_log.level
         mesh_log.setLevel(logging.CRITICAL)
@@ -143,39 +100,58 @@ def _probe_meshtastic(port: str) -> bool:
     t.start()
     t.join(timeout=MESHTASTIC_TIMEOUT)
     if t.is_alive():
-        log.debug(
-            "Meshtastic probe timed out on %s (background thread will clean up)", port
-        )
+        log.debug("Meshtastic probe timed out on %s", port)
     return result[0]
+
+
+# ── HAXX accessibility check ──────────────────────────────────────────────────
+
+def _port_accessible(port: str) -> bool:
+    """Returns True if the port can be opened at BAUD_RATE without error."""
+    try:
+        with serial.Serial(port, BAUD_RATE, timeout=0.1):
+            return True
+    except serial.SerialException as exc:
+        log.debug("Port %s not accessible: %s", port, exc)
+        return False
 
 
 # ── Core scan logic ───────────────────────────────────────────────────────────
 
 def _run_discovery() -> dict:
-    """Scan all ports and return {"snax": path_or_None, "haxx": path_or_None}."""
+    """
+    Two-phase scan:
+      Phase 1: Meshtastic-probe each port to find SNAX.
+      Phase 2: After a grace period, any remaining accessible port is HAXX.
+    """
     ports = _scan_ports()
     log.info("[discovery] Scanning %d port(s): %s", len(ports), ports)
 
     result: dict = {"snax": None, "haxx": None}
+    probed_ports: list[str] = []
 
+    # ── Phase 1: identify SNAX via Meshtastic handshake ──────────────────
     for port in ports:
-        if result["snax"] is not None and result["haxx"] is not None:
+        probed_ports.append(port)
+        log.info("[discovery] Meshtastic probe on %s …", port)
+        if _probe_meshtastic(port):
+            log.info("[discovery] SNAX (Meshtastic) → %s", port)
+            result["snax"] = port
+            break   # found it; no need to probe remaining ports
+
+    # ── Grace period: let any timed-out probe threads release their ports ─
+    if HAXX_GRACE > 0:
+        log.debug("[discovery] Grace period %.1fs …", HAXX_GRACE)
+        time.sleep(HAXX_GRACE)
+
+    # ── Phase 2: first accessible non-SNAX port is HAXX ──────────────────
+    for port in ports:
+        if port == result["snax"]:
+            continue
+        if _port_accessible(port):
+            log.info("[discovery] HAXX (ChanScan, by elimination) → %s", port)
+            result["haxx"] = port
             break
-
-        log.info("[discovery] Probing %s …", port)
-
-        # Step 1: HAXX raw-text probe (fast, no library side-effects)
-        if result["haxx"] is None:
-            if _probe_haxx(port):
-                log.info("[discovery] HAXX (ChanScan)   → %s", port)
-                result["haxx"] = port
-                continue        # definitely not Meshtastic; skip step 2
-
-        # Step 2: Meshtastic probe (only on ports that didn't answer as HAXX)
-        if result["snax"] is None and result["haxx"] != port:
-            if _probe_meshtastic(port):
-                log.info("[discovery] SNAX (Meshtastic) → %s", port)
-                result["snax"] = port
 
     log.info("[discovery] Result: %s", result)
     return result
@@ -261,12 +237,9 @@ def _check(result: dict, require_snax: bool, require_haxx: bool) -> None:
             "Check USB connection and that the node is powered on."
         )
     if require_haxx and not result.get("haxx"):
-        sig = HAXX_SIGNATURE or "<any text>"
         raise RuntimeError(
             "HAXX (ChanScan node) not found on any serial port. "
-            "Check USB connection and that the node is powered on. "
-            f"Expected banner containing {sig!r}; "
-            "set HAXX_SIGNATURE env var to override."
+            "Check USB connection and that the node is powered on."
         )
 
 
