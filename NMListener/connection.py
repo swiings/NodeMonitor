@@ -74,6 +74,12 @@ def make_interface(conn_cfg: dict):
         global _discovered_serial_port
         dev = conn_cfg.get("dev") or None   # None → auto-detect
 
+        # If a path was stored but no longer exists (e.g. port re-enumerated),
+        # treat it as unset so discovery runs fresh.
+        if dev is not None and not os.path.exists(dev):
+            log.warning("Stored serial port %s not found; falling back to auto-detect", dev)
+            dev = None
+
         if dev is None:
             # Use the cached port from a previous successful discovery so that
             # reconnect loops don't re-probe (probing races with the previous
