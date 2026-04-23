@@ -14,6 +14,7 @@ Supported connection types:
 import json
 import logging
 import os
+import sys
 from typing import Optional
 
 log = logging.getLogger(__name__)
@@ -69,23 +70,33 @@ def make_interface(conn_cfg: dict):
         dev = conn_cfg.get("dev") or None   # None → auto-detect
 
         if dev is None:
-            # Pre-scan so we can resolve ambiguity before meshtastic raises
-            # "Multiple serial ports detected" and refuses to continue.
+            # Use device_discovery to find SNAX specifically when multiple USB
+            # serial devices are plugged in (e.g. ChanScan's HAXX node is also
+            # connected).  Falls back to first-port selection if discovery fails.
             try:
-                import serial.tools.list_ports
-                ports = [p.device for p in serial.tools.list_ports.comports()]
-                if len(ports) == 1:
-                    dev = ports[0]
-                    log.info("Serial auto-detect: selected %s", dev)
-                elif len(ports) > 1:
-                    dev = ports[0]
+                from device_discovery import discover
+                _found = discover().get("snax")
+                if _found:
+                    dev = _found
+                    log.info("Serial auto-detect via discovery: SNAX at %s", dev)
+                else:
                     log.warning(
-                        "Multiple serial ports detected %s — using %s. "
-                        "Pin a specific device in the session config to override.",
-                        ports, dev,
+                        "Device discovery did not find SNAX; "
+                        "falling back to first available serial port"
                     )
-            except Exception:
-                pass  # fall through; SerialInterface will handle 0-port case
+            except Exception as _exc:
+                log.warning("Device discovery unavailable (%s); using fallback", _exc)
+
+            if dev is None:
+                # Fallback: pick the first port (original behaviour)
+                try:
+                    import serial.tools.list_ports
+                    ports = [p.device for p in serial.tools.list_ports.comports()]
+                    if ports:
+                        dev = ports[0]
+                        log.info("Serial fallback: selected %s", dev)
+                except Exception:
+                    pass  # SerialInterface will raise a clear error
 
         return SerialInterface(dev)
 
