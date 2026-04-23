@@ -6,17 +6,19 @@ Shared module for ChanScan and NodeMonitor.  Scans /dev/ttyACM* and
 /dev/ttyUSB* to identify:
 
   SNAX  — Heltec ESP32 V4 running Meshtastic firmware.
-           Identified by a successful Meshtastic library handshake.
+           Identified by running `meshtastic --serial <port> --info`
+           and checking for a valid Owner line in the output.
 
   HAXX  — Heltec ESP32 V4 running custom RadioLib/ChanScan firmware.
            Identified by elimination: accessible port that is not SNAX.
 
 Algorithm (two phases):
-  Phase 1 — Meshtastic probe each port (up to MESHTASTIC_TIMEOUT_SECS each).
-             First port that passes → SNAX.
-  Phase 2 — After a brief grace period (HAXX_GRACE_SECS) to let any
-             Meshtastic probe threads release ports, any remaining accessible
-             port → HAXX.
+  Phase 1 — Run `meshtastic --serial <port> --info` (subprocess, hard timeout)
+             on each port until one succeeds → SNAX.
+  Phase 2 — Any remaining accessible port → HAXX.
+
+Using subprocess for the Meshtastic probe avoids orphaned Python threads
+that can hold a serial port open after a timeout.
 
 A file-lock + /tmp cache serialises concurrent calls so that ChanScan and
 NodeMonitor starting simultaneously don't fight over ports.
@@ -28,9 +30,9 @@ Usage:
     # Values are None if that device was not found.
 
 Environment overrides:
-    MESHTASTIC_TIMEOUT_SECS  seconds to wait for Meshtastic handshake (default: 5)
-    HAXX_GRACE_SECS          seconds to wait after probes before checking HAXX
-                             port accessibility (default: 1)
+    MESHTASTIC_TIMEOUT_SECS  seconds to wait for meshtastic --info (default: 8)
+    HAXX_GRACE_SECS          pause after probes before checking HAXX
+                             port accessibility (default: 0.5)
 """
 
 import fcntl
@@ -38,7 +40,8 @@ import glob
 import json
 import logging
 import os
-import threading
+import shutil
+import subprocess
 import time
 
 import serial
@@ -47,61 +50,71 @@ log = logging.getLogger(__name__)
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
 BAUD_RATE          = 115200
-MESHTASTIC_TIMEOUT = float(os.environ.get("MESHTASTIC_TIMEOUT_SECS", "5"))
-HAXX_GRACE         = float(os.environ.get("HAXX_GRACE_SECS", "1"))
+MESHTASTIC_TIMEOUT = float(os.environ.get("MESHTASTIC_TIMEOUT_SECS", "8"))
+HAXX_GRACE         = float(os.environ.get("HAXX_GRACE_SECS", "0.5"))
 
 # ── Inter-process result cache ────────────────────────────────────────────────
 _LOCK_FILE   = "/tmp/device_discovery.lock"
 _RESULT_FILE = "/tmp/device_discovery_result.json"
-_RESULT_TTL  = 30   # seconds — how long to trust a cached result
+_RESULT_TTL  = 300  # seconds — 5 min; long enough for both apps to share
+
+# ── Well-known meshtastic CLI locations (checked in order) ───────────────────
+# The CLI ships with the meshtastic Python package.  NodeMonitor installs it
+# in its own venv; ChanScan doesn't, so we also look at common Pi paths.
+_MESHTASTIC_CANDIDATES = [
+    "/home/haxx/.venv-nodemonitor/bin/meshtastic",
+    "/home/pi/.venv/bin/meshtastic",
+]
 
 
 # ── Port enumeration ──────────────────────────────────────────────────────────
 
 def _scan_ports() -> list[str]:
+    # ttyAMA* are Pi internal UARTs (Bluetooth etc.) — exclude them.
     return sorted(glob.glob("/dev/ttyACM*") + glob.glob("/dev/ttyUSB*"))
+
+
+def _find_meshtastic_cli() -> str | None:
+    """Return path to the meshtastic CLI, or None if not found."""
+    cmd = shutil.which("meshtastic")
+    if cmd:
+        return cmd
+    for path in _MESHTASTIC_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return None
 
 
 # ── Meshtastic probe ──────────────────────────────────────────────────────────
 
-def _probe_meshtastic(port: str) -> bool:
+def _probe_meshtastic(port: str, cli: str) -> bool:
     """
-    Attempt a Meshtastic SerialInterface connection on port in a daemon thread.
-    Returns True if the handshake completes within MESHTASTIC_TIMEOUT seconds.
+    Run `meshtastic --serial <port> --info` as a subprocess with a hard
+    timeout.  Returns True if the output contains a valid Owner line.
 
-    The thread is always daemonised so it can never block process exit, but
-    after a timeout we sleep HAXX_GRACE_SECS before touching the port again
-    so the thread has time to clean up and release it.
+    Because this is a subprocess, the port is fully released the instant
+    the process exits or is killed — no orphaned threads, no lingering holds.
     """
-    result    = [False]
-    iface_ref = [None]
-
-    def _attempt():
-        mesh_log = logging.getLogger("meshtastic")
-        orig_level = mesh_log.level
-        mesh_log.setLevel(logging.CRITICAL)
-        try:
-            from meshtastic.serial_interface import SerialInterface
-            iface = SerialInterface(port)
-            iface_ref[0] = iface
-            result[0] = True
-        except Exception as exc:
-            log.debug("Meshtastic probe failed on %s: %s", port, exc)
-        finally:
-            mesh_log.setLevel(orig_level)
-            iface = iface_ref[0]
-            if iface is not None:
-                try:
-                    iface.close()
-                except Exception:
-                    pass
-
-    t = threading.Thread(target=_attempt, daemon=True)
-    t.start()
-    t.join(timeout=MESHTASTIC_TIMEOUT)
-    if t.is_alive():
+    try:
+        result = subprocess.run(
+            [cli, "--serial", port, "--info"],
+            capture_output=True,
+            text=True,
+            timeout=MESHTASTIC_TIMEOUT,
+        )
+        output = result.stdout + result.stderr
+        log.debug(
+            "Meshtastic probe [%s]: rc=%d  out=%r",
+            port, result.returncode, output[:300],
+        )
+        # A successfully connected Meshtastic node always shows an Owner line
+        return "Owner:" in output
+    except subprocess.TimeoutExpired:
         log.debug("Meshtastic probe timed out on %s", port)
-    return result[0]
+        return False
+    except Exception as exc:
+        log.debug("Meshtastic probe error on %s: %s", port, exc)
+        return False
 
 
 # ── HAXX accessibility check ──────────────────────────────────────────────────
@@ -121,30 +134,37 @@ def _port_accessible(port: str) -> bool:
 def _run_discovery() -> dict:
     """
     Two-phase scan:
-      Phase 1: Meshtastic-probe each port to find SNAX.
-      Phase 2: After a grace period, any remaining accessible port is HAXX.
+      Phase 1: meshtastic --info each port to identify SNAX.
+      Phase 2: first remaining accessible port is HAXX.
     """
     ports = _scan_ports()
     log.info("[discovery] Scanning %d port(s): %s", len(ports), ports)
 
     result: dict = {"snax": None, "haxx": None}
-    probed_ports: list[str] = []
 
-    # ── Phase 1: identify SNAX via Meshtastic handshake ──────────────────
-    for port in ports:
-        probed_ports.append(port)
-        log.info("[discovery] Meshtastic probe on %s …", port)
-        if _probe_meshtastic(port):
-            log.info("[discovery] SNAX (Meshtastic) → %s", port)
-            result["snax"] = port
-            break   # found it; no need to probe remaining ports
+    cli = _find_meshtastic_cli()
+    if cli:
+        log.info("[discovery] Using meshtastic CLI: %s", cli)
+    else:
+        log.warning(
+            "[discovery] meshtastic CLI not found — SNAX identification "
+            "will be skipped; HAXX identified as first accessible port"
+        )
 
-    # ── Grace period: let any timed-out probe threads release their ports ─
+    # ── Phase 1: identify SNAX ────────────────────────────────────────────
+    if cli:
+        for port in ports:
+            log.info("[discovery] Meshtastic probe on %s …", port)
+            if _probe_meshtastic(port, cli):
+                log.info("[discovery] SNAX (Meshtastic) → %s", port)
+                result["snax"] = port
+                break
+
+    # Brief pause so any OS-level port state settles before we try to open
     if HAXX_GRACE > 0:
-        log.debug("[discovery] Grace period %.1fs …", HAXX_GRACE)
         time.sleep(HAXX_GRACE)
 
-    # ── Phase 2: first accessible non-SNAX port is HAXX ──────────────────
+    # ── Phase 2: HAXX = first accessible non-SNAX port ───────────────────
     for port in ports:
         if port == result["snax"]:
             continue

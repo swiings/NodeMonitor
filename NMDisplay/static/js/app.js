@@ -417,7 +417,7 @@ function initSettingsModal() {
   const errEl    = document.getElementById("nm-modal-errors");
 
   openBtn.addEventListener("click", async () => {
-    populateModal(_cfg);
+    try { populateModal(_cfg); } catch (_) {}
     await _loadSessions();
     await _pollListenerStatus();
     overlay.classList.remove("hidden");

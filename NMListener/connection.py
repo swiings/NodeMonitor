@@ -33,6 +33,10 @@ ACTIVE_FILE = os.path.join(_nm_data_dir, "active.json")
 
 _FALLBACK_CONNECTION = {"type": "tcp", "host": "192.168.1.25", "port": 4403}
 
+# Cache the discovered serial port for the lifetime of this process so that
+# reconnect loops don't re-probe (which races with the port still closing).
+_discovered_serial_port: str | None = None
+
 
 def load_active() -> dict:
     """Load NMData/active.json. Returns empty dict if not present."""
@@ -67,33 +71,45 @@ def make_interface(conn_cfg: dict):
 
     elif conn_type == "serial":
         from meshtastic.serial_interface import SerialInterface
+        global _discovered_serial_port
         dev = conn_cfg.get("dev") or None   # None → auto-detect
 
         if dev is None:
-            # Use device_discovery to find SNAX specifically when multiple USB
-            # serial devices are plugged in (e.g. ChanScan's HAXX node is also
-            # connected).  Falls back to first-port selection if discovery fails.
-            try:
-                from device_discovery import discover
-                _found = discover().get("snax")
-                if _found:
-                    dev = _found
-                    log.info("Serial auto-detect via discovery: SNAX at %s", dev)
-                else:
-                    log.warning(
-                        "Device discovery did not find SNAX; "
-                        "falling back to first available serial port"
-                    )
-            except Exception as _exc:
-                log.warning("Device discovery unavailable (%s); using fallback", _exc)
+            # Use the cached port from a previous successful discovery so that
+            # reconnect loops don't re-probe (probing races with the previous
+            # connection still closing and can pick the wrong port).
+            if _discovered_serial_port is not None:
+                dev = _discovered_serial_port
+                log.info("Serial: reusing cached SNAX port %s", dev)
+            else:
+                # First connect: run device discovery to find SNAX specifically
+                # when multiple USB serial devices are plugged in.
+                try:
+                    from device_discovery import discover
+                    _found = discover().get("snax")
+                    if _found:
+                        dev = _found
+                        _discovered_serial_port = dev
+                        log.info("Serial auto-detect via discovery: SNAX at %s", dev)
+                    else:
+                        log.warning(
+                            "Device discovery did not find SNAX; "
+                            "falling back to first available serial port"
+                        )
+                except Exception as _exc:
+                    log.warning("Device discovery unavailable (%s); using fallback", _exc)
 
             if dev is None:
-                # Fallback: pick the first port (original behaviour)
+                # Fallback: first ttyACM/ttyUSB port (excludes Pi internal UARTs)
                 try:
                     import serial.tools.list_ports
-                    ports = [p.device for p in serial.tools.list_ports.comports()]
+                    ports = [
+                        p.device for p in serial.tools.list_ports.comports()
+                        if p.device.startswith(("/dev/ttyACM", "/dev/ttyUSB"))
+                    ]
                     if ports:
                         dev = ports[0]
+                        _discovered_serial_port = dev
                         log.info("Serial fallback: selected %s", dev)
                 except Exception:
                     pass  # SerialInterface will raise a clear error
