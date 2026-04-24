@@ -70,7 +70,7 @@ const NMMap = (() => {
         spiderfyOnMaxZoom: true,
      		showCoverageOnHover: true,
     		zoomToBoundsOnClick: true,
-        disableClusteringAtZoom: 15
+        disableClusteringAtZoom: 10
       });
       _map.addLayer(_cluster);
     } else {
