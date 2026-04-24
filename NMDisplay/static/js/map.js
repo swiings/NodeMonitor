@@ -65,7 +65,7 @@ const NMMap = (() => {
 
     if (typeof L.markerClusterGroup === "function") {
       _cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
+        showCoverageOnHover: true,
         maxClusterRadius: 40,
         spiderfyOnMaxZoom: true,
       });
@@ -238,7 +238,7 @@ const NMMap = (() => {
     if (_myNodeId == null) return;
     const m = _markers.get(_myNodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 13);
+    _map.setView(m.getLatLng(), 16);
     _showLabel(_myNodeId);
   }
 
