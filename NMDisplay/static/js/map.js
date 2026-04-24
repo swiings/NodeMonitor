@@ -66,11 +66,11 @@ const NMMap = (() => {
     if (typeof L.markerClusterGroup === "function") {
       _cluster = L.markerClusterGroup({
         showCoverageOnHover: true,
-        maxClusterRadius: 40,
+        maxClusterRadius: 80,
         spiderfyOnMaxZoom: true,
      		showCoverageOnHover: true,
     		zoomToBoundsOnClick: true,
-        disableClusteringAtZoom: 10
+        disableClusteringAtZoom: 14
       });
       _map.addLayer(_cluster);
     } else {
