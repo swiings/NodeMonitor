@@ -108,7 +108,7 @@ def _effective_my_node_id():
         return runtime["my_node_id"]
     return cfg_mod.load().get("my_node_id")
 
-TILE_CACHE_DIR = os.path.join(bundle_paths.display_dir(), "tile_cache")
+TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
 
 TILE_PROVIDERS = {
     "osm":  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
