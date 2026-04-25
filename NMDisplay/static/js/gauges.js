@@ -72,9 +72,9 @@ const NMGauges = (() => {
     _set("g-router-count", data.router_count ?? "—");
     _set("g-client-count", data.client_count ?? "—");
 
-    if (data.hop_dist) {
-      _drawHopPie(data.hop_dist);
-    }
+    // if (data.hop_dist) {
+    //   _drawHopPie(data.hop_dist);
+    // }
     if (data.hop_dist_raw) {
       _updateHopDistRaw(data.hop_dist_raw);
     }
@@ -90,7 +90,7 @@ const NMGauges = (() => {
     "0":  "#2e3a42",   // dark blue-slate — fewest hops, most traversed
   };
 
-  function _drawHopPie(dist) {
+ /*  function _drawHopPie(dist) {
     const canvas = document.getElementById("gauge-hops-canvas");
     if (!canvas) return;
     const gauge  = document.getElementById("gauge-hops");
@@ -144,7 +144,7 @@ const NMGauges = (() => {
       ctx.fillStyle = "#ffffff";
       ctx.fillText(k, lx, ly);
     }
-  }
+  } */
 
   // Dynamic hop-left list from raw per-value data (replaces static bucketed table)
   function _updateHopDistRaw(distRaw) {
