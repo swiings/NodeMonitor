@@ -341,7 +341,7 @@ body {
 .nm-hop-table tr { border-bottom: 1px solid var(--divider); }
 .nm-hop-table tr:last-child { border-bottom: none; }
 .nm-hop-label {
-  width: 45px;    /* was 24px */
+  min-width: 80px;
   color: var(--text);
   padding: 3px 6px 3px 8px;
   text-align: right;
