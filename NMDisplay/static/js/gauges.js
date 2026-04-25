@@ -87,7 +87,7 @@ const NMGauges = (() => {
     "3":  "#7a7a3a",   // olive
     "2":  "#8a6020",   // dark bronze
     "1":  "#7a3818",   // deep rust
-    "0":  "#2e3a42",   // dark blue-slate — fewest hops, most traversed
+    "0":  "#c82613",   // dark blue-slate — fewest hops, most traversed
   };
 
  /*  function _drawHopPie(dist) {
@@ -242,7 +242,7 @@ const NMGauges = (() => {
       const color = _pktColor(r.portnum);
       const label = _pktLabel(r.portnum);
       return `<tr>
-        <td class="nm-hop-label" style="color:${color}">${label}</td>
+        <td class="nm-hop-label" style="width:45px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
