@@ -183,8 +183,8 @@ const NMGauges = (() => {
     const nullRow = nullCount ? (() => {
       const pct = Math.round((nullCount / max) * 100);
       return `<tr title="hop_limit not reported — includes packets where hop_limit=0 was omitted by protobuf">
-        <td class="nm-hop-label" style="color:var(--text-dim)">?</td>
-        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:var(--text-dim);opacity:0.5"></div></td>
+        <td class="nm-hop-label" style="color:var(--text-dim)">0</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:var(--text-dim);opacity:0.7"></div></td>
         <td class="nm-hop-count" style="color:var(--text-dim)">${nullCount}</td>
       </tr>`;
     })() : "";
