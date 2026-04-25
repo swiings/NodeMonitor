@@ -147,7 +147,7 @@ body {
 #gauge-ppm   { flex: 0.75; }
 
 /* Roles gauge */
-#gauge-roles { flex: 1; }
+#gauge-roles { flex: 1.5; }
 .nm-gauge-roles {
   text-align: center;
 }
