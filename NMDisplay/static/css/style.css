@@ -164,12 +164,6 @@ body {
   font-size: clamp(26px, 2.4vw, 37px) !important;
 }
 
-/* Hops pie gauge
-#gauge-hops { flex: 1; }
-#gauge-hops canvas {
-  display: block;
-} */
-
 /* ELAPSED uses the same smaller font as the triple NODES gauge */
 #g-elapsed {
   font-size: clamp(24px, 2.4vw, 37px);
@@ -195,7 +189,7 @@ body {
 
 .nm-gauge-num {
   font-family: Impact, "Arial Narrow", Arial, sans-serif;
-  font-size: clamp(38px, 4.3vw, 56px);
+  font-size: clamp(38px, 4.3vw, 58px);
   line-height: 1;
   color: var(--text);
   white-space: nowrap;
@@ -243,7 +237,7 @@ body {
 
 /* Distance sub-label on Closest/Farthest gauges — white, same size as caption */
 .nm-gauge-dist {
-  font-size: clamp(12px, 0.98vw, 17px);
+  font-size: clamp(13px, 0.98vw, 18px);
   font-weight: bold;
   letter-spacing: 0.06em;
   color: var(--text);
