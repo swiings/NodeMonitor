@@ -279,7 +279,7 @@ body {
   color: var(--accent);
   letter-spacing: 0.04em;
   white-space: nowrap;
-  min-width: 36px;
+  min-width: 40px;
   flex-shrink: 0;
 }
 
