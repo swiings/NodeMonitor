@@ -157,16 +157,16 @@ body {
   white-space: nowrap;
 }
 .nm-role-emoji {
-  font-size: clamp(30px, 1.4vw, 20px);
+  font-size: clamp(16px, 1.4vw, 20px);
   line-height: 1;
 }
 .nm-role-num {
-  font-size: clamp(30px, 2.4vw, 37px) !important;
+  font-size: clamp(26px, 2.4vw, 37px) !important;
 }
 
 /* ELAPSED uses the same smaller font as the triple NODES gauge */
 #g-elapsed {
-  font-size: clamp(27px, 2.4vw, 37px);
+  font-size: clamp(24px, 2.4vw, 37px);
 }
 
 /* CLOSEST / FARTHEST names can be long (8-char hex IDs) — fixed size, no padding */
@@ -177,7 +177,7 @@ body {
 }
 #g-closest-name,
 #g-farthest-name {
-  font-size: clamp(27px, 1.5vw, 37px);
+  font-size: clamp(20px, 1.5vw, 37px);
   letter-spacing: 0;
 }
 
