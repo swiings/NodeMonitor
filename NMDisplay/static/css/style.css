@@ -173,6 +173,7 @@ body {
 #gauge-closest,
 #gauge-farthest {
   padding: 2px 2px;
+  flex: 1;
 }
 #g-closest-name,
 #g-farthest-name {
