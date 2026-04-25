@@ -157,7 +157,7 @@ body {
   white-space: nowrap;
 }
 .nm-role-emoji {
-  font-size: clamp(16px, 1.4vw, 20px);
+  font-size: clamp(26px, 2.4vw, 37px);
   line-height: 1;
 }
 .nm-role-num {
