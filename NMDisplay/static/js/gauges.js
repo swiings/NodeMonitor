@@ -242,7 +242,7 @@ const NMGauges = (() => {
       const color = _pktColor(r.portnum);
       const label = _pktLabel(r.portnum);
       return `<tr>
-        <td class="nm-hop-label" style="width:145px;color:${color}">${label}</td>
+        <td class="nm-hop-label" style="color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
