@@ -152,6 +152,7 @@ body {
   text-align: center;
 }
 .nm-gauge-role-row {
+  display: inline !important;
   line-height: 1;
   white-space: nowrap;
 }
