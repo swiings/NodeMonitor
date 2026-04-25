@@ -182,7 +182,7 @@ body {
 }
 #g-closest-name,
 #g-farthest-name {
-  font-size: 24px;
+  font-size: clamp(24px, 2.4vw, 37px);
   letter-spacing: 0;
 }
 
