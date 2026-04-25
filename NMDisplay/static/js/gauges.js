@@ -183,7 +183,7 @@ const NMGauges = (() => {
     const nullRow = nullCount ? (() => {
       const pct = Math.round((nullCount / max) * 100);
       return `<tr title="hop_limit not reported — includes packets where hop_limit=0 was omitted by protobuf">
-        <td class="nm-hop-label" style="min-width:140px;color:var(--text-dim)">0</td>
+        <td class="nm-hop-label" style="color:var(--text-dim)">0</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:var(--text-dim);"></div></td>
         <td class="nm-hop-count" style="color:var(--text-dim)">${nullCount}</td>
       </tr>`;
@@ -242,7 +242,7 @@ const NMGauges = (() => {
       const color = _pktColor(r.portnum);
       const label = _pktLabel(r.portnum);
       return `<tr>
-        <td class="nm-hop-label" style="color:${color}">${label}</td>
+        <td class="nm-hop-label" style="min-width:140px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
