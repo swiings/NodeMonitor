@@ -87,7 +87,7 @@ const NMGauges = (() => {
     "3":  "#7a7a3a",   // olive
     "2":  "#8a6020",   // dark bronze
     "1":  "#7a3818",   // deep rust
-    "0":  "#c82613",   // dark blue-slate — fewest hops, most traversed
+    "0":  "#ab2e20",   // dark red-slate — fewest hops, most traversed
   };
 
  /*  function _drawHopPie(dist) {
@@ -184,7 +184,7 @@ const NMGauges = (() => {
       const pct = Math.round((nullCount / max) * 100);
       return `<tr title="hop_limit not reported — includes packets where hop_limit=0 was omitted by protobuf">
         <td class="nm-hop-label" style="color:var(--text-dim)">0</td>
-        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:$(_HOP_COLORS["0"]);"></div></td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${_HOP_COLORS["0"]};"></div></td>
         <td class="nm-hop-count" style="color:var(--text-dim)">${nullCount}</td>
       </tr>`;
     })() : "";
