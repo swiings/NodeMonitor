@@ -68,7 +68,7 @@ const NMMap = (() => {
         showCoverageOnHover: false,
         maxClusterRadius: 5,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 10
+        disableClusteringAtZoom: 11
       });
       _map.addLayer(_cluster);
     } else {
@@ -239,7 +239,7 @@ const NMMap = (() => {
     if (_myNodeId == null) return;
     const m = _markers.get(_myNodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 10);
+    _map.setView(m.getLatLng(), 12);
     _showLabel(_myNodeId);
   }
 
