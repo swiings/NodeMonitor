@@ -68,7 +68,7 @@ const NMMap = (() => {
         showCoverageOnHover: false,
         maxClusterRadius: 5,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 11
+        disableClusteringAtZoom: 9
       });
       _map.addLayer(_cluster);
     } else {
