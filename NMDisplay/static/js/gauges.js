@@ -87,7 +87,7 @@ const NMGauges = (() => {
     "3":  "#7a7a3a",   // olive
     "2":  "#8a6020",   // dark bronze
     "1":  "#7a3818",   // deep rust
-    "0":  "#ab2e20",   // dark red-slate — fewest hops, most traversed
+    "0":  "#6f1208",   // dark red-slate — fewest hops, most traversed
   };
 
  /*  function _drawHopPie(dist) {
