@@ -65,12 +65,10 @@ const NMMap = (() => {
 
     if (typeof L.markerClusterGroup === "function") {
       _cluster = L.markerClusterGroup({
-        showCoverageOnHover: true,
+        showCoverageOnHover: false,
         maxClusterRadius: 5,
         spiderfyOnMaxZoom: true,
-     		showCoverageOnHover: true,
-    		zoomToBoundsOnClick: true
-        // disableClusteringAtZoom: 14
+        disableClusteringAtZoom: 10
       });
       _map.addLayer(_cluster);
     } else {
@@ -241,7 +239,7 @@ const NMMap = (() => {
     if (_myNodeId == null) return;
     const m = _markers.get(_myNodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 16);
+    _map.setView(m.getLatLng(), 10);
     _showLabel(_myNodeId);
   }
 
