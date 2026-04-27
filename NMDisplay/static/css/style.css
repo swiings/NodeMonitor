@@ -424,16 +424,17 @@ body {
   overflow: hidden;
 }
 
-/* Brand image panel — width driven by image aspect ratio at panel height */
+/* Brand image panel — snug wrap around image; explicit height lets % resolve on the child */
 #nm-brand-panel {
   display: flex;
   align-items: center;
-  justify-content: center;
   background: var(--bg2);
   border-left: 1px solid var(--border);
-  padding: 6px;
+  padding: 3px;
   flex-shrink: 0;
-  width: auto;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 #nm-timeline-label {
@@ -500,7 +501,6 @@ body {
   display: block;
   height: 100%;
   width: auto;
-  object-fit: contain;
 }
 
 /* ── My node button ──────────────────────────────────────────── */
