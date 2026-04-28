@@ -194,7 +194,7 @@ function _applyListenerStatus(data) {
     // Show node/channel/frequency if available
     if (data.my_node_short && data.channel_num != null) {
       const freq = data.frequency_mhz != null ? ` (${data.frequency_mhz}MHz)` : "";
-      label.textContent = `Listening to ${data.my_node_short} on Ch ${data.channel_num}${freq}`;
+      label.textContent = `Listening to ${data.my_node_short} on Slot ${data.channel_num}${freq}`;
     } else {
       label.textContent = "LISTENER RUNNING";
     }
