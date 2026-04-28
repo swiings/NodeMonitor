@@ -238,7 +238,7 @@ const NMTimeline = (() => {
         spanGaps: false,
         tension: 0.3,
         fill: false,
-        order: -1,  // draw on top of bars
+        order: 1,   // draw behind bars
       });
     }
 
