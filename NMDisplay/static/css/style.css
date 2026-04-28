@@ -193,7 +193,7 @@ body {
 
 .nm-gauge-num {
   font-family: Impact, "Arial Narrow", Arial, sans-serif;
-  font-size: clamp(35px, 5.0vw, 58px);
+  font-size: clamp(30px, 3.0vw, 50px);
   line-height: 1;
   color: var(--text);
   white-space: nowrap;
