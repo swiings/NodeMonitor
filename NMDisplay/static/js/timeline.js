@@ -165,7 +165,7 @@ const NMTimeline = (() => {
 
     // yChan max — round visible max up to the nearest 5%, floor at 5%
     const chanMax = Math.max(0, ...buckets.map(b => b.channel_util ?? 0));
-    _chart.options.scales.yChan.max = Math.max(5, Math.ceil(chanMax / 5) * 5);
+    _chart.options.scales.yChan.max = Math.max(5, Math.ceil(chanMax / 5) * 5) * 2;
 
     // Thin out x-axis ticks: ~1 tick per 30-minute window
     const windowMins = time_scale_minutes || 360;
@@ -238,7 +238,7 @@ const NMTimeline = (() => {
         spanGaps: false,
         tension: 0.3,
         fill: false,
-        order: 1,   // draw behind bars
+        order: -1,  // draw on top of bars
       });
     }
 
