@@ -120,6 +120,22 @@ const NMMap = (() => {
     });
     new FullscreenControl().addTo(_map);
 
+    // "Fit all markers" button
+    const FitAllControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "nm-my-node-btn");
+        btn.innerHTML = "&#8865;";
+        btn.title = "Fit all markers";
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          _fitAllNodes();
+        });
+        return btn;
+      },
+    });
+    new FitAllControl().addTo(_map);
+
     document.addEventListener("fullscreenchange", () => {
       // Fire twice: once to snap the size immediately, again after the
       // browser finishes its fullscreen transition animation (~300ms).
@@ -448,6 +464,17 @@ const NMMap = (() => {
   function _autoFitBounds(gpsNodes) {
     if (!_map || gpsNodes.length === 0) return;
     const bounds = L.latLngBounds(gpsNodes.map(n => [n.lat, n.lon]));
+    _map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }
+
+  function _fitAllNodes() {
+    const visible = _allGpsNodes.filter(n => {
+      if (_maxHopsFilter === Infinity) return true;
+      const traversed = _dataMaxHopLimit - (n.hop_limit ?? 0);
+      return traversed <= _maxHopsFilter;
+    });
+    if (visible.length === 0) return;
+    const bounds = L.latLngBounds(visible.map(n => [n.lat, n.lon]));
     _map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
   }
 
