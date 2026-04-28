@@ -163,12 +163,12 @@ body {
 }
 .nm-role-num {
   /* font-size: clamp(26px, 2.4vw, 37px) !important; */
-  font-size: clamp(28px, 2.0vw, 46.5px);
+  font-size: clamp(28px, 1.75vw, 46.5px);
 }
 
 /* ELAPSED uses the same smaller font as the triple NODES gauge */
 #g-elapsed {
-  font-size: clamp(26px, 2.4vw, 40px);
+  font-size: clamp(28px, 2.4vw, 42px);
 }
 
 /* CLOSEST / FARTHEST names can be long (8-char hex IDs) — fixed size, no padding */
