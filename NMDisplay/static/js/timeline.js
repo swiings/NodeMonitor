@@ -9,9 +9,8 @@
 "use strict";
 
 const NMTimeline = (() => {
-  let _chart    = null;
-  let _cfg      = {};
-  let _yHighWater = 0;  // running max; only grows, never shrinks — keeps scale stable
+  let _chart = null;
+  let _cfg   = {};
 
   const MAX_SLIDER_MINUTES = 480;  // practical upper cap
 
@@ -154,13 +153,12 @@ const NMTimeline = (() => {
     const datasets = _buildDatasets(buckets, tlCfg);
 
     // Y-axis max — stable: never let the scale shrink between refreshes.
-    // If settings specify a fixed ceiling, respect that; otherwise ratchet up only.
+    // Y-axis max — track current visible data exactly; no rounding, no headroom.
     if (tlCfg.y_axis_mode === "fixed") {
       _chart.options.scales.y.max = tlCfg.y_axis_max || 30;
     } else {
       const dataMax = Math.max(0, ...buckets.map(b => b.total || 0));
-      _yHighWater = Math.max(_yHighWater, dataMax);
-      _chart.options.scales.y.max = _yHighWater || undefined;
+      _chart.options.scales.y.max = dataMax || undefined;
     }
 
     // yChan max — round visible max up to the nearest 5%, floor at 5%
