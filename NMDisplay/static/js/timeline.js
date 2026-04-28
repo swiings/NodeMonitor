@@ -174,7 +174,7 @@ const NMTimeline = (() => {
 
     // Align UTILIZATION label above the right y-axis tick text.
     // After chart.update() the chartArea geometry is final — use it directly.
-    _alignUtilLabel();
+    // _alignUtilLabel();
   }
 
   // ── Labels ────────────────────────────────────────────────────
