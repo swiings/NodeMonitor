@@ -236,11 +236,9 @@ def _compute_frequency(lora) -> float | None:
         return round(mu.compute_freq(lora.channel_num, lora.modem_preset), 3)
     except Exception:
         pass
-    # Fallback: US 902–928 MHz, default LongFast spacing 0.425 MHz, base 906.875
+    # Fallback: Meshtastic US915 formula from firmware RadioLibInterface.cpp
     try:
-        base_mhz = 906.875
-        spacing  = 0.425
-        return round(base_mhz + int(lora.channel_num) * spacing, 3)
+        return round(902.0 + int(lora.channel_num) * 0.25 + 0.125, 3)
     except Exception:
         return None
 
