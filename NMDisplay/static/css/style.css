@@ -230,7 +230,7 @@ body {
 }
 
 .nm-gauge-mini .nm-gauge-num {
-  font-size: clamp(24px, 2.4vw, 37px);
+  font-size: clamp(33px, 3.4vw, 48px);
 }
 
 .nm-gauge-sub {
