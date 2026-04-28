@@ -168,7 +168,8 @@ body {
 
 /* ELAPSED uses the same smaller font as the triple NODES gauge */
 #g-elapsed {
-  font-size: clamp(28px, 2.4vw, 42px);
+  /* font-size: clamp(28px, 2.4vw, 42px); */
+  font-size: clamp(32px, 3.75vw, 52px);
 }
 
 /* CLOSEST / FARTHEST names can be long (8-char hex IDs) — fixed size, no padding */
