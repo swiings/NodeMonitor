@@ -103,13 +103,13 @@ const NMTelemetry = (() => {
     row.addEventListener("click", () => {
       if (_wideMode) {
         // In wide mode the combined name is already visible — just highlight
-        NMMap.highlightNode(node.node_id);
+        NMMap.flyToNode(node.node_id);
         return;
       }
       if (nameEl.dataset.showing === "click") return;  // already in click-toggled state
       nameEl.dataset.showing = "click";
       nameEl.textContent = longName;
-      NMMap.highlightNode(node.node_id);
+      NMMap.flyToNode(node.node_id);
       setTimeout(() => {
         if (nameEl.dataset.showing === "click") {
           nameEl.dataset.showing = "auto";

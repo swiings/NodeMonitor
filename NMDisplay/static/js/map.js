@@ -395,11 +395,8 @@ const NMMap = (() => {
   function flyToNode(nodeId) {
     const m = _markers.get(nodeId);
     if (!m) return;
-    // zoomToShowLayer expands any cluster containing the marker,
-    // then calls the callback once the marker is visible.
-    _cluster.zoomToShowLayer(m, () => {
-      _showLabel(nodeId);
-    });
+    _map.setView(m.getLatLng(), 12);
+    _showLabel(nodeId);
   }
 
   // ── Colors ────────────────────────────────────────────────────
