@@ -83,7 +83,6 @@ const NMTimeline = (() => {
             position: "right",
             beginAtZero: true,
             min: 0,
-            max: 100,
             ticks: {
               font: { size: 9, family: "Courier New, monospace" },
               color: "#d29922",
@@ -163,6 +162,10 @@ const NMTimeline = (() => {
       _yHighWater = Math.max(_yHighWater, dataMax);
       _chart.options.scales.y.max = _yHighWater || undefined;
     }
+
+    // yChan max — round visible max up to the nearest 5%, floor at 5%
+    const chanMax = Math.max(0, ...buckets.map(b => b.channel_util ?? 0));
+    _chart.options.scales.yChan.max = Math.max(5, Math.ceil(chanMax / 5) * 5);
 
     // Thin out x-axis ticks: ~1 tick per 30-minute window
     const windowMins = time_scale_minutes || 360;
