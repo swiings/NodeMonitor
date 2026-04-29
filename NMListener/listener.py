@@ -236,9 +236,10 @@ def _compute_frequency(lora) -> float | None:
         return round(mu.compute_freq(lora.channel_num, lora.modem_preset), 3)
     except Exception:
         pass
-    # Fallback: Meshtastic US915 formula from firmware RadioLibInterface.cpp
+    # Fallback: Meshtastic US915 formula. channel_num is 1-indexed (matches
+    # Heltec display); subtract 1 to get the 0-based slot offset.
     try:
-        return round(902.0 + int(lora.channel_num) * 0.25 + 0.125, 3)
+        return round(902.0 + (int(lora.channel_num) - 1) * 0.25 + 0.125, 3)
     except Exception:
         return None
 
