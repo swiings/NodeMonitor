@@ -37,6 +37,12 @@ const NMMap = (() => {
   let _dataMaxHopLimit = 0;     // highest hop_limit seen in current node set
   let _filterIndicator = null;  // Leaflet control showing active hop filter
 
+  // Convex hull state
+  let _hullLayer   = null;
+  let _hullVisible = false;
+  let _hullAreaEl  = null;
+  let _hullBtn     = null;
+
   // ── Init ──────────────────────────────────────────────────────
 
   function init(containerId) {
@@ -143,6 +149,34 @@ const NMMap = (() => {
       setTimeout(() => _map.invalidateSize(), 350);
     });
 
+    // Convex hull toggle button
+    const HullControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "nm-my-node-btn");
+        btn.innerHTML = "⬡";
+        btn.title = "Toggle convex hull";
+        _hullBtn = btn;
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          _toggleHull();
+        });
+        return btn;
+      },
+    });
+    new HullControl().addTo(_map);
+
+    // Hull area display control
+    const HullAreaControl = L.Control.extend({
+      options: { position: "bottomleft" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "nm-hull-area hidden");
+        _hullAreaEl = div;
+        return div;
+      },
+    });
+    new HullAreaControl().addTo(_map);
+
     // Hop filter active indicator
     const FilterIndicator = L.Control.extend({
       options: { position: "bottomleft" },
@@ -247,6 +281,8 @@ const NMMap = (() => {
         el.textContent = _maxHopsFilter === 0 ? "⬦ Direct only" : `⬦ ≤ ${_maxHopsFilter} hop${_maxHopsFilter === 1 ? "" : "s"}`;
       }
     }
+
+    _updateHull();
   }
 
   // ── Node update ───────────────────────────────────────────────
@@ -480,6 +516,106 @@ const NMMap = (() => {
 
   function invalidate() {
     if (_map) setTimeout(() => _map.invalidateSize(), 50);
+  }
+
+  // ── Convex Hull ───────────────────────────────────────────────
+
+  function _toggleHull() {
+    _hullVisible = !_hullVisible;
+    if (_hullBtn) _hullBtn.classList.toggle("active", _hullVisible);
+    if (_hullVisible) {
+      _updateHull();
+    } else {
+      if (_hullLayer) { _hullLayer.remove(); _hullLayer = null; }
+      if (_hullAreaEl) _hullAreaEl.classList.add("hidden");
+    }
+  }
+
+  function _updateHull() {
+    if (!_hullVisible) return;
+    if (_hullLayer) { _hullLayer.remove(); _hullLayer = null; }
+
+    const pts = _allGpsNodes.filter(n => {
+      if (_maxHopsFilter === Infinity) return true;
+      const traversed = _dataMaxHopLimit - (n.hop_limit ?? 0);
+      return traversed <= _maxHopsFilter;
+    });
+
+    if (pts.length < 3) {
+      if (_hullAreaEl) {
+        _hullAreaEl.classList.remove("hidden");
+        _hullAreaEl.textContent = "⬡ Need ≥ 3 GPS nodes";
+      }
+      return;
+    }
+
+    const hullPts = _convexHull(pts.map(n => ({ lat: n.lat, lng: n.lon })));
+    const areaSqMi = _polygonAreaSqMi(hullPts);
+
+    _hullLayer = L.polygon(
+      hullPts.map(p => [p.lat, p.lng]),
+      { color: "#58a6ff", fillColor: "#58a6ff", fillOpacity: 0.06,
+        weight: 1.5, dashArray: "6,4", interactive: false }
+    ).addTo(_map);
+
+    if (_hullAreaEl) {
+      _hullAreaEl.classList.remove("hidden");
+      let areaStr;
+      if (areaSqMi < 0.01)     areaStr = `${(areaSqMi * 640).toFixed(0)} acres`;
+      else if (areaSqMi < 100) areaStr = `${areaSqMi.toFixed(1)} sq mi`;
+      else                      areaStr = `${Math.round(areaSqMi).toLocaleString()} sq mi`;
+      _hullAreaEl.textContent = `⬡ ${areaStr}`;
+    }
+  }
+
+  // Gift-wrapping (Jarvis march) convex hull on {lat, lng} points
+  function _convexHull(points) {
+    const n = points.length;
+    if (n < 3) return points.slice();
+
+    let start = 0;
+    for (let i = 1; i < n; i++) {
+      if (points[i].lng < points[start].lng ||
+         (points[i].lng === points[start].lng && points[i].lat < points[start].lat)) {
+        start = i;
+      }
+    }
+
+    const hull = [];
+    let cur = start;
+    do {
+      hull.push(points[cur]);
+      let nxt = (cur + 1) % n;
+      for (let i = 0; i < n; i++) {
+        // cross product: negative means points[i] is more counter-clockwise
+        const cross = (points[nxt].lng - points[cur].lng) * (points[i].lat - points[cur].lat)
+                    - (points[nxt].lat - points[cur].lat) * (points[i].lng - points[cur].lng);
+        if (cross < 0) nxt = i;
+      }
+      cur = nxt;
+    } while (cur !== start && hull.length <= n);
+
+    return hull;
+  }
+
+  // Equirectangular shoelace area in square miles
+  function _polygonAreaSqMi(pts) {
+    const n = pts.length;
+    if (n < 3) return 0;
+    const R = 3958.8;
+    const toRad = d => d * Math.PI / 180;
+    const latMid = pts.reduce((s, p) => s + p.lat, 0) / n;
+    const cosLat = Math.cos(toRad(latMid));
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const xi = toRad(pts[i].lng) * cosLat;
+      const yi = toRad(pts[i].lat);
+      const xj = toRad(pts[j].lng) * cosLat;
+      const yj = toRad(pts[j].lat);
+      area += xi * yj - xj * yi;
+    }
+    return Math.abs(area / 2) * R * R;
   }
 
   return { init, invalidate, highlightNode, flyToNode };

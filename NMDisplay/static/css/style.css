@@ -1098,6 +1098,56 @@ body {
   margin-left: 4px;
 }
 
+/* ── Convex hull area display (Leaflet control) ──────────────── */
+.nm-hull-area {
+  background: var(--bg2);
+  border: 2px solid rgba(0,0,0,0.25);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--accent);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.nm-hull-area.hidden { display: none; }
+
+/* Active state for map control buttons (e.g. hull toggle) */
+.nm-my-node-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+/* ── Telemetry list card: title drag + resize handle ─────────── */
+.nm-list-title--draggable {
+  cursor: grab;
+  user-select: none;
+}
+.nm-list-title--draggable:active {
+  cursor: grabbing;
+}
+
+.nm-card-dragging {
+  opacity: 0.45;
+}
+
+/* Bottom resize drag handle on dynamic list cards */
+.nm-list-resize-handle {
+  height: 5px;
+  cursor: ns-resize;
+  background: transparent;
+  border-top: 1px solid var(--divider);
+  touch-action: none;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.nm-list-resize-handle:hover {
+  background: var(--accent);
+  opacity: 0.45;
+}
+
 /* ── MarkerCluster overrides ─────────────────────────────────── */
 .marker-cluster-small       { background-color: rgba(181,226,140,0.85); }
 .marker-cluster-small div   { background-color: rgba(110,204, 57,0.9);  }

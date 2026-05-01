@@ -4,19 +4,29 @@
  * Listens for:
  *   "nm:lists-updated" — re-renders all configured telemetry list panels
  *
- * Row behavior:
- *   - Shows short name by default; click toggles to long name
- *   - Click also highlights the node's marker on the map
+ * Features:
+ *   - Drag the title bar of any card (including Hops Left / Packet Breakdown)
+ *     to reorder it within the right panel.
+ *   - Drag the bottom resize handle of a dynamic list card to change its
+ *     displayed row count (min 1, max 10). Limit persists in localStorage.
+ *   - Card order persists in localStorage.
  */
 
 "use strict";
 
 const NMTelemetry = (() => {
-  // Width threshold (px) at which the right panel is wide enough to show
-  // "Short - Long Name" instead of just "Short". Calculated from monospace
-  // 12px font: ~7.2px/char × (4 short + 3 " - " + 16 long avg + 10 meta pad) = ~237px
   const WIDE_THRESHOLD = 240;
-  let _wideMode = false;
+  const ROW_HEIGHT     = 22;   // approx px per row for resize drag
+  let _wideMode  = false;
+  let _container = null;
+
+  // Per-list display limits, keyed by list.id, persisted to localStorage
+  const _displayLimits = {};
+  // Full list data from the most recent server response, keyed by list.id
+  const _cachedLists = new Map();
+
+  // Static card IDs that live in the HTML (no resize handle, no data rows)
+  const STATIC_IDS = ["hops_left", "pkt_breakdown"];
 
   const _ROLE_INT_MAP = {
     "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",
@@ -32,41 +42,274 @@ const NMTelemetry = (() => {
     return "📱";
   }
 
+  // ── Init ──────────────────────────────────────────────────────
+
   function init() {
+    _container = document.getElementById("nm-lists-container");
+    _loadDisplayLimits();
+    _initCardDragging();
     document.addEventListener("nm:lists-updated", (e) => _render(e.detail.lists));
   }
 
-  function _render(lists) {
-    const container = document.getElementById("nm-lists-container");
-    if (!container) return;
-    container.innerHTML = "";
-    for (const list of lists) {
-      container.appendChild(_buildCard(list));
+  // ── Persistence helpers ───────────────────────────────────────
+
+  function _loadDisplayLimits() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("nm-display-limits") || "{}");
+      Object.assign(_displayLimits, saved);
+    } catch (_) {}
+  }
+
+  function _saveDisplayLimits() {
+    localStorage.setItem("nm-display-limits", JSON.stringify(_displayLimits));
+  }
+
+  function _getSavedOrder() {
+    try { return JSON.parse(localStorage.getItem("nm-card-order") || "null"); }
+    catch (_) { return null; }
+  }
+
+  function _saveOrder() {
+    if (!_container) return;
+    const ids = Array.from(_container.querySelectorAll("[data-card-id]"))
+      .map(c => c.dataset.cardId);
+    localStorage.setItem("nm-card-order", JSON.stringify(ids));
+  }
+
+  // Reorder DOM children to match saved order.
+  // Default (no saved order): dynamic cards first, static cards last.
+  function _applyOrder() {
+    if (!_container) return;
+
+    const cards = new Map();
+    _container.querySelectorAll("[data-card-id]").forEach(c => {
+      cards.set(c.dataset.cardId, c);
+    });
+
+    const savedOrder = _getSavedOrder();
+    if (!savedOrder) {
+      const dynamics = [...cards.values()].filter(c => !STATIC_IDS.includes(c.dataset.cardId));
+      const statics  = STATIC_IDS.map(id => cards.get(id)).filter(Boolean);
+      [...dynamics, ...statics].forEach(c => _container.appendChild(c));
+      return;
+    }
+
+    for (const id of savedOrder) {
+      const card = cards.get(id);
+      if (card) _container.appendChild(card);
+    }
+    // Append anything not captured in the saved order
+    for (const [, card] of cards) {
+      if (!savedOrder.includes(card.dataset.cardId)) _container.appendChild(card);
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────
+
+  function _render(lists) {
+    if (!_container) return;
+
+    // Cache the latest data from server
+    for (const list of lists) _cachedLists.set(list.id, list);
+
+    // Remove only dynamic cards; static cards (hops left, pkt breakdown) stay
+    _container.querySelectorAll(".nm-list-card--dynamic").forEach(c => c.remove());
+
+    for (const list of lists) {
+      const card = _buildCard(list);
+      card.dataset.cardId = list.id;
+      card.classList.add("nm-list-card--dynamic");
+      _container.appendChild(card);
+    }
+
+    _applyOrder();
+  }
+
+  // ── Card builder ──────────────────────────────────────────────
 
   function _buildCard(list) {
     const card = document.createElement("div");
     card.className = "nm-list-card";
 
     const title = document.createElement("div");
-    title.className = "nm-list-title";
+    title.className = "nm-list-title nm-list-title--draggable";
     title.textContent = list.title;
     card.appendChild(title);
 
-    for (const node of list.nodes) {
-      card.appendChild(_buildRow(node, list.id));
-    }
+    // Determine how many rows to display
+    const limit = _displayLimits[list.id] ?? list.nodes.length;
+    const nodes = list.nodes.slice(0, Math.max(0, Math.min(limit, list.nodes.length)));
 
-    if (list.nodes.length === 0) {
+    if (nodes.length === 0) {
       const empty = document.createElement("div");
+      empty.className = "nm-list-empty";
       empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
       empty.textContent = "No data";
       card.appendChild(empty);
+    } else {
+      for (const node of nodes) card.appendChild(_buildRow(node, list.id));
     }
+
+    // Resize handle at the bottom
+    const handle = document.createElement("div");
+    handle.className = "nm-list-resize-handle";
+    card.appendChild(handle);
+
+    _attachResizeDrag(handle, list);
 
     return card;
   }
+
+  // ── Resize drag (bottom handle) ───────────────────────────────
+
+  function _attachResizeDrag(handle, list) {
+    const startDrag = (startY) => {
+      const startLimit = _displayLimits[list.id] ?? list.nodes.length;
+
+      const onMove = (currentY) => {
+        const dy     = currentY - startY;
+        const delta  = Math.round(dy / ROW_HEIGHT);
+        const newLim = Math.max(1, Math.min(10, startLimit + delta));
+        if (_displayLimits[list.id] !== newLim) {
+          _displayLimits[list.id] = newLim;
+          _saveDisplayLimits();
+          const card = handle.closest(".nm-list-card");
+          if (card) _updateCardRows(card, list, newLim);
+        }
+      };
+
+      return onMove;
+    };
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.clientY);
+      const move = (e2) => onMove(e2.clientY);
+      const up   = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.touches[0].clientY);
+      const move = (e2) => onMove(e2.touches[0].clientY);
+      const up   = () => {
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", up);
+      };
+      document.addEventListener("touchmove", move, { passive: false });
+      document.addEventListener("touchend", up);
+    }, { passive: false });
+  }
+
+  function _updateCardRows(card, list, limit) {
+    card.querySelectorAll(".nm-list-row, .nm-list-empty").forEach(r => r.remove());
+    const handle = card.querySelector(".nm-list-resize-handle");
+    const nodes  = list.nodes.slice(0, Math.max(0, Math.min(limit, list.nodes.length)));
+
+    if (nodes.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "nm-list-empty";
+      empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
+      empty.textContent = "No data";
+      card.insertBefore(empty, handle || null);
+    } else {
+      const frag = document.createDocumentFragment();
+      for (const node of nodes) frag.appendChild(_buildRow(node, list.id));
+      card.insertBefore(frag, handle || null);
+    }
+  }
+
+  // ── Card reorder drag (title bar) ─────────────────────────────
+
+  function _initCardDragging() {
+    if (!_container) return;
+    let _dragSrc    = null;
+    let _isDragging = false;
+    let _startY     = 0;
+
+    const _onMove = (clientX, clientY) => {
+      if (!_isDragging && Math.abs(clientY - _startY) > 5) {
+        _isDragging = true;
+        _dragSrc.classList.add("nm-card-dragging");
+      }
+      if (!_isDragging) return;
+
+      _dragSrc.style.visibility = "hidden";
+      const below  = document.elementFromPoint(clientX, clientY);
+      _dragSrc.style.visibility = "";
+
+      const target = below?.closest(".nm-list-card");
+      if (!target || target === _dragSrc || target.closest("#nm-lists-container") !== _container) return;
+
+      const rect = target.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        _container.insertBefore(_dragSrc, target);
+      } else {
+        _container.insertBefore(_dragSrc, target.nextSibling);
+      }
+    };
+
+    const _onEnd = () => {
+      if (_dragSrc) {
+        _dragSrc.classList.remove("nm-card-dragging");
+        if (_isDragging) _saveOrder();
+      }
+      _dragSrc    = null;
+      _isDragging = false;
+    };
+
+    // Mouse
+    _container.addEventListener("mousedown", (e) => {
+      if (!e.target.closest(".nm-list-title--draggable")) return;
+      const card = e.target.closest(".nm-list-card");
+      if (!card) return;
+      e.preventDefault();
+      _dragSrc = card;
+      _startY  = e.clientY;
+      _isDragging = false;
+
+      const move = (e2) => _onMove(e2.clientX, e2.clientY);
+      const up   = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        _onEnd();
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+
+    // Touch
+    _container.addEventListener("touchstart", (e) => {
+      if (!e.target.closest(".nm-list-title--draggable")) return;
+      const card = e.target.closest(".nm-list-card");
+      if (!card) return;
+      e.preventDefault();
+      _dragSrc = card;
+      _startY  = e.touches[0].clientY;
+      _isDragging = false;
+
+      const move = (e2) => {
+        e2.preventDefault();
+        _onMove(e2.touches[0].clientX, e2.touches[0].clientY);
+      };
+      const up = () => {
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", up);
+        _onEnd();
+      };
+      document.addEventListener("touchmove", move, { passive: false });
+      document.addEventListener("touchend", up);
+    }, { passive: false });
+  }
+
+  // ── Row builder ───────────────────────────────────────────────
 
   function _buildRow(node, listId) {
     const row = document.createElement("div");
@@ -77,7 +320,6 @@ const NMTelemetry = (() => {
     const longName  = node.long_name  || node.node_id_hex || "—";
     const combined  = `${shortName} - ${longName}`;
 
-    // Column 1: role emoji + name
     const emojiEl = document.createElement("span");
     emojiEl.className = "nm-role-icon";
     emojiEl.textContent = _emojiForRole(node.role);
@@ -88,25 +330,21 @@ const NMTelemetry = (() => {
     nameEl.dataset.short    = shortName;
     nameEl.dataset.long     = longName;
     nameEl.dataset.combined = combined;
-    nameEl.dataset.showing  = "auto";  // "auto" = driven by panel width; "click" = user toggled
+    nameEl.dataset.showing  = "auto";
     nameEl.textContent = _wideMode ? combined : shortName;
     row.appendChild(nameEl);
 
-    // Column 2: context-sensitive metric
     const metaEl = document.createElement("span");
     metaEl.className = "nm-node-meta";
     metaEl.textContent = _metaValue(node, listId);
     row.appendChild(metaEl);
 
-    // Click: only active in narrow mode (showing just short name)
-    // Temporarily shows long name for 2s then reverts, also highlights map marker
     row.addEventListener("click", () => {
       if (_wideMode) {
-        // In wide mode the combined name is already visible — just highlight
         NMMap.flyToNode(node.node_id);
         return;
       }
-      if (nameEl.dataset.showing === "click") return;  // already in click-toggled state
+      if (nameEl.dataset.showing === "click") return;
       nameEl.dataset.showing = "click";
       nameEl.textContent = longName;
       NMMap.flyToNode(node.node_id);
@@ -121,19 +359,21 @@ const NMTelemetry = (() => {
     return row;
   }
 
-  // Called by app.js whenever the right panel width changes
+  // ── Width responsiveness ──────────────────────────────────────
+
   function checkWidth() {
     const panel = document.getElementById("nm-right-panel");
     if (!panel) return;
     const wide = panel.offsetWidth >= WIDE_THRESHOLD;
     if (wide === _wideMode) return;
     _wideMode = wide;
-    // Update all name elements currently in the DOM
     document.querySelectorAll("#nm-lists-container .nm-node-name").forEach(el => {
-      if (el.dataset.showing === "click") return;  // don't interrupt a click-toggle
+      if (el.dataset.showing === "click") return;
       el.textContent = _wideMode ? el.dataset.combined : el.dataset.short;
     });
   }
+
+  // ── Meta value formatter ──────────────────────────────────────
 
   function _metaValue(node, listId) {
     switch (listId) {

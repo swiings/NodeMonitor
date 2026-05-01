@@ -136,18 +136,19 @@
 
     <!-- Right: telemetry lists, full page height -->
     <div id="nm-right-panel">
-      <div id="nm-lists-container"></div>
-      <div id="nm-hop-dist" class="nm-list-card">
-        <div class="nm-list-title">HOPS LEFT</div>
-        <table class="nm-hop-table" id="nm-hop-dist-table">
-          <!-- Populated dynamically by gauges.js -->
-        </table>
-      </div>
-      <div id="nm-pkt-breakdown" class="nm-list-card">
-        <div class="nm-list-title">PACKET BREAKDOWN</div>
-        <table class="nm-hop-table" id="nm-pkt-breakdown-table">
-          <!-- Populated by gauges.js -->
-        </table>
+      <div id="nm-lists-container">
+        <div id="nm-hop-dist" class="nm-list-card nm-list-card--static" data-card-id="hops_left">
+          <div class="nm-list-title nm-list-title--draggable">HOPS LEFT</div>
+          <table class="nm-hop-table" id="nm-hop-dist-table">
+            <!-- Populated dynamically by gauges.js -->
+          </table>
+        </div>
+        <div id="nm-pkt-breakdown" class="nm-list-card nm-list-card--static" data-card-id="pkt_breakdown">
+          <div class="nm-list-title nm-list-title--draggable">PACKET BREAKDOWN</div>
+          <table class="nm-hop-table" id="nm-pkt-breakdown-table">
+            <!-- Populated by gauges.js -->
+          </table>
+        </div>
       </div>
     </div>
 
