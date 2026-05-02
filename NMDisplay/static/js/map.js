@@ -306,11 +306,13 @@ const NMMap = (() => {
     // Detect nodes whose last_heard advanced since the previous poll.
     // Skip on first load (nothing to compare against yet).
     const changedIds = new Set();
+    let changedNonRef = 0;
     const isFirstLoad = _prevLastHeard.size === 0;
     for (const n of nodes) {
       const prev = _prevLastHeard.get(n.node_id);
       if (!isFirstLoad && prev != null && n.last_heard != null && n.last_heard > prev) {
         changedIds.add(n.node_id);
+        if (!n.is_my_node) changedNonRef++;
       }
       if (n.last_heard != null) _prevLastHeard.set(n.node_id, n.last_heard);
     }
@@ -318,10 +320,11 @@ const NMMap = (() => {
     _updateHopSliderRange(nodes);
     _applyFilters();  // creates/updates all markers
 
-    // Pulse after markers are in the DOM, and notify other modules
+    // Pulse all changed nodes (including reference node — telemetry should be visible)
     for (const id of changedIds) _triggerPulse(id);
-    if (changedIds.size > 0) {
-      document.dispatchEvent(new CustomEvent("nm:packets-received", { detail: { count: changedIds.size } }));
+    // Beep only for non-reference-node packets
+    if (changedNonRef > 0) {
+      document.dispatchEvent(new CustomEvent("nm:packets-received", { detail: { count: changedNonRef } }));
     }
 
     if (_firstLoad && _allGpsNodes.length > 0) {
