@@ -177,10 +177,14 @@ def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
             and my_node_id is not None
             and (n["node_id"] & 0xFFFFFFFF) == (my_node_id & 0xFFFFFFFF)
         )]
-        sorted_nodes = sorted(pool, key=key_fn, reverse=reverse)[:limit]
+        # Always return up to 10 nodes so the client can increase the display
+        # count via drag without a settings round-trip. The configured limit is
+        # passed as "limit" so the client knows the saved default.
+        sorted_nodes = sorted(pool, key=key_fn, reverse=reverse)[:10]
         result.append({
-            "id": list_id,
+            "id":    list_id,
             "title": LIST_TITLES.get(list_id, list_id.upper()),
+            "limit": limit,
             "nodes": sorted_nodes,
         })
     return result

@@ -137,7 +137,8 @@ const NMTelemetry = (() => {
     card.appendChild(title);
 
     // Determine how many rows to display
-    const limit = _displayLimits[list.id] ?? list.nodes.length;
+    // list.limit = configured default from server; fall back to node count if absent
+    const limit = _displayLimits[list.id] ?? list.limit ?? list.nodes.length;
     const nodes = list.nodes.slice(0, Math.max(0, Math.min(limit, list.nodes.length)));
 
     if (nodes.length === 0) {
@@ -164,7 +165,7 @@ const NMTelemetry = (() => {
 
   function _attachResizeDrag(handle, list) {
     const startDrag = (startY) => {
-      const startLimit = _displayLimits[list.id] ?? list.nodes.length;
+      const startLimit = _displayLimits[list.id] ?? list.limit ?? list.nodes.length;
 
       const onMove = (currentY) => {
         const dy     = currentY - startY;
