@@ -318,8 +318,11 @@ const NMMap = (() => {
     _updateHopSliderRange(nodes);
     _applyFilters();  // creates/updates all markers
 
-    // Pulse after markers are in the DOM
+    // Pulse after markers are in the DOM, and notify other modules
     for (const id of changedIds) _triggerPulse(id);
+    if (changedIds.size > 0) {
+      document.dispatchEvent(new CustomEvent("nm:packets-received", { detail: { count: changedIds.size } }));
+    }
 
     if (_firstLoad && _allGpsNodes.length > 0) {
       _autoFitBounds(_allGpsNodes);
@@ -475,7 +478,7 @@ const NMMap = (() => {
     wrap.classList.remove("nm-marker-pulse");
     void wrap.offsetWidth; // force reflow
     wrap.classList.add("nm-marker-pulse");
-    setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 10000);
+    setTimeout(() => wrap.classList.remove("nm-marker-pulse"),  30000);
     // setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 1500);
   }
 

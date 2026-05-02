@@ -18,6 +18,10 @@
   <header id="nm-header">
     <span id="nm-title">Meshtastic Node Monitor</span>
     <span id="nm-status"></span>
+    <div id="nm-beep-ctrl" title="Beep volume (0 = off)">
+      <span id="nm-beep-icon">🔔</span>
+      <input type="range" id="nm-beep-volume" min="0" max="1" step="0.05" value="0.5">
+    </div>
     <button id="nm-log-btn" title="Toggle packet log">LOG</button>
     <button id="nm-csv-btn" title="Export nodes to CSV">CSV</button>
     <button id="nm-settings-btn" title="Settings">&#9881;</button>

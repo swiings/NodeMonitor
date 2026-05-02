@@ -81,6 +81,26 @@ body {
   color: var(--text-dim);
 }
 
+#nm-beep-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#nm-beep-icon {
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}
+
+#nm-beep-volume {
+  width: 64px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+}
+
 #nm-settings-btn {
   background: none;
   border: 1px solid var(--border);

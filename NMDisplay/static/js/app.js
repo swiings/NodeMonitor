@@ -39,6 +39,7 @@ async function boot() {
   initSettingsModal();
   initLogPanel();
   initCsvModal();
+  initBeep();
 
   try {
     _cfg = await fetchSettings();
@@ -850,3 +851,73 @@ async function _downloadCsv(url, filename) {
   }
 }
 window._downloadCsv = _downloadCsv;
+
+// ── Packet beep ─────────────────────────────────────────────────
+
+function initBeep() {
+  const slider = document.getElementById("nm-beep-volume");
+  const icon   = document.getElementById("nm-beep-icon");
+  if (!slider) return;
+
+  // Restore persisted volume; default 0.5
+  const saved = localStorage.getItem("nm-beep-volume");
+  if (saved !== null) slider.value = saved;
+  _updateBeepIcon(parseFloat(slider.value), icon);
+
+  slider.addEventListener("input", () => {
+    const v = parseFloat(slider.value);
+    localStorage.setItem("nm-beep-volume", slider.value);
+    _updateBeepIcon(v, icon);
+    // Resume AudioContext if user interaction just allowed it
+    if (_beepCtx && _beepCtx.state === "suspended") _beepCtx.resume();
+  });
+
+  // AudioContext must be created (or resumed) inside a user-gesture handler.
+  // We lazily init on the first qualifying interaction anywhere on the page.
+  const _resume = () => {
+    if (!_beepCtx) {
+      try { _beepCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (_) {}
+    } else if (_beepCtx.state === "suspended") {
+      _beepCtx.resume();
+    }
+  };
+  document.addEventListener("click",      _resume, { passive: true });
+  document.addEventListener("keydown",    _resume, { passive: true });
+  document.addEventListener("touchstart", _resume, { passive: true });
+
+  document.addEventListener("nm:packets-received", () => {
+    const v = parseFloat(slider.value);
+    if (v > 0) _playBeep(v);
+  });
+}
+
+let _beepCtx = null;
+
+function _updateBeepIcon(volume, icon) {
+  if (!icon) return;
+  icon.textContent = volume === 0 ? "🔕" : "🔔";
+}
+
+function _playBeep(volume) {
+  if (!_beepCtx || _beepCtx.state === "suspended") return;
+  try {
+    const t   = _beepCtx.currentTime;
+    const osc = _beepCtx.createOscillator();
+    const gain = _beepCtx.createGain();
+
+    osc.connect(gain);
+    gain.connect(_beepCtx.destination);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1100, t);
+
+    // Scale to a reasonable amplitude (max gain ~0.35 avoids clipping)
+    const amp = volume * 0.35;
+    gain.gain.setValueAtTime(amp, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+
+    osc.start(t);
+    osc.stop(t + 0.09);
+  } catch (_) {}
+}
