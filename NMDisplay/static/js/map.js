@@ -43,6 +43,9 @@ const NMMap = (() => {
   let _hullAreaEl  = null;
   let _hullBtn     = null;
 
+  // Packet-arrival pulse — tracks last_heard per node to detect changes between polls
+  let _prevLastHeard = new Map(); // node_id → last_heard timestamp
+
   // ── Init ──────────────────────────────────────────────────────
 
   function init(containerId) {
@@ -300,8 +303,23 @@ const NMMap = (() => {
     _myNodeId    = my_node_id != null ? (my_node_id >>> 0) : null;
     _allGpsNodes = nodes.filter(n => n.lat != null && n.lon != null);
 
+    // Detect nodes whose last_heard advanced since the previous poll.
+    // Skip on first load (nothing to compare against yet).
+    const changedIds = new Set();
+    const isFirstLoad = _prevLastHeard.size === 0;
+    for (const n of nodes) {
+      const prev = _prevLastHeard.get(n.node_id);
+      if (!isFirstLoad && prev != null && n.last_heard != null && n.last_heard > prev) {
+        changedIds.add(n.node_id);
+      }
+      if (n.last_heard != null) _prevLastHeard.set(n.node_id, n.last_heard);
+    }
+
     _updateHopSliderRange(nodes);
-    _applyFilters();
+    _applyFilters();  // creates/updates all markers
+
+    // Pulse after markers are in the DOM
+    for (const id of changedIds) _triggerPulse(id);
 
     if (_firstLoad && _allGpsNodes.length > 0) {
       _autoFitBounds(_allGpsNodes);
@@ -401,9 +419,11 @@ const NMMap = (() => {
             fill="white">${emoji}</text>
     </svg>`;
 
+    // Wrap in a child div so the pulse animation can use transform without
+    // conflicting with Leaflet's own transform: translate() on the marker element.
     return L.divIcon({
       className: "",
-      html: svg,
+      html: `<div class="nm-pin-wrap">${svg}</div>`,
       iconSize:    [25, 41],
       iconAnchor:  [12, 39],
       popupAnchor: [0, -37],
@@ -442,6 +462,20 @@ const NMMap = (() => {
 
   function highlightNode(nodeId) {
     _showLabel(nodeId);
+  }
+
+  function _triggerPulse(nodeId) {
+    const m = _markers.get(nodeId);
+    if (!m) return;
+    const el = m.getElement();
+    if (!el) return;
+    const wrap = el.querySelector(".nm-pin-wrap");
+    if (!wrap) return;
+    // Remove first to restart the animation if it's already playing
+    wrap.classList.remove("nm-marker-pulse");
+    void wrap.offsetWidth; // force reflow
+    wrap.classList.add("nm-marker-pulse");
+    setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 1500);
   }
 
   function flyToNode(nodeId) {

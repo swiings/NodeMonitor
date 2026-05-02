@@ -525,6 +525,34 @@ body {
 }
 .nm-my-node-btn:hover { background: var(--bg3); }
 
+/* ── Marker pin wrapper & packet-arrival pulse ───────────────── */
+/* The wrapper is a child of .leaflet-marker-icon so that transform
+   animations don't conflict with Leaflet's own translate() positioning. */
+.nm-pin-wrap {
+  display: block;
+  /* Scale from the pin tip (12px from left, 39px from top of 25×41 icon) */
+  transform-origin: 12px 39px;
+}
+
+@keyframes nm-marker-pulse {
+  0%   {
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 0px transparent);
+  }
+  18%  {
+    transform: scale(1.9);
+    filter: brightness(2.8) drop-shadow(0 0 10px rgba(255,255,255,0.95));
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 0px transparent);
+  }
+}
+
+.nm-marker-pulse {
+  animation: nm-marker-pulse 1.5s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
+
 /* ── Map fullscreen ──────────────────────────────────────────── */
 #nm-map:fullscreen {
   width: 100vw !important;
