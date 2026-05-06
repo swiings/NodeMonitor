@@ -570,7 +570,7 @@ body {
 }
 
 .nm-marker-pulse {
-  animation: nm-marker-pulse 1.5s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  animation: nm-marker-pulse  5s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
 }
 
 /* ── Map fullscreen ──────────────────────────────────────────── */
@@ -779,7 +779,7 @@ body {
   50%       { opacity: 0.2; }
 }
 .nm-listener-running #nm-listener-dot {
-  animation: nm-pulse 2s ease-in-out infinite;
+  animation: nm-pulse 5s ease-in-out infinite;
 }
 
 /* ── Packet log panel ───────────────────────────────────────── */
