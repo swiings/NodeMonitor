@@ -481,7 +481,7 @@ const NMMap = (() => {
     wrap.classList.remove("nm-marker-pulse");
     void wrap.offsetWidth; // force reflow
     wrap.classList.add("nm-marker-pulse");
-    setTimeout(() =>  wrap.classList.remove("nm-marker-pulse"),  5000);
+    setTimeout(() =>  wrap.classList.remove("nm-marker-pulse"),  10000);
   }
 
   function flyToNode(nodeId) {
