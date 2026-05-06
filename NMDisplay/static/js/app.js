@@ -864,11 +864,14 @@ function initBeep() {
   if (saved !== null) slider.value = saved;
   _updateBeepIcon(parseFloat(slider.value), icon);
 
+  slider.addEventListener("mouseup", () => {
+    _playBeep(slider.value);
+  });
+
   slider.addEventListener("input", () => {
     const v = parseFloat(slider.value);
     localStorage.setItem("nm-beep-volume", slider.value);
     _updateBeepIcon(v, icon);
-    _playBeep(slider.value);
     // Resume AudioContext if user interaction just allowed it
     if (_beepCtx && _beepCtx.state === "suspended") _beepCtx.resume();
   });
