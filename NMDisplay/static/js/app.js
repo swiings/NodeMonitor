@@ -865,7 +865,7 @@ function initBeep() {
   _updateBeepIcon(parseFloat(slider.value), icon);
 
   slider.addEventListener("mouseup", () => {
-    _playBeep(slider.value);
+    _playBeep(parseFloat(slider.value));
   });
 
   slider.addEventListener("input", () => {

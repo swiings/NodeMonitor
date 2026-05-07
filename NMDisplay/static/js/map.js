@@ -6,8 +6,8 @@
  *   "nm:settings-loaded"  — re-applies label/center mode settings
  *
  * Markers are emoji DivIcons keyed by node role:
- *   CLIENT / CLIENT_*         → 📱
- *   ROUTER / ROUTER_LATE / REPEATER → 📡
+ *   CLIENT                    → 📱
+ *   ROUTER / ROUTER_LATE / REPEATER / CLIENT_BASE → 📡
  *   TRACKER / LOST_AND_FOUND  → 🐾
  *   SENSOR                    → 📊
  *   unknown / null            → 👻
@@ -399,13 +399,13 @@ const NMMap = (() => {
   // Role → { color, emoji } for marker display
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
-    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER" || r === "CLIENT_BASE")
       return { color: "#e05252", emoji: "📡" };
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
       return { color: "#3fb950", emoji: "🐾" };
     if (r === "SENSOR")
       return { color: "#d29922", emoji: "📊" };
-    if (r === "CLIENT" || r.startsWith("CLIENT_"))
+    if (r === "CLIENT")
       return { color: "#58a6ff", emoji: "📱" };
     return { color: "#6e7681", emoji: "👻" };
   }
