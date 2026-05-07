@@ -6,12 +6,14 @@
  *   "nm:settings-loaded"  — re-applies label/center mode settings
  *
  * Markers are emoji DivIcons keyed by node role:
- *   CLIENT                    → 📱
- *   ROUTER / ROUTER_LATE / REPEATER / CLIENT_BASE → 📡
- *   TRACKER / LOST_AND_FOUND  → 🐾
- *   SENSOR                    → 📊
- *   unknown / null            → 👻
- *   My node                   → ★
+ *  CLIENT                          → 📱
+ *  CLIENT_BASE                     → 🏡
+ *  CLIENT_MUTE                     → 😎
+ *  ROUTER / ROUTER_LATE / REPEATER → 📡
+ *  TRACKER / LOST_AND_FOUND        → 🐾
+ *  SENSOR                          → 📊
+ *  unknown / null                  → 👻
+ *  My node                         → ★
  *
  * A colored dot below each emoji shows recency (green/amber/red/grey).
  *
@@ -399,17 +401,20 @@ const NMMap = (() => {
   // Role → { color, emoji } for marker display
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
-    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER" || r === "CLIENT_BASE")
+    if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
       return { color: "#e05252", emoji: "📡" };
+    if (r === "CLIENT_BASE")
+      return { color: "#16885b", emoji: "🏡" };
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
-      return { color: "#3fb950", emoji: "🐾" };
+      return { color: "#a061a7", emoji: "🐾" };
     if (r === "SENSOR")
       return { color: "#d29922", emoji: "📊" };
     if (r === "CLIENT")
       return { color: "#58a6ff", emoji: "📱" };
+    if (r === "CLIENT_MUTE")
+      return { color: "#213142", emoji: "😎" };
     return { color: "#6e7681", emoji: "👻" };
   }
-
   /**
    * Leaflet-style teardrop marker as a pure SVG DivIcon.
    * Emoji (or ★ for my node) rendered via SVG <text> — no shadow.
@@ -437,7 +442,7 @@ const NMMap = (() => {
   }
 
   function _iconForNode(node, isMyNode) {
-    if (isMyNode) return _pinIcon("#d4a017", "★");
+    if (isMyNode) return _pinIcon("#02f447", "★");
     const { color, emoji } = _roleStyle(node.role);
     return _pinIcon(color, emoji);
   }
