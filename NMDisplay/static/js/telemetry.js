@@ -335,7 +335,6 @@ const NMTelemetry = (() => {
     row.style.cursor = "pointer";
     const _rowColor = (listId === "last_heard" && node.last_portnum)
       ? _portnumColor(node.last_portnum) : null;
-    if (_rowColor) row.style.filter = "brightness(1.6)";
 
     const shortName = node.short_name || node.node_id_hex || "—";
     const longName  = node.long_name  || node.node_id_hex || "—";
@@ -344,7 +343,7 @@ const NMTelemetry = (() => {
     const emojiEl = document.createElement("span");
     emojiEl.className = "nm-role-icon";
     emojiEl.textContent = _emojiForRole(node.role);
-    if (_rowColor) emojiEl.style.color = _rowColor;
+    if (_rowColor) { emojiEl.style.color = _rowColor; emojiEl.style.filter = "brightness(2.0)"; }
     row.appendChild(emojiEl);
 
     const nameEl = document.createElement("span");
@@ -354,13 +353,13 @@ const NMTelemetry = (() => {
     nameEl.dataset.combined = combined;
     nameEl.dataset.showing  = "auto";
     nameEl.textContent = _wideMode ? combined : shortName;
-    if (_rowColor) nameEl.style.color = _rowColor;
+    if (_rowColor) { nameEl.style.color = _rowColor; nameEl.style.filter = "brightness(2.0)"; }
     row.appendChild(nameEl);
 
     const metaEl = document.createElement("span");
     metaEl.className = "nm-node-meta";
     metaEl.textContent = _metaValue(node, listId);
-    if (_rowColor) metaEl.style.color = _rowColor;
+    if (_rowColor) { metaEl.style.color = _rowColor; metaEl.style.filter = "brightness(2.0)"; }
     row.appendChild(metaEl);
 
     row.addEventListener("click", () => {
