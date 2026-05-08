@@ -110,11 +110,49 @@ def _effective_my_node_id():
 
 TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
 
+# ── Thunderforest API key ──────────────────────────────────────────────────────
+# Required for tf_transport, tf_landscape, tf_neighbourhood.
+# Without a key the tiles will fail to load (blank tiles, no crash).
+# Get a free key at https://www.thunderforest.com/pricing/
+# REMOVE THIS BLOCK when removing all Thunderforest providers.
+THUNDERFOREST_API_KEY = ""
+# ── End Thunderforest block ────────────────────────────────────────────────────
+
 TILE_PROVIDERS = {
+    # ── Original providers ─────────────────────────────────────────────────────
     "osm":  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     "hot":  "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
     "topo": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+
+    # ── Stadia Maps (no API key required for testing; {r} = retina suffix, unused) ─
+    # REMOVE stadia_smooth entry to drop "Stadia Smooth" layer.
+    "stadia_smooth":      "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
+    # REMOVE stadia_smooth_dark entry to drop "Stadia Dark" layer.
+    "stadia_smooth_dark": "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+    # REMOVE stadia_terrain entry to drop "Stadia Terrain" layer.
+    "stadia_terrain":     "https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.png",
+    # REMOVE stadia_watercolor entry to drop "Stadia Watercolor" layer.
+    # NOTE: upstream is JPEG — cached as .jpg, served with image/jpeg MIME type (see TILE_MIME).
+    "stadia_watercolor":  "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg",
+    # ── End Stadia block ───────────────────────────────────────────────────────
+
+    # ── Thunderforest (API key required — set THUNDERFOREST_API_KEY above) ─────
+    # REMOVE tf_transport entry to drop "TF Transport" layer.
+    "tf_transport":     "https://api.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    # REMOVE tf_landscape entry to drop "TF Landscape" layer.
+    "tf_landscape":     "https://api.thunderforest.com/landscape/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    # REMOVE tf_neighbourhood entry to drop "TF Neighbourhood" layer.
+    "tf_neighbourhood": "https://api.thunderforest.com/neighbourhood/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    # ── End Thunderforest block ────────────────────────────────────────────────
 }
+
+# Providers whose upstream format is not PNG.
+# Maps provider key → (response_mimetype, cache_file_extension).
+# REMOVE an entry here when removing the corresponding provider above.
+TILE_MIME = {
+    "stadia_watercolor": ("image/jpeg", ".jpg"),
+}
+
 OSM_HEADERS = {"User-Agent": "NMDisplay/1.0 NodeMonitor (amateur radio mesh monitor)"}
 
 
@@ -568,13 +606,16 @@ def api_scan_ble():
 def tile(provider, z, x, y):
     if provider not in TILE_PROVIDERS:
         abort(404)
-    if not (0 <= z <= 18 and 0 <= x < 2 ** z and 0 <= y < 2 ** z):
+    if not (0 <= z <= 22 and 0 <= x < 2 ** z and 0 <= y < 2 ** z):
         abort(400)
 
-    path = os.path.join(TILE_CACHE_DIR, provider, str(z), str(x), f"{y}.png")
+    mime_type, cache_ext = TILE_MIME.get(provider, ("image/png", ".png"))
+    path = os.path.join(TILE_CACHE_DIR, provider, str(z), str(x), f"{y}{cache_ext}")
 
     if not os.path.exists(path):
-        url = TILE_PROVIDERS[provider].format(z=z, x=x, y=y)
+        url = TILE_PROVIDERS[provider].format(
+            z=z, x=x, y=y, r="", apikey=THUNDERFOREST_API_KEY
+        )
         try:
             resp = req_lib.get(url, headers=OSM_HEADERS, timeout=10)
             resp.raise_for_status()
@@ -584,7 +625,7 @@ def tile(provider, z, x, y):
         with open(path, "wb") as f:
             f.write(resp.content)
 
-    return send_file(path, mimetype="image/png")
+    return send_file(path, mimetype=mime_type)
 
 
 # ------------------------------------------------------------------

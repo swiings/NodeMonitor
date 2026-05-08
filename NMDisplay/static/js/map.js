@@ -62,21 +62,64 @@ const NMMap = (() => {
       attributionControl: true,
     }).setView([39.5, -98.35], 4);
 
-    const osmAttr   = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-    const hotAttr   = osmAttr + ' | Tiles © <a href="https://www.hotosm.org">HOT</a>';
-    const topoAttr  = osmAttr + ' | Tiles © <a href="https://opentopomap.org">OpenTopoMap</a>';
+    // ── Attribution strings ────────────────────────────────────────────────────
+    const osmAttr    = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    const hotAttr    = osmAttr + ' | Tiles © <a href="https://www.hotosm.org">HOT</a>';
+    const topoAttr   = osmAttr + ' | Tiles © <a href="https://opentopomap.org">OpenTopoMap</a>';
+    const stadiaAttr = '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> © <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + osmAttr;
+    const stadiaStamenAttr = '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> © <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> © <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' + osmAttr;
+    const tfAttr     = '© <a href="http://www.thunderforest.com/">Thunderforest</a>, ' + osmAttr;
 
-    const standardLayer     = L.tileLayer("/tiles/osm/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: osmAttr,  tileSize: 256, errorTileUrl: "" });
-    const humanitarianLayer = L.tileLayer("/tiles/hot/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: hotAttr,  tileSize: 256, errorTileUrl: "" });
-    const topoLayer         = L.tileLayer("/tiles/topo/{z}/{x}/{y}.png", { maxZoom: 17, attribution: topoAttr, tileSize: 256, errorTileUrl: "" });
+    // ── Original providers ─────────────────────────────────────────────────────
+    const standardLayer     = L.tileLayer("/tiles/osm/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: osmAttr,    tileSize: 256, errorTileUrl: "" });
+    const humanitarianLayer = L.tileLayer("/tiles/hot/{z}/{x}/{y}.png",  { maxZoom: 18, attribution: hotAttr,    tileSize: 256, errorTileUrl: "" });
+    const topoLayer         = L.tileLayer("/tiles/topo/{z}/{x}/{y}.png", { maxZoom: 17, attribution: topoAttr,   tileSize: 256, errorTileUrl: "" });
+
+    // ── Stadia Maps layers (no API key required for testing) ───────────────────
+    // REMOVE the next line to drop "Stadia Smooth".
+    const stadiaSmooth     = L.tileLayer("/tiles/stadia_smooth/{z}/{x}/{y}.png",      { maxZoom: 20, attribution: stadiaAttr,      tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "Stadia Dark".
+    const stadiaDark       = L.tileLayer("/tiles/stadia_smooth_dark/{z}/{x}/{y}.png", { maxZoom: 20, attribution: stadiaAttr,      tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "Stadia Terrain".
+    const stadiaTerrain    = L.tileLayer("/tiles/stadia_terrain/{z}/{x}/{y}.png",     { maxZoom: 18, attribution: stadiaStamenAttr, tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "Stadia Watercolor".
+    const stadiaWatercolor = L.tileLayer("/tiles/stadia_watercolor/{z}/{x}/{y}.png",  { maxZoom: 16, attribution: stadiaStamenAttr, tileSize: 256, errorTileUrl: "" });
+    // ── End Stadia block ───────────────────────────────────────────────────────
+
+    // ── Thunderforest layers (API key required — set in app.py) ───────────────
+    // REMOVE the next line to drop "TF Transport".
+    const tfTransport     = L.tileLayer("/tiles/tf_transport/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "TF Landscape".
+    const tfLandscape     = L.tileLayer("/tiles/tf_landscape/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "TF Neighbourhood".
+    const tfNeighbourhood = L.tileLayer("/tiles/tf_neighbourhood/{z}/{x}/{y}.png", { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
+    // ── End Thunderforest block ────────────────────────────────────────────────
 
     standardLayer.addTo(_map);
 
+    // ── Layer control ──────────────────────────────────────────────────────────
+    // To remove a provider: delete its entry here AND its layer declaration above
+    // AND its entry in TILE_PROVIDERS / TILE_MIME in app.py.
     L.control.layers(
-      { "Standard": standardLayer, "Humanitarian": humanitarianLayer, "Topo": topoLayer },
+      {
+        // Original
+        "Standard":          standardLayer,
+        "Humanitarian":      humanitarianLayer,
+        "Topo":              topoLayer,
+        // Stadia — REMOVE entries to drop individual layers
+        "Stadia Smooth":     stadiaSmooth,
+        "Stadia Dark":       stadiaDark,
+        "Stadia Terrain":    stadiaTerrain,
+        "Stadia Watercolor": stadiaWatercolor,
+        // Thunderforest — REMOVE entries to drop individual layers (API key required)
+        "TF Transport":      tfTransport,
+        "TF Landscape":      tfLandscape,
+        "TF Neighbourhood":  tfNeighbourhood,
+      },
       {},
       { position: "topright" }
     ).addTo(_map);
+    // ── End layer control block ────────────────────────────────────────────────
 
     L.control.scale({ position: "bottomright", imperial: true, metric: false, maxWidth: 200 }).addTo(_map);
 
