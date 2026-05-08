@@ -148,9 +148,9 @@ TILE_PROVIDERS = {
 # # Providers whose upstream format is not PNG.
 # # Maps provider key → (response_mimetype, cache_file_extension).
 # # REMOVE an entry here when removing the corresponding provider above.
-# TILE_MIME = {
-#     "stadia_watercolor": ("image/jpeg", ".jpg"),
-# }
+TILE_MIME = {
+    "stadia_watercolor": ("image/jpeg", ".jpg"),
+}
 
 # Maps provider prefix → (query_param_name, api_key_value).
 # The proxy appends ?param=key to the upstream URL when the key is non-empty.
