@@ -87,12 +87,8 @@ const NMMap = (() => {
     // ── End Stadia block ───────────────────────────────────────────────────────
 
     // ── Thunderforest layers (API key required — set in app.py) ───────────────
-    // REMOVE the next line to drop "TF Transport".
-    const tfTransport     = L.tileLayer("/tiles/tf_transport/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
-    // REMOVE the next line to drop "TF Landscape".
-    const tfLandscape     = L.tileLayer("/tiles/tf_landscape/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
-    // REMOVE the next line to drop "TF Neighbourhood".
-    const tfNeighbourhood = L.tileLayer("/tiles/tf_neighbourhood/{z}/{x}/{y}.png", { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
+    // REMOVE the next line to drop "TF atlas".
+    const tfAtlas     = L.tileLayer("/tiles/tf_atlas/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
     // ── End Thunderforest block ────────────────────────────────────────────────
 
     standardLayer.addTo(_map);
@@ -112,9 +108,7 @@ const NMMap = (() => {
         "Stadia Terrain":    stadiaTerrain,
         "Stadia Watercolor": stadiaWatercolor,
         // Thunderforest — REMOVE entries to drop individual layers (API key required)
-        "TF Transport":      tfTransport,
-        "TF Landscape":      tfLandscape,
-        "TF Neighbourhood":  tfNeighbourhood,
+        "TF Atlas":          tfAtlas,
       },
       {},
       { position: "topright" }
