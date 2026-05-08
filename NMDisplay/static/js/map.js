@@ -77,8 +77,8 @@ const NMMap = (() => {
 
     if (typeof L.markerClusterGroup === "function") {
       _cluster = L.markerClusterGroup({
-        // zoomToBoundsOnClick: true,
-        // disableClusteringAtZoom: 11,
+        zoomToBoundsOnClick: false,
+        disableClusteringAtZoom: 8,
         spiderfyOnMaxZoom: true
       });
       _map.addLayer(_cluster);
@@ -402,20 +402,20 @@ const NMMap = (() => {
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
-      return { color: "#e05252d1", emoji: "📡" };
+      return { color: "#e0525277", emoji: "📡" };
     if (r === "CLIENT_BASE")
-      return { color: "#46e0a2ce", emoji: "🏡" };
+      return { color: "#46e0a291", emoji: "🏡" };
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
-      return { color: "#a061a7dc", emoji: "🐾" };
+      return { color: "#a061a79f", emoji: "🐾" };
     if (r === "SENSOR")
-      return { color: "#d29a22d4", emoji: "📊" };
+      return { color: "#d29a22a2", emoji: "📊" };
     if (r === "CLIENT")
-      return { color: "#6faef7da", emoji: "📱" };
+      return { color: "#6faef7b3", emoji: "📱" };
     if (r === "CLIENT_MUTE")
-      return { color: "#213142cb", emoji: "😎" };
+      return { color: "#21314293", emoji: "😎" };
     if (r === "CLIENT_HIDDEN")
-      return { color: "#213142ca", emoji: "👻" };
-    return { color: "#6e7681c6", emoji: "👻" };
+      return { color: "#21314280", emoji: "👻" };
+    return { color: "#6e7681a5", emoji: "👻" };
   }
   /**
    * Leaflet-style teardrop marker as a pure SVG DivIcon.
@@ -444,7 +444,7 @@ const NMMap = (() => {
   }
 
   function _iconForNode(node, isMyNode) {
-    if (isMyNode) return _pinIcon("#ffffff", "★");
+    if (isMyNode) return _pinIcon("#2f08f2", "★");
     const { color, emoji } = _roleStyle(node.role);
     return _pinIcon(color, emoji);
   }
