@@ -94,7 +94,7 @@ const NMMap = (() => {
       _cluster = {
         addLayer:    (m) => m.addTo(_map),
         removeLayer: (m) => m.remove(),
-        zoomToShowLayer: (m, cb) => { _map.flyTo(m.getLatLng(), 14); cb && cb(); },
+        zoomToShowLayer: (m, cb) => { _map.flyTo(m.getLatLng(), 15); cb && cb(); },
       };
     }
 
@@ -528,7 +528,7 @@ const NMMap = (() => {
   function flyToNode(nodeId) {
     const m = _markers.get(nodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 14);
+    _map.setView(m.getLatLng(), 15);
     _showLabel(nodeId);
   }
 
