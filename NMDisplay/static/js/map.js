@@ -431,7 +431,7 @@ const NMMap = (() => {
 
   function _updateMarker(node) {
     const m = _markers.get(node.node_id);
-    const isMyNode = node.is_my_node === true;
+    const isMyNode = false; // node.is_my_node === true;
     m.setLatLng([node.lat, node.lon]);
     m.setIcon(_iconForNode(node, isMyNode));
     m.setTooltipContent(_labelText(node));
@@ -483,7 +483,7 @@ const NMMap = (() => {
     return _emojiIcon(emoji);
   }
 
-  // ── Label management ──────────────────────────────────────────
+  // ── Label management ──────────────────────────────────────────✪
 
   function _showLabel(nodeId) {
     if (_activeLabel !== null && _activeLabel !== nodeId) {
@@ -576,7 +576,7 @@ const NMMap = (() => {
       ["Altitude",   altStr],
       ["Packets",    node.total_packets],
       ["Last heard", ts],
-      ["First seen", tsFirst],
+      ["First heard", tsFirst],
     ];
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
