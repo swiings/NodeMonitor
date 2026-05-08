@@ -135,15 +135,8 @@ TILE_PROVIDERS = {
     "topo": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
 
     # ── Stadia Maps (STADIA_API_KEY appended automatically when set) ───────────
-    # REMOVE stadia_smooth entry to drop "Stadia Smooth" layer.
-    "stadia_smooth":      "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png",
     # REMOVE stadia_smooth_dark entry to drop "Stadia Dark" layer.
     "stadia_smooth_dark": "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png",
-    # REMOVE stadia_terrain entry to drop "Stadia Terrain" layer.
-    "stadia_terrain":     "https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png",
-    # REMOVE stadia_watercolor entry to drop "Stadia Watercolor" layer.
-    # NOTE: upstream is JPEG — cached as .jpg, served with image/jpeg MIME type (see TILE_MIME).
-    "stadia_watercolor":  "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg",
     # ── End Stadia block ───────────────────────────────────────────────────────
 
     # ── Thunderforest (THUNDERFOREST_API_KEY appended automatically when set) ──
@@ -152,12 +145,12 @@ TILE_PROVIDERS = {
     # ── End Thunderforest block ────────────────────────────────────────────────
 }
 
-# Providers whose upstream format is not PNG.
-# Maps provider key → (response_mimetype, cache_file_extension).
-# REMOVE an entry here when removing the corresponding provider above.
-TILE_MIME = {
-    "stadia_watercolor": ("image/jpeg", ".jpg"),
-}
+# # Providers whose upstream format is not PNG.
+# # Maps provider key → (response_mimetype, cache_file_extension).
+# # REMOVE an entry here when removing the corresponding provider above.
+# TILE_MIME = {
+#     "stadia_watercolor": ("image/jpeg", ".jpg"),
+# }
 
 # Maps provider prefix → (query_param_name, api_key_value).
 # The proxy appends ?param=key to the upstream URL when the key is non-empty.

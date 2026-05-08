@@ -76,14 +76,8 @@ const NMMap = (() => {
     const topoLayer         = L.tileLayer("/tiles/topo/{z}/{x}/{y}.png", { maxZoom: 17, attribution: topoAttr,   tileSize: 256, errorTileUrl: "" });
 
     // ── Stadia Maps layers (no API key required for testing) ───────────────────
-    // REMOVE the next line to drop "Stadia Smooth".
-    const stadiaSmooth     = L.tileLayer("/tiles/stadia_smooth/{z}/{x}/{y}.png",      { maxZoom: 20, attribution: stadiaAttr,      tileSize: 256, errorTileUrl: "" });
     // REMOVE the next line to drop "Stadia Dark".
     const stadiaDark       = L.tileLayer("/tiles/stadia_smooth_dark/{z}/{x}/{y}.png", { maxZoom: 20, attribution: stadiaAttr,      tileSize: 256, errorTileUrl: "" });
-    // REMOVE the next line to drop "Stadia Terrain".
-    const stadiaTerrain    = L.tileLayer("/tiles/stadia_terrain/{z}/{x}/{y}.png",     { maxZoom: 18, attribution: stadiaStamenAttr, tileSize: 256, errorTileUrl: "" });
-    // REMOVE the next line to drop "Stadia Watercolor".
-    const stadiaWatercolor = L.tileLayer("/tiles/stadia_watercolor/{z}/{x}/{y}.png",  { maxZoom: 16, attribution: stadiaStamenAttr, tileSize: 256, errorTileUrl: "" });
     // ── End Stadia block ───────────────────────────────────────────────────────
 
     // ── Thunderforest layers (API key required — set in app.py) ───────────────
@@ -103,10 +97,7 @@ const NMMap = (() => {
         "Humanitarian":      humanitarianLayer,
         "Topo":              topoLayer,
         // Stadia — REMOVE entries to drop individual layers
-        "Stadia Smooth":     stadiaSmooth,
         "Stadia Dark":       stadiaDark,
-        "Stadia Terrain":    stadiaTerrain,
-        "Stadia Watercolor": stadiaWatercolor,
         // Thunderforest — REMOVE entries to drop individual layers (API key required)
         "TF Atlas":          tfAtlas,
       },
