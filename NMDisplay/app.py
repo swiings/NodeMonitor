@@ -211,6 +211,7 @@ def api_gauges():
             my_lat, my_lon = blat, blon
         data = queries.get_gauges(conn, my_node_id, my_lat, my_lon)
         data["hardware_breakdown"] = queries.get_hardware_breakdown(conn)
+        data["role_breakdown"]     = queries.get_role_breakdown(conn)
     finally:
         conn.close()
     return jsonify(data)

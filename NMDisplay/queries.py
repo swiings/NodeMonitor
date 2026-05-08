@@ -427,6 +427,22 @@ def get_hardware_breakdown(conn) -> list[dict]:
     return [{"hardware_model": row["hw"], "count": row["cnt"]} for row in rows]
 
 
+def get_role_breakdown(conn) -> list[dict]:
+    """Return node counts grouped by role, sorted by count descending."""
+    try:
+        rows = conn.execute(
+            """
+            SELECT COALESCE(role, 'Unknown') AS role, COUNT(*) AS cnt
+            FROM nodes
+            GROUP BY role
+            ORDER BY cnt DESC
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [{"role": row["role"], "count": row["cnt"]} for row in rows]
+
+
 def get_packets_for_export(conn) -> list[dict]:
     """Return all packet rows (excluding raw payload blobs) for CSV export."""
     try:

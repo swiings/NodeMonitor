@@ -313,15 +313,20 @@ const NMMap = (() => {
     const slider = document.getElementById("nm-cluster-slider");
     if (!slider || typeof L.markerClusterGroup !== "function") return;
 
-    // Use the map's actual max zoom (tile layers are already added at this point)
     const maxZ = isFinite(_map.getMaxZoom()) ? _map.getMaxZoom() : 18;
-    slider.max   = maxZ;
-    slider.value = 0;  // default: OFF (always cluster)
+    slider.max = maxZ;
+
+    const saved = parseInt(localStorage.getItem("nm-cluster-zoom") ?? "0");
+    const initial = Math.min(Math.max(saved, 0), maxZ);
+    slider.value = initial;
+    const label = document.getElementById("nm-cluster-label");
+    if (label) label.textContent = initial === 0 ? "OFF" : `Z${initial}`;
+    if (initial > 0) _applyClusterZoom(initial);
 
     slider.addEventListener("input", () => {
       const v = parseInt(slider.value);
-      const label = document.getElementById("nm-cluster-label");
       if (label) label.textContent = v === 0 ? "OFF" : `Z${v}`;
+      localStorage.setItem("nm-cluster-zoom", v);
       _applyClusterZoom(v);
     });
   }
