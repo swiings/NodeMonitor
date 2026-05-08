@@ -101,7 +101,8 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 COALESCE(mc.sent_count, 0)      AS sent_count,
                 COALESCE(mc.received_count, 0)  AS received_count,
                 COALESCE(de.dead_end_count, 0)  AS dead_end_count,
-                haversine(n.lat, n.lon, :my_lat, :my_lon) AS distance_km
+                haversine(n.lat, n.lon, :my_lat, :my_lon) AS distance_km,
+                lp.last_portnum
             FROM nodes n
             LEFT JOIN (
                 SELECT from_node_id, COUNT(*) AS total_packets
@@ -115,6 +116,16 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 WHERE hop_limit = 0
                 GROUP BY from_node_id
             ) de ON de.from_node_id = n.node_id
+            LEFT JOIN (
+                SELECT p.from_node_id, p.portnum AS last_portnum
+                FROM packets p
+                INNER JOIN (
+                    SELECT from_node_id, MAX(rx_time) AS max_rx
+                    FROM packets
+                    GROUP BY from_node_id
+                ) mx ON p.from_node_id = mx.from_node_id AND p.rx_time = mx.max_rx
+                GROUP BY p.from_node_id
+            ) lp ON lp.from_node_id = n.node_id
             ORDER BY n.last_heard DESC
             """,
             {"my_lat": my_lat, "my_lon": my_lon},

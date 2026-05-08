@@ -28,6 +28,19 @@ const NMTelemetry = (() => {
   // Static card IDs that live in the HTML (no resize handle, no data rows)
   const STATIC_IDS = ["hops_left", "pkt_breakdown", "hw_breakdown", "role_breakdown"];
 
+  // Matches _PORTNUM_STACK colors in timeline.js
+  const _PORTNUM_COLORS = {
+    "TEXT_MESSAGE_APP": "rgba(138,30,26,0.9)",
+    "UNKNOWN":          "rgba(112,78,10,0.9)",
+    "POSITION_APP":     "rgba(24,100,46,0.9)",
+    "TELEMETRY_APP":    "rgba(26,76,148,0.9)",
+    "NODEINFO_APP":     "rgba(100,48,152,0.9)",
+  };
+
+  function _portnumColor(portnum) {
+    return _PORTNUM_COLORS[portnum] || "rgba(44,51,60,0.95)";
+  }
+
   const _ROLE_INT_MAP = {
     "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",
     "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
@@ -320,6 +333,9 @@ const NMTelemetry = (() => {
     const row = document.createElement("div");
     row.className = "nm-list-row";
     row.style.cursor = "pointer";
+    if (listId === "last_heard" && node.last_portnum) {
+      row.style.color = _portnumColor(node.last_portnum);
+    }
 
     const shortName = node.short_name || node.node_id_hex || "—";
     const longName  = node.long_name  || node.node_id_hex || "—";

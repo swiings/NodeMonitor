@@ -581,7 +581,7 @@ def api_scan_serial():
     """Return a list of available serial ports (USB-connected nodes)."""
     ports = []
     try:
-        import serial.tools.list_ports
+        import serial.tools.list_ports  # type: ignore
         for p in serial.tools.list_ports.comports():
             ports.append({"device": p.device, "description": p.description or ""})
     except Exception as e:

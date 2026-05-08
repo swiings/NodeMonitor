@@ -89,7 +89,6 @@ const NMMap = (() => {
 
     // ── Layer control ──────────────────────────────────────────────────────────
     // To remove a provider: delete its entry here AND its layer declaration above
-    // AND its entry in TILE_PROVIDERS / TILE_MIME in app.py.
     L.control.layers(
       {
         // Original
