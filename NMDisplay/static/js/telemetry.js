@@ -363,23 +363,81 @@ const NMTelemetry = (() => {
     row.appendChild(metaEl);
 
     row.addEventListener("click", () => {
-      if (_wideMode) {
+      if (NMMap.hasMarker(node.node_id)) {
         NMMap.flyToNode(node.node_id);
-        return;
+      } else {
+        _showNodePopup(node, row);
       }
-      if (nameEl.dataset.showing === "click") return;
-      nameEl.dataset.showing = "click";
-      nameEl.textContent = longName;
-      NMMap.flyToNode(node.node_id);
-      setTimeout(() => {
-        if (nameEl.dataset.showing === "click") {
-          nameEl.dataset.showing = "auto";
-          nameEl.textContent = _wideMode ? combined : shortName;
-        }
-      }, 2000);
     });
 
     return row;
+  }
+
+  // ── No-marker node popup ─────────────────────────────────────
+
+  function _showNodePopup(node, rowEl) {
+    const existing = document.getElementById("nm-node-info-popup");
+    if (existing) existing.remove();
+
+    const popup = document.createElement("div");
+    popup.id = "nm-node-info-popup";
+    popup.className = "nm-node-info-popup";
+    popup.innerHTML =
+      `<div class="nm-node-info-close">&#x2715;</div>${_buildNodeInfoHtml(node)}`;
+    document.body.appendChild(popup);
+
+    const rowRect   = rowEl.getBoundingClientRect();
+    const panelEl   = document.getElementById("nm-right-panel");
+    const panelRect = panelEl ? panelEl.getBoundingClientRect() : rowRect;
+    const popW = popup.offsetWidth;
+    const popH = popup.offsetHeight;
+    let top  = rowRect.top;
+    let left = panelRect.left - popW - 8;
+    if (left < 8) left = Math.min(8, panelRect.right + 8);
+    if (top + popH > window.innerHeight - 8) top = window.innerHeight - popH - 8;
+    if (top < 8) top = 8;
+    popup.style.top  = `${top}px`;
+    popup.style.left = `${left}px`;
+
+    popup.querySelector(".nm-node-info-close").addEventListener("click", (e) => {
+      e.stopPropagation();
+      popup.remove();
+    });
+
+    setTimeout(() => {
+      const dismiss = (e) => {
+        if (!popup.contains(e.target)) {
+          popup.remove();
+          document.removeEventListener("click", dismiss, true);
+        }
+      };
+      document.addEventListener("click", dismiss, true);
+    }, 0);
+  }
+
+  function _buildNodeInfoHtml(node) {
+    const ts      = node.last_heard  ? new Date(node.last_heard  * 1000).toLocaleString() : "—";
+    const tsFirst = node.first_seen  ? new Date(node.first_seen  * 1000).toLocaleString() : "—";
+    const distMi  = node.distance_km != null
+      ? `${(node.distance_km * 0.621371).toFixed(1)} mi` : "—";
+    const rows = [
+      ["ID",          node.node_id_hex       || "—"],
+      ["Short",       node.short_name        || "—"],
+      ["Long",        node.long_name         || "—"],
+      ["HW",          node.hardware_model    || "—"],
+      ["Role",        node.role              || "—"],
+      ["Distance",    distMi],
+      ["RSSI",        node.rssi        != null ? `${node.rssi} dBm`  : "—"],
+      ["SNR",         node.snr         != null ? `${node.snr} dB`    : "—"],
+      ["Battery",     node.battery_level != null ? `${node.battery_level}%` : "—"],
+      ["Packets",     node.total_packets ?? "—"],
+      ["Last heard",  ts],
+      ["First heard", tsFirst],
+    ];
+    const trs = rows.map(([k, v]) =>
+      `<tr><td style="color:#888;padding-right:8px;white-space:nowrap">${k}</td><td>${v}</td></tr>`
+    ).join("");
+    return `<table style="font-size:11px;font-family:monospace;line-height:1.5">${trs}</table>`;
   }
 
   // ── Width responsiveness ──────────────────────────────────────

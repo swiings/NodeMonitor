@@ -1280,6 +1280,29 @@ body {
 }
 .nm-zoom-toast.hidden { display: none; }
 
+/* ── No-marker node info popup ───────────────────────────────── */
+.nm-node-info-popup {
+  position: fixed;
+  z-index: 9000;
+  background: var(--panel-bg, #1a1e24);
+  border: 1px solid var(--border, #2e3440);
+  border-radius: 6px;
+  padding: 10px 12px 10px 12px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.55);
+  color: var(--text, #d8dee9);
+  min-width: 220px;
+}
+.nm-node-info-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  cursor: pointer;
+  color: var(--text-dim, #666);
+  font-size: 14px;
+  line-height: 1;
+}
+.nm-node-info-close:hover { color: var(--text, #d8dee9); }
+
 /* ── Scrollbar (dark theme) ──────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }

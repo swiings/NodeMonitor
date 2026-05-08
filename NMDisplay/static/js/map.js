@@ -595,6 +595,18 @@ const NMMap = (() => {
     if (!m) return;
     _map.setView(m.getLatLng(), 15);
     _showLabel(nodeId);
+    _map.once("moveend", () => {
+      const visible = _cluster.getVisibleParent(m);
+      if (visible === m) {
+        m.openPopup();
+      } else {
+        _cluster.zoomToShowLayer(m, () => m.openPopup());
+      }
+    });
+  }
+
+  function hasMarker(nodeId) {
+    return _markers.has(nodeId);
   }
 
   // ── Colors ────────────────────────────────────────────────────
@@ -772,5 +784,5 @@ const NMMap = (() => {
     return Math.abs(area / 2) * R * R;
   }
 
-  return { init, invalidate, highlightNode, flyToNode };
+  return { init, invalidate, highlightNode, flyToNode, hasMarker };
 })();
