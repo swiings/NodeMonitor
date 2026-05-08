@@ -41,6 +41,7 @@ const NMTelemetry = (() => {
     if (r === "CLIENT_BASE" ) return "🏡";
     if (r === "CLIENT" ) return "📱";
     if (r === "CLIENT_MUTE" ) return "😎";
+    if (r === "CLIENT_HIDDEN" ) return "👻";
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
     return "📱";
   }

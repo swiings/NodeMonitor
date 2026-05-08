@@ -346,7 +346,7 @@ const NMMap = (() => {
     if (_myNodeId == null) return;
     const m = _markers.get(_myNodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 12);
+    _map.setView(m.getLatLng(), 14);
     _showLabel(_myNodeId);
   }
 
@@ -528,7 +528,7 @@ const NMMap = (() => {
   function flyToNode(nodeId) {
     const m = _markers.get(nodeId);
     if (!m) return;
-    _map.setView(m.getLatLng(), 12);
+    _map.setView(m.getLatLng(), 14);
     _showLabel(nodeId);
   }
 
