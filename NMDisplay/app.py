@@ -123,8 +123,7 @@ STADIA_API_KEY   = ""                  # API key alternative; leave "" if using 
 # ── End Stadia block ───────────────────────────────────────────────────────────
 
 # ── Thunderforest API key ──────────────────────────────────────────────────────
-# Required for tf_transport, tf_landscape, tf_neighbourhood.
-# Free tier available. Register at https://www.thunderforest.com/pricing/
+# Required for tf_atlas.
 # REMOVE THIS BLOCK when removing all Thunderforest providers.
 THUNDERFOREST_API_KEY = "ccd1da931ab04f45b3ca124f3f694f08"
 # ── End Thunderforest block ────────────────────────────────────────────────────
@@ -148,12 +147,8 @@ TILE_PROVIDERS = {
     # ── End Stadia block ───────────────────────────────────────────────────────
 
     # ── Thunderforest (THUNDERFOREST_API_KEY appended automatically when set) ──
-    # REMOVE tf_transport entry to drop "TF Transport" layer.
-    "tf_transport":     "https://api.thunderforest.com/transport/{z}/{x}/{y}.png",
-    # REMOVE tf_landscape entry to drop "TF Landscape" layer.
-    "tf_landscape":     "https://api.thunderforest.com/landscape/{z}/{x}/{y}.png",
-    # REMOVE tf_neighbourhood entry to drop "TF Neighbourhood" layer.
-    "tf_neighbourhood": "https://api.thunderforest.com/neighbourhood/{z}/{x}/{y}.png",
+    # REMOVE tf_atlas entry to drop "TF Atlas" layer.
+    "tf_atlas":     "https://api.thunderforest.com/atlas/{z}/{x}/{y}.png",
     # ── End Thunderforest block ────────────────────────────────────────────────
 }
 
