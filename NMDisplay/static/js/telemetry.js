@@ -335,6 +335,7 @@ const NMTelemetry = (() => {
     row.style.cursor = "pointer";
     const _rowColor = (listId === "last_heard" && node.last_portnum)
       ? _portnumColor(node.last_portnum) : null;
+    if (_rowColor) row.style.filter = "brightness(1.6)";
 
     const shortName = node.short_name || node.node_id_hex || "—";
     const longName  = node.long_name  || node.node_id_hex || "—";
