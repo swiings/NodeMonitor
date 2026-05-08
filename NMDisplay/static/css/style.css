@@ -315,13 +315,35 @@ body {
   overflow-y: auto;
   background: var(--bg2);
   border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
 }
 
-#nm-lists-container {
+#nm-lists-container,
+#nm-charts-container {
   padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ── Split layout: lists left, charts right ──────────────────── */
+body.layout-split #nm-right-panel {
+  flex-direction: row;
+  overflow-y: hidden;
+}
+
+body.layout-split #nm-lists-container {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+
+body.layout-split #nm-charts-container {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
 }
 
 /* ── Telemetry list card ─────────────────────────────────────── */

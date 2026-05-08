@@ -39,7 +39,8 @@ DEFAULTS = {
 
     "display": {
         "theme": "color",
-        "poll_interval_seconds": 10
+        "poll_interval_seconds": 10,
+        "panel_layout": "single"
     }
 }
 
@@ -111,6 +112,8 @@ def validate_and_merge(current: dict, patch: dict) -> tuple[dict, list[str]]:
     poll = d.get("poll_interval_seconds")
     if not isinstance(poll, int) or not (5 <= poll <= 300):
         errors.append("display.poll_interval_seconds must be integer 5–300")
+    if d.get("panel_layout") not in ("single", "split"):
+        errors.append("display.panel_layout must be 'single' or 'split'")
 
     return merged, errors
 

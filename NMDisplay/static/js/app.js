@@ -152,7 +152,9 @@ async function saveSettings(patch) {
 // ── Theme ───────────────────────────────────────────────────────
 
 function applyTheme(cfg) {
-  document.body.className = `theme-${(cfg.display || {}).theme || "color"}`;
+  const layout = (cfg.display || {}).panel_layout || "single";
+  document.body.className =
+    `theme-${(cfg.display || {}).theme || "color"} layout-${layout}`;
 }
 
 // ── Status bar ──────────────────────────────────────────────────
@@ -685,6 +687,7 @@ function populateModal(cfg) {
 
   document.getElementById("cfg-theme").value = cfg.display.theme;
   document.getElementById("cfg-poll-interval").value = cfg.display.poll_interval_seconds;
+  document.getElementById("cfg-panel-layout").value = cfg.display.panel_layout || "single";
 }
 
 function readModal() {
@@ -722,6 +725,7 @@ function readModal() {
     display: {
       theme: document.getElementById("cfg-theme").value,
       poll_interval_seconds: parseInt(document.getElementById("cfg-poll-interval").value),
+      panel_layout: document.getElementById("cfg-panel-layout").value,
     },
   };
 }

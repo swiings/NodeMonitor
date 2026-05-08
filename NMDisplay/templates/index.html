@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/static/vendor/MarkerCluster.Default.css">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="theme-{{ cfg.display.theme }}">
+<body class="theme-{{ cfg.display.theme }} layout-{{ cfg.display.panel_layout or 'single' }}">
 
   <!-- ── Header ──────────────────────────────────────────────────── -->
   <header id="nm-header">
@@ -150,7 +150,10 @@
 
     <!-- Right: telemetry lists, full page height -->
     <div id="nm-right-panel">
-      <div id="nm-lists-container">
+      <!-- Node lists (dynamic cards injected here by telemetry.js) -->
+      <div id="nm-lists-container"></div>
+      <!-- Chart cards (always static; shown alongside or below lists depending on layout) -->
+      <div id="nm-charts-container">
         <div id="nm-hop-dist" class="nm-list-card nm-list-card--static" data-card-id="hops_left">
           <div class="nm-list-title nm-list-title--draggable">HOPS LEFT</div>
           <table class="nm-hop-table" id="nm-hop-dist-table">
@@ -347,6 +350,12 @@
           </label>
           <label>Poll interval (seconds)
             <input type="number" id="cfg-poll-interval" min="5" max="300">
+          </label>
+          <label>Panel layout
+            <select id="cfg-panel-layout">
+              <option value="single">Single column</option>
+              <option value="split">Split — lists left, charts right</option>
+            </select>
           </label>
         </section>
 
