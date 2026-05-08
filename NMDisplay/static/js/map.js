@@ -219,6 +219,7 @@ const NMMap = (() => {
 
     _initFilterBar();
     _initAgeFilterBar();
+    _initClusterSlider();
 
     // Re-measure after fonts/layout settle, and on any window resize
     setTimeout(() => _map.invalidateSize(), 250);
@@ -304,6 +305,38 @@ const NMMap = (() => {
       if (label) label.textContent = _AGE_LABELS[v];
       _applyFilters();
     });
+  }
+
+  // ── Cluster zoom slider ───────────────────────────────────────
+
+  function _initClusterSlider() {
+    const slider = document.getElementById("nm-cluster-slider");
+    if (!slider || typeof L.markerClusterGroup !== "function") return;
+
+    // Use the map's actual max zoom (tile layers are already added at this point)
+    const maxZ = isFinite(_map.getMaxZoom()) ? _map.getMaxZoom() : 18;
+    slider.max   = maxZ;
+    slider.value = 0;  // default: OFF (always cluster)
+
+    slider.addEventListener("input", () => {
+      const v = parseInt(slider.value);
+      const label = document.getElementById("nm-cluster-label");
+      if (label) label.textContent = v === 0 ? "OFF" : `Z${v}`;
+      _applyClusterZoom(v);
+    });
+  }
+
+  function _applyClusterZoom(zoomLevel) {
+    if (!_cluster || typeof _cluster.clearLayers !== "function") return;
+    _cluster.options.disableClusteringAtZoom = zoomLevel === 0 ? undefined : zoomLevel;
+    // Force the cluster to recompute by clearing and re-adding all markers
+    const allMarkers = Array.from(_markers.values());
+    _cluster.clearLayers();
+    if (typeof _cluster.addLayers === "function") {
+      _cluster.addLayers(allMarkers);
+    } else {
+      for (const m of allMarkers) _cluster.addLayer(m);
+    }
   }
 
   // ── Filter logic ──────────────────────────────────────────────

@@ -1240,6 +1240,31 @@ body {
   flex-shrink: 0;
 }
 
+.nm-filter-sep {
+  color: var(--border);
+  font-size: 13px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+#nm-cluster-slider {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--text-dim);
+  cursor: pointer;
+  height: 4px;
+}
+
+#nm-cluster-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  min-width: 32px;
+  flex-shrink: 0;
+}
+
 /* ── Zoom level toast (Leaflet control, bottom-right) ─────────── */
 .nm-zoom-toast {
   background: var(--bg2);
