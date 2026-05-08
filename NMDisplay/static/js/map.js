@@ -9,6 +9,7 @@
  *  CLIENT                          → 📱
  *  CLIENT_BASE                     → 🏡
  *  CLIENT_MUTE                     → 😎
+ *  CLIENT_HIDDEN                   → 👻
  *  ROUTER / ROUTER_LATE / REPEATER → 📡
  *  TRACKER / LOST_AND_FOUND        → 🐾
  *  SENSOR                          → 📊
@@ -79,7 +80,7 @@ const NMMap = (() => {
         showCoverageOnHover: false,
         maxClusterRadius: 5,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 9
+        disableClusteringAtZoom: 13
       });
       _map.addLayer(_cluster);
     } else {
@@ -402,18 +403,20 @@ const NMMap = (() => {
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
-      return { color: "#e05252", emoji: "📡" };
+      return { color: "#e05252d1", emoji: "📡" };
     if (r === "CLIENT_BASE")
-      return { color: "#16885b", emoji: "🏡" };
+      return { color: "#46e0a2ce", emoji: "🏡" };
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")
-      return { color: "#a061a7", emoji: "🐾" };
+      return { color: "#a061a7dc", emoji: "🐾" };
     if (r === "SENSOR")
-      return { color: "#d29922", emoji: "📊" };
+      return { color: "#d29a22d4", emoji: "📊" };
     if (r === "CLIENT")
-      return { color: "#58a6ff", emoji: "📱" };
+      return { color: "#6faef7da", emoji: "📱" };
     if (r === "CLIENT_MUTE")
-      return { color: "#213142", emoji: "😎" };
-    return { color: "#6e7681", emoji: "👻" };
+      return { color: "#213142cb", emoji: "😎" };
+    if (r === "CLIENT_HIDDEN")
+      return { color: "#213142ca", emoji: "👻" };
+    return { color: "#6e7681c6", emoji: "👻" };
   }
   /**
    * Leaflet-style teardrop marker as a pure SVG DivIcon.
@@ -425,7 +428,7 @@ const NMMap = (() => {
       <path d="M12.5,39 C12.5,39 2,25.5 2,13.5 A10.5,10.5 0 1 1 23,13.5 C23,25.5 12.5,39 Z"
             fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1.5"/>
       <text x="12.5" y="14" text-anchor="middle" dominant-baseline="middle"
-            font-size="${isstar ? "13" : "11"}"
+            font-size="${isstar ? "13" : "14"}"
             font-family="Apple Color Emoji,Noto Color Emoji,Segoe UI Emoji,Twemoji Mozilla,sans-serif"
             fill="white">${emoji}</text>
     </svg>`;
@@ -442,7 +445,7 @@ const NMMap = (() => {
   }
 
   function _iconForNode(node, isMyNode) {
-    if (isMyNode) return _pinIcon("#02f447", "★");
+    if (isMyNode) return _pinIcon("#ffffff", "★");
     const { color, emoji } = _roleStyle(node.role);
     return _pinIcon(color, emoji);
   }
