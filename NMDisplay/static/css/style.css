@@ -549,9 +549,15 @@ body {
 /* The wrapper is a child of .leaflet-marker-icon so that transform
    animations don't conflict with Leaflet's own translate() positioning. */
 .nm-pin-wrap {
-  display: block;
-  /* Scale from the pin tip (12px from left, 39px from top of 25×41 icon) */
-  transform-origin: 12px 39px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 22px;
+  line-height: 1;
+  transform-origin: center center;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.55));
 }
 
 @keyframes nm-marker-pulse {
@@ -1204,6 +1210,50 @@ body {
 .marker-cluster-large       { background-color: rgba(253,156,115,0.85); }
 .marker-cluster-large div   { background-color: rgba(241,128, 23,0.9);  }
 .marker-cluster div         { font-weight: bold; color: #222; }
+
+/* ── Map age filter bar (below map, above timeline divider) ──── */
+#nm-age-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: var(--bg3);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#nm-age-slider {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+}
+
+#nm-age-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+/* ── Zoom level toast (Leaflet control, bottom-right) ─────────── */
+.nm-zoom-toast {
+  background: var(--bg2);
+  border: 2px solid rgba(0,0,0,0.25);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.nm-zoom-toast.hidden { display: none; }
 
 /* ── Scrollbar (dark theme) ──────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }

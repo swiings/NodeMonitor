@@ -26,7 +26,7 @@ const NMTelemetry = (() => {
   const _cachedLists = new Map();
 
   // Static card IDs that live in the HTML (no resize handle, no data rows)
-  const STATIC_IDS = ["hops_left", "pkt_breakdown"];
+  const STATIC_IDS = ["hops_left", "pkt_breakdown", "hw_breakdown"];
 
   const _ROLE_INT_MAP = {
     "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",

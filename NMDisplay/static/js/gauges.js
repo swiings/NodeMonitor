@@ -81,6 +81,9 @@ const NMGauges = (() => {
     if (data.hop_dist_raw) {
       _updateHopDistRaw(data.hop_dist_raw);
     }
+    if (data.hardware_breakdown) {
+      _updateHardwareBreakdown(data.hardware_breakdown);
+    }
   }
 
   // Hops-left colors: warm earth/bronze gradient (close=lighter copper, far=dark slate).
@@ -247,6 +250,27 @@ const NMGauges = (() => {
       return `<tr>
         <td class="nm-hop-label" style="min-width:48px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
+        <td class="nm-hop-count">${r.count}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  // Hardware model breakdown
+  function _updateHardwareBreakdown(rows) {
+    const table = document.getElementById("nm-hw-breakdown-table");
+    if (!table) return;
+    if (!rows || rows.length === 0) {
+      table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
+      return;
+    }
+    const maxCount = Math.max(1, ...rows.map(r => r.count));
+    const color = "var(--accent)";
+    table.innerHTML = rows.map(r => {
+      const pct   = Math.round((r.count / maxCount) * 100);
+      const label = r.hardware_model || "Unknown";
+      return `<tr>
+        <td class="nm-hop-label" style="min-width:60px;color:${color}">${label}</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.75"></div></td>
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
     }).join("");

@@ -409,3 +409,42 @@ def get_packet_breakdown(conn, my_node_id=None) -> list[dict]:
         return []
 
     return [{"portnum": row["portnum"], "count": row["cnt"]} for row in rows]
+
+
+def get_hardware_breakdown(conn) -> list[dict]:
+    """Return node counts grouped by hardware_model, sorted by count descending."""
+    try:
+        rows = conn.execute(
+            """
+            SELECT COALESCE(hardware_model, 'Unknown') AS hw, COUNT(*) AS cnt
+            FROM nodes
+            GROUP BY hw
+            ORDER BY cnt DESC
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [{"hardware_model": row["hw"], "count": row["cnt"]} for row in rows]
+
+
+def get_packets_for_export(conn) -> list[dict]:
+    """Return all packet rows (excluding raw payload blobs) for CSV export."""
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, rx_time, from_node_id, to_node_id, portnum,
+                   hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon
+            FROM packets
+            ORDER BY rx_time ASC
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+
+    result = []
+    for row in rows:
+        d = dict(row)
+        d["from_node_id"] = f"!{d['from_node_id'] & 0xFFFFFFFF:08x}" if d["from_node_id"] else "—"
+        d["to_node_id"]   = f"!{d['to_node_id']   & 0xFFFFFFFF:08x}" if d["to_node_id"]   else "—"
+        result.append(d)
+    return result

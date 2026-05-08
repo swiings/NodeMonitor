@@ -210,6 +210,7 @@ def api_gauges():
         if blat is not None and blon is not None:
             my_lat, my_lon = blat, blon
         data = queries.get_gauges(conn, my_node_id, my_lat, my_lon)
+        data["hardware_breakdown"] = queries.get_hardware_breakdown(conn)
     finally:
         conn.close()
     return jsonify(data)
@@ -264,6 +265,67 @@ def api_export_nodes():
         csv_data,
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename=nodes_{timestamp}.csv"},
+    )
+
+
+_PACKET_CSV_FIELDS = [
+    "id", "rx_time", "from_node_id", "to_node_id", "portnum",
+    "hop_limit", "rx_rssi", "rx_snr", "rx_lat", "rx_lon",
+]
+
+
+def _build_packets_csv(conn) -> str:
+    packets = queries.get_packets_for_export(conn)
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=_PACKET_CSV_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(packets)
+    return buf.getvalue()
+
+
+@app.route("/api/export/packets.csv")
+def api_export_packets():
+    """Export the active session's packets as CSV."""
+    conn = queries.get_conn()
+    try:
+        csv_data = _build_packets_csv(conn)
+    finally:
+        conn.close()
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=packets_{timestamp}.csv"},
+    )
+
+
+@app.route("/api/sessions/<session_id>/export/packets.csv")
+def api_session_export_packets(session_id):
+    """Export a specific session's packets as CSV."""
+    import bundle_paths as bp
+    all_sessions = sess_mod.load_all()
+    session = next((s for s in all_sessions if s["id"] == session_id), None)
+    if session is None:
+        abort(404)
+    db_path = os.path.join(bp.data_dir(), session["db"])
+    if not os.path.exists(db_path):
+        abort(404)
+
+    conn = queries.get_conn_for_path(db_path)
+    try:
+        csv_data = _build_packets_csv(conn)
+    finally:
+        conn.close()
+
+    slug = re.sub(r"[^a-z0-9]+", "_", session["name"].lower()).strip("_")
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"packets_{slug}_{timestamp}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

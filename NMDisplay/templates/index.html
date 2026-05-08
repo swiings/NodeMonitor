@@ -103,6 +103,12 @@
 
       <div id="nm-map"></div>
 
+      <div id="nm-age-filter-bar">
+        <span class="nm-filter-label">AGE</span>
+        <input type="range" id="nm-age-slider" min="0" max="7" value="7" step="1">
+        <span id="nm-age-label">ALL</span>
+      </div>
+
       <div id="nm-divider-h" class="nm-divider nm-divider--h" title="Drag to resize"></div>
 
       <div id="nm-timeline-row">
@@ -150,6 +156,12 @@
         <div id="nm-pkt-breakdown" class="nm-list-card nm-list-card--static" data-card-id="pkt_breakdown">
           <div class="nm-list-title nm-list-title--draggable">PACKET BREAKDOWN</div>
           <table class="nm-hop-table" id="nm-pkt-breakdown-table">
+            <!-- Populated by gauges.js -->
+          </table>
+        </div>
+        <div id="nm-hw-breakdown" class="nm-list-card nm-list-card--static" data-card-id="hw_breakdown">
+          <div class="nm-list-title nm-list-title--draggable">HARDWARE</div>
+          <table class="nm-hop-table" id="nm-hw-breakdown-table">
             <!-- Populated by gauges.js -->
           </table>
         </div>

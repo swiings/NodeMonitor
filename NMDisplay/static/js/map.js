@@ -40,6 +40,11 @@ const NMMap = (() => {
   let _dataMaxHopLimit = 0;     // highest hop_limit seen in current node set
   let _filterIndicator = null;  // Leaflet control showing active hop filter
 
+  // Age filter state — max age in minutes; Infinity = show all
+  const _AGE_STEPS  = [1, 5, 15, 30, 60, 360, 1440, Infinity];
+  const _AGE_LABELS = ["1m", "5m", "15m", "30m", "1h", "6h", "1d", "ALL"];
+  let _maxAgeFilter = Infinity;
+
   // Convex hull state
   let _hullLayer   = null;
   let _hullVisible = false;
@@ -193,7 +198,27 @@ const NMMap = (() => {
     });
     _filterIndicator = new FilterIndicator().addTo(_map);
 
+    // Zoom level toast (bottom-right, near scale bar)
+    const ZoomToastControl = L.Control.extend({
+      options: { position: "bottomright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "nm-zoom-toast hidden");
+        return div;
+      },
+    });
+    const _zoomToast = new ZoomToastControl().addTo(_map);
+    let _zoomToastTimer = null;
+    _map.on("zoomend", () => {
+      const el = _zoomToast.getContainer();
+      if (!el) return;
+      el.textContent = `Zoom: ${_map.getZoom()}`;
+      el.classList.remove("hidden");
+      clearTimeout(_zoomToastTimer);
+      _zoomToastTimer = setTimeout(() => el.classList.add("hidden"), 2000);
+    });
+
     _initFilterBar();
+    _initAgeFilterBar();
 
     // Re-measure after fonts/layout settle, and on any window resize
     setTimeout(() => _map.invalidateSize(), 250);
@@ -265,14 +290,38 @@ const NMMap = (() => {
     }
   }
 
+  // ── Age filter bar ────────────────────────────────────────────
+
+  function _initAgeFilterBar() {
+    const slider = document.getElementById("nm-age-slider");
+    if (!slider) return;
+    slider.max = _AGE_STEPS.length - 1;
+    slider.value = _AGE_STEPS.length - 1;  // ALL by default
+    slider.addEventListener("input", () => {
+      const v = parseInt(slider.value);
+      _maxAgeFilter = _AGE_STEPS[v];
+      const label = document.getElementById("nm-age-label");
+      if (label) label.textContent = _AGE_LABELS[v];
+      _applyFilters();
+    });
+  }
+
   // ── Filter logic ──────────────────────────────────────────────
 
   function _applyFilters() {
+    const nowSec = Math.floor(Date.now() / 1000);
     const visible = _allGpsNodes.filter(n => {
-      if (_maxHopsFilter === Infinity) return true;
-      const hopLimit = n.hop_limit != null ? n.hop_limit : 0;
-      const traversed = _dataMaxHopLimit - hopLimit;
-      return traversed <= _maxHopsFilter;
+      if (_maxHopsFilter !== Infinity) {
+        const hopLimit = n.hop_limit != null ? n.hop_limit : 0;
+        const traversed = _dataMaxHopLimit - hopLimit;
+        if (traversed > _maxHopsFilter) return false;
+      }
+      if (_maxAgeFilter !== Infinity) {
+        if (n.last_heard == null) return false;
+        const ageMinutes = (nowSec - n.last_heard) / 60;
+        if (ageMinutes > _maxAgeFilter) return false;
+      }
+      return true;
     });
     _syncMarkers(visible);
 
@@ -365,7 +414,7 @@ const NMMap = (() => {
       permanent: false,
       direction: "top",
       className: "nm-node-label",
-      offset: [0, -38],
+      offset: [0, -20],
     });
 
     m.bindPopup(_popupHtml(node));
@@ -418,36 +467,20 @@ const NMMap = (() => {
       return { color: "#21314280", emoji: "👻" };
     return { color: "#6e7681a5", emoji: "👻" };
   }
-  /**
-   * Leaflet-style teardrop marker as a pure SVG DivIcon.
-   * Emoji (or ★ for my node) rendered via SVG <text> — no shadow.
-   */
-  function _pinIcon(color, emoji) {
-    const isstar = emoji === "★";
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
-      <path d="M12.5,39 C12.5,39 2,25.5 2,13.5 A10.5,10.5 0 1 1 23,13.5 C23,25.5 12.5,39 Z"
-            fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1.5"/>
-      <text x="12.5" y="14" text-anchor="middle" dominant-baseline="middle"
-            font-size="${isstar ? "13" : "14"}"
-            font-family="Apple Color Emoji,Noto Color Emoji,Segoe UI Emoji,Twemoji Mozilla,sans-serif"
-            fill="white">${emoji}</text>
-    </svg>`;
-
-    // Wrap in a child div so the pulse animation can use transform without
-    // conflicting with Leaflet's own transform: translate() on the marker element.
+  function _emojiIcon(emoji) {
     return L.divIcon({
       className: "",
-      html: `<div class="nm-pin-wrap">${svg}</div>`,
-      iconSize:    [25, 41],
-      iconAnchor:  [12, 39],
-      popupAnchor: [0, -37],
+      html: `<div class="nm-pin-wrap">${emoji}</div>`,
+      iconSize:    [30, 30],
+      iconAnchor:  [15, 15],
+      popupAnchor: [0, -20],
     });
   }
 
   function _iconForNode(node, isMyNode) {
-    if (isMyNode) return _pinIcon("#2f08f2", "★");
-    const { color, emoji } = _roleStyle(node.role);
-    return _pinIcon(color, emoji);
+    if (isMyNode) return _emojiIcon("★");
+    const { emoji } = _roleStyle(node.role);
+    return _emojiIcon(emoji);
   }
 
   // ── Label management ──────────────────────────────────────────
@@ -514,6 +547,9 @@ const NMMap = (() => {
     const ts = node.last_heard
       ? new Date(node.last_heard * 1000).toLocaleString()
       : "—";
+    const tsFirst = node.first_seen
+      ? new Date(node.first_seen * 1000).toLocaleString()
+      : "—";
 
     const hopsAway = (node.hop_limit != null && _dataMaxHopLimit > 0)
       ? (_dataMaxHopLimit - node.hop_limit)
@@ -521,6 +557,9 @@ const NMMap = (() => {
     const distMi = node.distance_km != null
       ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
       : null;
+    const altStr = node.altitude_m != null
+      ? `${node.altitude_m.toFixed(0)} m`
+      : "—";
 
     const rows = [
       ["ID",         node.node_id_hex || "—"],
@@ -534,8 +573,10 @@ const NMMap = (() => {
       ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
       ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
       ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
+      ["Altitude",   altStr],
       ["Packets",    node.total_packets],
       ["Last heard", ts],
+      ["First seen", tsFirst],
     ];
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`

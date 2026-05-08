@@ -825,7 +825,8 @@ async function _loadCsvSessions() {
         <span class="nm-csv-name">${sname}</span>
         <span class="nm-csv-date">${dateStr}</span>
         ${s.db_exists
-          ? `<button class="nm-text-btn" onclick="_downloadCsv('/api/sessions/${sid}/export/nodes.csv','nodes_${sid}.csv')">Export CSV</button>`
+          ? `<button class="nm-text-btn" onclick="_downloadCsv('/api/sessions/${sid}/export/nodes.csv','nodes_${sid}.csv')">Nodes</button>
+             <button class="nm-text-btn" onclick="_downloadCsv('/api/sessions/${sid}/export/packets.csv','packets_${sid}.csv')">Packets</button>`
           : `<span class="nm-hint-inline">no data</span>`}
       </li>`;
     }).join("");
