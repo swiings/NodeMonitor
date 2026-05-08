@@ -110,12 +110,23 @@ def _effective_my_node_id():
 
 TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
 
+# ── Stadia Maps API key ────────────────────────────────────────────────────────
+# Required: server-side proxies do NOT get Stadia's localhost exemption.
+# Free tier: 200k requests/month. Register at https://stadiamaps.com/
+# Domain allowlist (no API key needed): set STADIA_REFERER to your hostname and
+# register that hostname in the Stadia dashboard under "Allowed Domains".
+# The proxy sends this as the Referer header so Stadia accepts the request.
+# If you have an API key instead, set STADIA_API_KEY and leave STADIA_REFERER empty.
+# REMOVE THIS BLOCK when removing all Stadia providers.
+STADIA_REFERER   = "http://HAXXpi5.local/"   # your registered hostname, or "" to skip
+STADIA_API_KEY   = ""                  # API key alternative; leave "" if using referer
+# ── End Stadia block ───────────────────────────────────────────────────────────
+
 # ── Thunderforest API key ──────────────────────────────────────────────────────
 # Required for tf_transport, tf_landscape, tf_neighbourhood.
-# Without a key the tiles will fail to load (blank tiles, no crash).
-# Get a free key at https://www.thunderforest.com/pricing/
+# Free tier available. Register at https://www.thunderforest.com/pricing/
 # REMOVE THIS BLOCK when removing all Thunderforest providers.
-THUNDERFOREST_API_KEY = ""
+THUNDERFOREST_API_KEY = "ccd1da931ab04f45b3ca124f3f694f08"
 # ── End Thunderforest block ────────────────────────────────────────────────────
 
 TILE_PROVIDERS = {
@@ -124,25 +135,25 @@ TILE_PROVIDERS = {
     "hot":  "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
     "topo": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
 
-    # ── Stadia Maps (no API key required for testing; {r} = retina suffix, unused) ─
+    # ── Stadia Maps (STADIA_API_KEY appended automatically when set) ───────────
     # REMOVE stadia_smooth entry to drop "Stadia Smooth" layer.
-    "stadia_smooth":      "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
+    "stadia_smooth":      "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png",
     # REMOVE stadia_smooth_dark entry to drop "Stadia Dark" layer.
-    "stadia_smooth_dark": "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+    "stadia_smooth_dark": "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png",
     # REMOVE stadia_terrain entry to drop "Stadia Terrain" layer.
-    "stadia_terrain":     "https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.png",
+    "stadia_terrain":     "https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png",
     # REMOVE stadia_watercolor entry to drop "Stadia Watercolor" layer.
     # NOTE: upstream is JPEG — cached as .jpg, served with image/jpeg MIME type (see TILE_MIME).
     "stadia_watercolor":  "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg",
     # ── End Stadia block ───────────────────────────────────────────────────────
 
-    # ── Thunderforest (API key required — set THUNDERFOREST_API_KEY above) ─────
+    # ── Thunderforest (THUNDERFOREST_API_KEY appended automatically when set) ──
     # REMOVE tf_transport entry to drop "TF Transport" layer.
-    "tf_transport":     "https://api.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    "tf_transport":     "https://api.thunderforest.com/transport/{z}/{x}/{y}.png",
     # REMOVE tf_landscape entry to drop "TF Landscape" layer.
-    "tf_landscape":     "https://api.thunderforest.com/landscape/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    "tf_landscape":     "https://api.thunderforest.com/landscape/{z}/{x}/{y}.png",
     # REMOVE tf_neighbourhood entry to drop "TF Neighbourhood" layer.
-    "tf_neighbourhood": "https://api.thunderforest.com/neighbourhood/{z}/{x}/{y}{r}.png?apikey={apikey}",
+    "tf_neighbourhood": "https://api.thunderforest.com/neighbourhood/{z}/{x}/{y}.png",
     # ── End Thunderforest block ────────────────────────────────────────────────
 }
 
@@ -153,7 +164,43 @@ TILE_MIME = {
     "stadia_watercolor": ("image/jpeg", ".jpg"),
 }
 
+# Maps provider prefix → (query_param_name, api_key_value).
+# The proxy appends ?param=key to the upstream URL when the key is non-empty.
+# REMOVE an entry here when removing the corresponding provider group.
+TILE_API_KEYS = {
+    "stadia_":  ("api_key", STADIA_API_KEY),
+    "tf_":      ("apikey",  THUNDERFOREST_API_KEY),
+}
+
+# Maps provider prefix → extra request headers sent to the upstream tile server.
+# Stadia uses the Referer header for domain-allowlist auth (free tier, no API key).
+# REMOVE an entry here when removing the corresponding provider group.
+TILE_EXTRA_HEADERS = {
+    "stadia_": {"Referer": STADIA_REFERER} if STADIA_REFERER else {},
+}
+
 OSM_HEADERS = {"User-Agent": "NMDisplay/1.0 NodeMonitor (amateur radio mesh monitor)"}
+
+
+def _build_tile_url(provider: str, z: int, x: int, y: int) -> str:
+    """Construct the upstream tile URL, appending any required API key."""
+    url = TILE_PROVIDERS[provider].format(z=z, x=x, y=y)
+    for prefix, (param, key) in TILE_API_KEYS.items():
+        if provider.startswith(prefix) and key:
+            sep = "&" if "?" in url else "?"
+            url += f"{sep}{param}={key}"
+            break
+    return url
+
+
+def _build_tile_headers(provider: str) -> dict:
+    """Merge base headers with any provider-specific extra headers."""
+    extra = {}
+    for prefix, headers in TILE_EXTRA_HEADERS.items():
+        if provider.startswith(prefix):
+            extra = headers
+            break
+    return {**OSM_HEADERS, **extra}
 
 
 # ------------------------------------------------------------------
@@ -613,11 +660,9 @@ def tile(provider, z, x, y):
     path = os.path.join(TILE_CACHE_DIR, provider, str(z), str(x), f"{y}{cache_ext}")
 
     if not os.path.exists(path):
-        url = TILE_PROVIDERS[provider].format(
-            z=z, x=x, y=y, r="", apikey=THUNDERFOREST_API_KEY
-        )
+        url = _build_tile_url(provider, z, x, y)
         try:
-            resp = req_lib.get(url, headers=OSM_HEADERS, timeout=10)
+            resp = req_lib.get(url, headers=_build_tile_headers(provider), timeout=10)
             resp.raise_for_status()
         except Exception:
             abort(502)
