@@ -307,7 +307,7 @@ const NMGauges = (() => {
     const color = "var(--purple)";
     table.innerHTML = rows.map(r => {
       const pct   = Math.round((r.count / maxCount) * 100);
-      const label = _ROLE_LABELS[r.role] || `👻 ${r.role}`;
+      const label = _ROLE_LABELS[r.role] || `${r.role} 👻`;
       return `<tr>
         <td class="nm-hop-label" style="min-width:120px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.75"></div></td>
