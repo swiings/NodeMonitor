@@ -78,7 +78,7 @@ const NMMap = (() => {
     if (typeof L.markerClusterGroup === "function") {
       _cluster = L.markerClusterGroup({
         zoomToBoundsOnClick: false,
-        disableClusteringAtZoom: 17,
+        disableClusteringAtZoom: 14,
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true
       });
