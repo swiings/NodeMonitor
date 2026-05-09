@@ -13,20 +13,75 @@ const NMGauges = (() => {
   let _closestNodeId  = null;
   let _farthestNodeId = null;
 
-  const HW_ROW_HEIGHT = 22;
-  let _hwAllRows = [];
-  let _hwLimit   = null;   // null = show all
+  // ── Generic chart-card resize ─────────────────────────────────
+  const CHART_ROW_HEIGHT = 22;
 
-  function _loadHwLimit() {
-    try { _hwLimit = JSON.parse(localStorage.getItem("nm-hw-limit")); } catch (_) {}
+  // State per resizable card: cardId → { allRows, limit, storageKey, renderFn }
+  const _chartState = {};
+
+  function _initChartResize(cardId, storageKey) {
+    const state = { allRows: [], limit: null, storageKey, renderFn: null };
+    _chartState[cardId] = state;
+    try { state.limit = JSON.parse(localStorage.getItem(storageKey)); } catch (_) {}
+
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const handle = document.createElement("div");
+    handle.className = "nm-list-resize-handle";
+    card.appendChild(handle);
+
+    const startDrag = (startY) => {
+      const startLimit = state.limit ?? state.allRows.length;
+      return (currentY) => {
+        const delta  = Math.round((currentY - startY) / CHART_ROW_HEIGHT);
+        const newLim = Math.max(1, Math.min(20, startLimit + delta));
+        if (state.limit !== newLim) {
+          state.limit = newLim;
+          localStorage.setItem(storageKey, JSON.stringify(newLim));
+          if (state.renderFn) state.renderFn();
+        }
+      };
+    };
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.clientY);
+      const move = (e2) => onMove(e2.clientY);
+      const up   = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.touches[0].clientY);
+      const move = (e2) => onMove(e2.touches[0].clientY);
+      const up   = () => {
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", up);
+      };
+      document.addEventListener("touchmove", move, { passive: false });
+      document.addEventListener("touchend", up);
+    }, { passive: false });
   }
-  function _saveHwLimit() {
-    localStorage.setItem("nm-hw-limit", JSON.stringify(_hwLimit));
+
+  function _slicedRows(cardId) {
+    const s = _chartState[cardId];
+    return s.limit != null ? s.allRows.slice(0, s.limit) : s.allRows;
   }
 
   function init() {
-    _loadHwLimit();
-    _attachHwResize();
+    _initChartResize("nm-pkt-breakdown",  "nm-chart-limit-pkts");
+    _initChartResize("nm-hw-breakdown",   "nm-chart-limit-hw");
+    _initChartResize("nm-role-breakdown", "nm-chart-limit-roles");
+    _chartState["nm-pkt-breakdown"].renderFn  = _renderPktBreakdown;
+    _chartState["nm-hw-breakdown"].renderFn   = _renderHwBreakdown;
+    _chartState["nm-role-breakdown"].renderFn = _renderRoleBreakdown;
     document.addEventListener("nm:gauges-updated",    (e) => _update(e.detail));
     document.addEventListener("nm:breakdown-updated", (e) => _updateBreakdown(e.detail.breakdown || []));
 
@@ -252,9 +307,17 @@ const NMGauges = (() => {
   }
 
   function _updateBreakdown(rows) {
+    const state = _chartState["nm-pkt-breakdown"];
+    if (!state) return;
+    state.allRows = rows || [];
+    _renderPktBreakdown();
+  }
+
+  function _renderPktBreakdown() {
     const table = document.getElementById("nm-pkt-breakdown-table");
     if (!table) return;
-    if (!rows || rows.length === 0) {
+    const rows = _slicedRows("nm-pkt-breakdown");
+    if (rows.length === 0) {
       table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
       return;
     }
@@ -273,16 +336,16 @@ const NMGauges = (() => {
 
   // Hardware model breakdown
   function _updateHardwareBreakdown(rows) {
-    _hwAllRows = rows || [];
-    _renderHwRows();
+    const state = _chartState["nm-hw-breakdown"];
+    if (!state) return;
+    state.allRows = rows || [];
+    _renderHwBreakdown();
   }
 
-  function _renderHwRows() {
+  function _renderHwBreakdown() {
     const table = document.getElementById("nm-hw-breakdown-table");
     if (!table) return;
-    const rows = _hwLimit != null
-      ? _hwAllRows.slice(0, Math.max(1, _hwLimit))
-      : _hwAllRows;
+    const rows = _slicedRows("nm-hw-breakdown");
     if (rows.length === 0) {
       table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
       return;
@@ -298,53 +361,6 @@ const NMGauges = (() => {
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
     }).join("");
-  }
-
-  function _attachHwResize() {
-    const card = document.getElementById("nm-hw-breakdown");
-    if (!card) return;
-    const handle = document.createElement("div");
-    handle.className = "nm-list-resize-handle";
-    card.appendChild(handle);
-
-    const startDrag = (startY) => {
-      const startLimit = _hwLimit ?? _hwAllRows.length;
-      return (currentY) => {
-        const delta  = Math.round((currentY - startY) / HW_ROW_HEIGHT);
-        const newLim = Math.max(1, Math.min(20, startLimit + delta));
-        if (_hwLimit !== newLim) {
-          _hwLimit = newLim;
-          _saveHwLimit();
-          _renderHwRows();
-        }
-      };
-    };
-
-    handle.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const onMove = startDrag(e.clientY);
-      const move = (e2) => onMove(e2.clientY);
-      const up   = () => {
-        document.removeEventListener("mousemove", move);
-        document.removeEventListener("mouseup", up);
-      };
-      document.addEventListener("mousemove", move);
-      document.addEventListener("mouseup", up);
-    });
-
-    handle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const onMove = startDrag(e.touches[0].clientY);
-      const move = (e2) => onMove(e2.touches[0].clientY);
-      const up   = () => {
-        document.removeEventListener("touchmove", move);
-        document.removeEventListener("touchend", up);
-      };
-      document.addEventListener("touchmove", move, { passive: false });
-      document.addEventListener("touchend", up);
-    }, { passive: false });
   }
 
   // Role breakdown — role label → emoji mapping for display
@@ -365,9 +381,17 @@ const NMGauges = (() => {
   };
 
   function _updateRoleBreakdown(rows) {
+    const state = _chartState["nm-role-breakdown"];
+    if (!state) return;
+    state.allRows = rows || [];
+    _renderRoleBreakdown();
+  }
+
+  function _renderRoleBreakdown() {
     const table = document.getElementById("nm-role-breakdown-table");
     if (!table) return;
-    if (!rows || rows.length === 0) {
+    const rows = _slicedRows("nm-role-breakdown");
+    if (rows.length === 0) {
       table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
       return;
     }
