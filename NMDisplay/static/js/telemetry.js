@@ -28,17 +28,17 @@ const NMTelemetry = (() => {
   // Static card IDs that live in the HTML (no resize handle, no data rows)
   const STATIC_IDS = ["hops_left", "pkt_breakdown", "hw_breakdown", "role_breakdown"];
 
-  // Matches _PORTNUM_STACK colors in timeline.js
+  // Matches _PKT_COLORS in gauges.js (same palette as the Packet Breakdown chart bars)
   const _PORTNUM_COLORS = {
-    "TEXT_MESSAGE_APP": "rgba(138,30,26,0.9)",
-    "UNKNOWN":          "rgba(112,78,10,0.9)",
-    "POSITION_APP":     "rgba(24,100,46,0.9)",
-    "TELEMETRY_APP":    "rgba(26,76,148,0.9)",
-    "NODEINFO_APP":     "rgba(100,48,152,0.9)",
+    "TEXT_MESSAGE_APP": "var(--red)",
+    "POSITION_APP":     "var(--green)",
+    "TELEMETRY_APP":    "var(--accent)",
+    "NODEINFO_APP":     "var(--purple)",
+    "UNKNOWN":          "var(--amber)",
   };
 
   function _portnumColor(portnum) {
-    return _PORTNUM_COLORS[portnum] || "rgba(44,51,60,0.95)";
+    return _PORTNUM_COLORS[portnum] || null;
   }
 
   const _ROLE_INT_MAP = {
@@ -343,7 +343,7 @@ const NMTelemetry = (() => {
     const emojiEl = document.createElement("span");
     emojiEl.className = "nm-role-icon";
     emojiEl.textContent = _emojiForRole(node.role);
-    if (_rowColor) { emojiEl.style.color = _rowColor; emojiEl.style.filter = "brightness(2.2)"; }
+    if (_rowColor) emojiEl.style.color = _rowColor;
     row.appendChild(emojiEl);
 
     const nameEl = document.createElement("span");
@@ -353,13 +353,13 @@ const NMTelemetry = (() => {
     nameEl.dataset.combined = combined;
     nameEl.dataset.showing  = "auto";
     nameEl.textContent = _wideMode ? combined : shortName;
-    if (_rowColor) { nameEl.style.color = _rowColor; nameEl.style.filter = "brightness(2.2)"; }
+    if (_rowColor) nameEl.style.color = _rowColor;
     row.appendChild(nameEl);
 
     const metaEl = document.createElement("span");
     metaEl.className = "nm-node-meta";
     metaEl.textContent = _metaValue(node, listId);
-    if (_rowColor) { metaEl.style.color = _rowColor; metaEl.style.filter = "brightness(2.2)"; }
+    if (_rowColor) metaEl.style.color = _rowColor;
     row.appendChild(metaEl);
 
     row.addEventListener("click", () => {
