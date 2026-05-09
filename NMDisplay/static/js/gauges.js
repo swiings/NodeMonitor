@@ -13,7 +13,20 @@ const NMGauges = (() => {
   let _closestNodeId  = null;
   let _farthestNodeId = null;
 
+  const HW_ROW_HEIGHT = 22;
+  let _hwAllRows = [];
+  let _hwLimit   = null;   // null = show all
+
+  function _loadHwLimit() {
+    try { _hwLimit = JSON.parse(localStorage.getItem("nm-hw-limit")); } catch (_) {}
+  }
+  function _saveHwLimit() {
+    localStorage.setItem("nm-hw-limit", JSON.stringify(_hwLimit));
+  }
+
   function init() {
+    _loadHwLimit();
+    _attachHwResize();
     document.addEventListener("nm:gauges-updated",    (e) => _update(e.detail));
     document.addEventListener("nm:breakdown-updated", (e) => _updateBreakdown(e.detail.breakdown || []));
 
@@ -260,9 +273,17 @@ const NMGauges = (() => {
 
   // Hardware model breakdown
   function _updateHardwareBreakdown(rows) {
+    _hwAllRows = rows || [];
+    _renderHwRows();
+  }
+
+  function _renderHwRows() {
     const table = document.getElementById("nm-hw-breakdown-table");
     if (!table) return;
-    if (!rows || rows.length === 0) {
+    const rows = _hwLimit != null
+      ? _hwAllRows.slice(0, Math.max(1, _hwLimit))
+      : _hwAllRows;
+    if (rows.length === 0) {
       table.innerHTML = `<tr><td colspan="3" class="nm-hop-label" style="color:var(--text-dim)">No data</td></tr>`;
       return;
     }
@@ -277,6 +298,53 @@ const NMGauges = (() => {
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
     }).join("");
+  }
+
+  function _attachHwResize() {
+    const card = document.getElementById("nm-hw-breakdown");
+    if (!card) return;
+    const handle = document.createElement("div");
+    handle.className = "nm-list-resize-handle";
+    card.appendChild(handle);
+
+    const startDrag = (startY) => {
+      const startLimit = _hwLimit ?? _hwAllRows.length;
+      return (currentY) => {
+        const delta  = Math.round((currentY - startY) / HW_ROW_HEIGHT);
+        const newLim = Math.max(1, Math.min(20, startLimit + delta));
+        if (_hwLimit !== newLim) {
+          _hwLimit = newLim;
+          _saveHwLimit();
+          _renderHwRows();
+        }
+      };
+    };
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.clientY);
+      const move = (e2) => onMove(e2.clientY);
+      const up   = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.touches[0].clientY);
+      const move = (e2) => onMove(e2.touches[0].clientY);
+      const up   = () => {
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", up);
+      };
+      document.addEventListener("touchmove", move, { passive: false });
+      document.addEventListener("touchend", up);
+    }, { passive: false });
   }
 
   // Role breakdown — role label → emoji mapping for display

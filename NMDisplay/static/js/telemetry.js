@@ -64,7 +64,12 @@ const NMTelemetry = (() => {
   function init() {
     _container = document.getElementById("nm-lists-container");
     _loadDisplayLimits();
-    _initCardDragging();
+    _initCardDragging(_container, "nm-card-order");
+    _initCardDragging(
+      document.getElementById("nm-charts-container"),
+      "nm-charts-order"
+    );
+    _applyChartsOrder();
     document.addEventListener("nm:lists-updated", (e) => _render(e.detail.lists));
   }
 
@@ -91,6 +96,21 @@ const NMTelemetry = (() => {
     const ids = Array.from(_container.querySelectorAll("[data-card-id]"))
       .map(c => c.dataset.cardId);
     localStorage.setItem("nm-card-order", JSON.stringify(ids));
+  }
+
+  function _applyChartsOrder() {
+    const chartsEl = document.getElementById("nm-charts-container");
+    if (!chartsEl) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("nm-charts-order") || "null");
+      if (!saved) return;
+      const cards = new Map();
+      chartsEl.querySelectorAll("[data-card-id]").forEach(c => cards.set(c.dataset.cardId, c));
+      for (const id of saved) {
+        const card = cards.get(id);
+        if (card) chartsEl.appendChild(card);
+      }
+    } catch (_) {}
   }
 
   // Reorder DOM children to match saved order.
@@ -246,11 +266,17 @@ const NMTelemetry = (() => {
 
   // ── Card reorder drag (title bar) ─────────────────────────────
 
-  function _initCardDragging() {
-    if (!_container) return;
+  function _initCardDragging(container, orderKey) {
+    if (!container) return;
     let _dragSrc    = null;
     let _isDragging = false;
     let _startY     = 0;
+
+    const _saveContainerOrder = () => {
+      const ids = Array.from(container.querySelectorAll("[data-card-id]"))
+        .map(c => c.dataset.cardId);
+      localStorage.setItem(orderKey, JSON.stringify(ids));
+    };
 
     const _onMove = (clientX, clientY) => {
       if (!_isDragging && Math.abs(clientY - _startY) > 5) {
@@ -264,27 +290,27 @@ const NMTelemetry = (() => {
       _dragSrc.style.visibility = "";
 
       const target = below?.closest(".nm-list-card");
-      if (!target || target === _dragSrc || target.closest("#nm-lists-container") !== _container) return;
+      if (!target || target === _dragSrc || target.parentElement !== container) return;
 
       const rect = target.getBoundingClientRect();
       if (clientY < rect.top + rect.height / 2) {
-        _container.insertBefore(_dragSrc, target);
+        container.insertBefore(_dragSrc, target);
       } else {
-        _container.insertBefore(_dragSrc, target.nextSibling);
+        container.insertBefore(_dragSrc, target.nextSibling);
       }
     };
 
     const _onEnd = () => {
       if (_dragSrc) {
         _dragSrc.classList.remove("nm-card-dragging");
-        if (_isDragging) _saveOrder();
+        if (_isDragging) _saveContainerOrder();
       }
       _dragSrc    = null;
       _isDragging = false;
     };
 
     // Mouse
-    _container.addEventListener("mousedown", (e) => {
+    container.addEventListener("mousedown", (e) => {
       if (!e.target.closest(".nm-list-title--draggable")) return;
       const card = e.target.closest(".nm-list-card");
       if (!card) return;
@@ -304,7 +330,7 @@ const NMTelemetry = (() => {
     });
 
     // Touch
-    _container.addEventListener("touchstart", (e) => {
+    container.addEventListener("touchstart", (e) => {
       if (!e.target.closest(".nm-list-title--draggable")) return;
       const card = e.target.closest(".nm-list-card");
       if (!card) return;
