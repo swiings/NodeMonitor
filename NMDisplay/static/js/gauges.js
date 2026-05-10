@@ -366,7 +366,7 @@ const NMGauges = (() => {
   // Role breakdown — role label → emoji mapping for display
   const _ROLE_LABELS = {
     "CLIENT":        "📱 CLIENT",
-    "CLIENT_MUTE":   "😎 CLIENT_MUTE",
+    "CLIENT_MUTE":   "😶 CLIENT_MUTE",
     "CLIENT_HIDDEN": "👻 CLIENT_HIDDEN",
     "CLIENT_BASE":   "🏡 CLIENT_BASE",
     "ROUTER":        "📡 ROUTER",
