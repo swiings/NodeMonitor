@@ -635,7 +635,7 @@ const NMMap = (() => {
       ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
       : null;
     const altStr = node.altitude_m != null
-      ? `${node.altitude_m.toFixed(0)} m`
+      ? `${(node.altitude_m * 3.281).toFixed(0)} ft`
       : "—";
 
     const rows = [
