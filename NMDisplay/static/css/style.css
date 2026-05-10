@@ -807,7 +807,7 @@ body.layout-split #nm-charts-container {
   50%       { opacity: 0.2; }
 }
 .nm-listener-running #nm-listener-dot {
-  animation: nm-pulse 5s ease-in-out infinite;
+  animation: nm-pulse 3s ease-in-out infinite;
 }
 
 /* ── Packet log panel ───────────────────────────────────────── */
