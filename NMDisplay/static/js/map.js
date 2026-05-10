@@ -8,7 +8,7 @@
  * Markers are emoji DivIcons keyed by node role:
  *  CLIENT                          → 📱
  *  CLIENT_BASE                     → 🏡
- *  CLIENT_MUTE                     → 😎
+ *  CLIENT_MUTE                     → 😶
  *  CLIENT_HIDDEN                   → 👻
  *  ROUTER / ROUTER_LATE / REPEATER → 📡
  *  TRACKER / LOST_AND_FOUND        → 🐾
@@ -527,7 +527,7 @@ const NMMap = (() => {
     if (r === "CLIENT")
       return { color: "#6faef7b3", emoji: "📱" };
     if (r === "CLIENT_MUTE")
-      return { color: "#21314293", emoji: "😎" };
+      return { color: "#21314293", emoji: "😶" };
     if (r === "CLIENT_HIDDEN")
       return { color: "#21314280", emoji: "👻" };
     return { color: "#6e7681a5", emoji: "👻" };

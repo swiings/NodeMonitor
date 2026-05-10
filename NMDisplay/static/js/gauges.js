@@ -104,7 +104,7 @@ const NMGauges = (() => {
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")    return "🐾";
     if (r === "SENSOR")  return "📊";
-    if (r === "CLIENT_MUTE")  return "😎";
+    if (r === "CLIENT_MUTE")  return "😶";
     if (r === "CLIENT_HIDDEN")  return "👻";
     if (r === "CLIENT_BASE")  return "🏡";
     if (r === "CLIENT" || r.startsWith("CLIENT_")) return "📱";
