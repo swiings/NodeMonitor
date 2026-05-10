@@ -401,12 +401,13 @@ const NMGauges = (() => {
       const pct   = Math.round((r.count / maxCount) * 100);
       const label = _ROLE_LABELS[r.role] || `👻 ${r.role}`;
       return `<tr>
-        <td class="nm-hop-label" style="min-width:80px;color:${color}">${label}</td>
+        <td class="nm-hop-label" style="color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.75"></div></td>
         <td class="nm-hop-count">${r.count}</td>
       </tr>`;
     }).join("");
   }
+//   <td class="nm-hop-label" style="min-width:80px;color:${color}">${label}</td>
 
   // Elapsed time since first packet
   function _elapsed(firstTs) {
