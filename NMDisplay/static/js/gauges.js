@@ -237,6 +237,7 @@ const NMGauges = (() => {
     "NODEINFO_APP":       "var(--purple)",
     "UNKNOWN_PRIVATE_CH": "var(--amber)",
     "UNKNOWN_DIRECT":     "#c06020",
+    "STORE FORWARD":      "#b0cf31",
     "UNKNOWN":            "var(--amber)",
   };
 
