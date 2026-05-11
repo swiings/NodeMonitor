@@ -391,6 +391,7 @@ body.layout-split #nm-charts-container {
   color: var(--text);
   padding: 3px 6px 3px 8px;
   text-align: right;
+  white-space: nowrap;
 }
 .nm-hop-bar-cell {
   width: 100%;
