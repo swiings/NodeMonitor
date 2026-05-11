@@ -28,8 +28,8 @@ const NMGauges = (() => {
     if (!card) return;
 
     const body = card.querySelector(".nm-list-body");
-    if (body && state.limit != null) {
-      body.style.maxHeight = `${state.limit * CHART_ROW_HEIGHT}px`;
+    if (body) {
+      body.style.maxHeight = `${(state.limit ?? 5) * CHART_ROW_HEIGHT}px`;
     }
 
     const handle = document.createElement("div");
