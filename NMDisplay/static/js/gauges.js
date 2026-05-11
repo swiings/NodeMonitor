@@ -29,7 +29,7 @@ const NMGauges = (() => {
 
     const body = card.querySelector(".nm-list-body");
     if (body) {
-      body.style.maxHeight = `${(state.limit ?? 5) * CHART_ROW_HEIGHT}px`;
+      body.style.height = `${(state.limit ?? 5) * CHART_ROW_HEIGHT}px`;
     }
 
     const handle = document.createElement("div");
@@ -37,14 +37,14 @@ const NMGauges = (() => {
     card.appendChild(handle);
 
     const startDrag = (startY) => {
-      const startLimit = state.limit ?? Math.round((body?.scrollHeight ?? CHART_ROW_HEIGHT) / CHART_ROW_HEIGHT);
+      const startLimit = state.limit ?? 5;
       return (currentY) => {
         const delta  = Math.round((currentY - startY) / CHART_ROW_HEIGHT);
         const newLim = Math.max(1, Math.min(20, startLimit + delta));
         if (state.limit !== newLim) {
           state.limit = newLim;
           localStorage.setItem(storageKey, JSON.stringify(newLim));
-          if (body) body.style.maxHeight = `${newLim * CHART_ROW_HEIGHT}px`;
+          if (body) body.style.height = `${newLim * CHART_ROW_HEIGHT}px`;
         }
       };
     };

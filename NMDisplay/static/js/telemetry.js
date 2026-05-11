@@ -177,7 +177,7 @@ const NMTelemetry = (() => {
     const limit = _displayLimits[list.id] ?? list.limit ?? 5;
     const body = document.createElement("div");
     body.className = "nm-list-body";
-    body.style.maxHeight = `${Math.max(1, limit) * ROW_HEIGHT}px`;
+    body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
 
     if (list.nodes.length === 0) {
       const empty = document.createElement("div");
@@ -216,7 +216,7 @@ const NMTelemetry = (() => {
           _saveDisplayLimits();
           const card = handle.closest(".nm-list-card");
           const body = card?.querySelector(".nm-list-body");
-          if (body) body.style.maxHeight = `${newLim * ROW_HEIGHT}px`;
+          if (body) body.style.height = `${newLim * ROW_HEIGHT}px`;
         }
       };
 
@@ -253,7 +253,7 @@ const NMTelemetry = (() => {
   function _updateCardRows(card, list, limit) {
     const body = card.querySelector(".nm-list-body");
     if (!body) return;
-    body.style.maxHeight = `${Math.max(1, limit) * ROW_HEIGHT}px`;
+    body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
     body.innerHTML = "";
 
     if (list.nodes.length === 0) {
