@@ -352,6 +352,7 @@ body.layout-split #nm-charts-container {
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .nm-list-body {
