@@ -58,7 +58,7 @@ const NMTelemetry = (() => {
     if (r === "CLIENT_MUTE" ) return "😶";
     if (r === "CLIENT_HIDDEN" ) return "👻";
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
-    return "📱";
+    return "😎";
   }
 
   // ── Init ──────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ const NMTelemetry = (() => {
       const onMove = (currentY) => {
         const dy     = currentY - startY;
         const delta  = Math.round(dy / ROW_HEIGHT);
-        const newLim = Math.max(1, Math.min(10, startLimit + delta));
+        const newLim = Math.max(1, Math.min(20, startLimit + delta));
         if (_displayLimits[list.id] !== newLim) {
           _displayLimits[list.id] = newLim;
           _saveDisplayLimits();
