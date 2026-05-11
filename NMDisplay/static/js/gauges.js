@@ -26,19 +26,25 @@ const NMGauges = (() => {
 
     const card = document.getElementById(cardId);
     if (!card) return;
+
+    const body = card.querySelector(".nm-list-body");
+    if (body && state.limit != null) {
+      body.style.maxHeight = `${state.limit * CHART_ROW_HEIGHT}px`;
+    }
+
     const handle = document.createElement("div");
     handle.className = "nm-list-resize-handle";
     card.appendChild(handle);
 
     const startDrag = (startY) => {
-      const startLimit = state.limit ?? state.allRows.length;
+      const startLimit = state.limit ?? Math.round((body?.scrollHeight ?? CHART_ROW_HEIGHT) / CHART_ROW_HEIGHT);
       return (currentY) => {
         const delta  = Math.round((currentY - startY) / CHART_ROW_HEIGHT);
         const newLim = Math.max(1, Math.min(20, startLimit + delta));
         if (state.limit !== newLim) {
           state.limit = newLim;
           localStorage.setItem(storageKey, JSON.stringify(newLim));
-          if (state.renderFn) state.renderFn();
+          if (body) body.style.maxHeight = `${newLim * CHART_ROW_HEIGHT}px`;
         }
       };
     };
@@ -71,11 +77,11 @@ const NMGauges = (() => {
   }
 
   function _slicedRows(cardId) {
-    const s = _chartState[cardId];
-    return s.limit != null ? s.allRows.slice(0, s.limit) : s.allRows;
+    return _chartState[cardId].allRows;
   }
 
   function init() {
+    _initChartResize("nm-hop-dist",       "nm-chart-limit-hops");
     _initChartResize("nm-pkt-breakdown",  "nm-chart-limit-pkts");
     _initChartResize("nm-hw-breakdown",   "nm-chart-limit-hw");
     _initChartResize("nm-role-breakdown", "nm-chart-limit-roles");
