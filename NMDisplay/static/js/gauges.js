@@ -237,8 +237,12 @@ const NMGauges = (() => {
     "NODEINFO_APP":       "var(--purple)",
     "UNKNOWN_PRIVATE_CH": "var(--amber)",
     "UNKNOWN_DIRECT":     "#c06020",
-    "STORE FORWARD":      "#b0cf31",
-    "UNKNOWN":            "var(--amber)",
+    "STORE_FORWARD_APP":  "#b0cf31",
+    "NEIGHBORINFO_APP":   "#acef8d",
+    "RANGE_TEST_APP":     "#c09020",
+    "ADMIN_APP":          "#20a3c0",
+    "PAXCOUNTER_APP":     "#5b20c0",
+    "UNKNOWN":            "var(--amber)",  
   };
 
   function _pktColor(portnum) {
@@ -254,6 +258,11 @@ const NMGauges = (() => {
       "UNKNOWN_PRIVATE_CH": "PRIVATE CH",
       "UNKNOWN_DIRECT":     "DIRECT",
       "UNKNOWN":            "ENCRYPTED",
+      "NEIGHBORINFO_APP":   "NEIGHBOR",
+      "RANGE_TEST_APP":     "RANGE",
+      "STORE_FORWARD_APP":  "STORE FORWARD",
+      "ADMIN_APP":          "ADMIN",
+      "PAXCOUNTER_APP":     "PAX COUNTER",
     };
     return labels[portnum] || portnum.replace(/_APP$/, "").replace(/_/g, " ");
   }

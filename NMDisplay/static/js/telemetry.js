@@ -36,7 +36,12 @@ const NMTelemetry = (() => {
     "NODEINFO_APP":       "var(--purple)",
     "UNKNOWN_PRIVATE_CH": "var(--amber)",
     "UNKNOWN_DIRECT":     "#c06020",
-    "UNKNOWN":            "var(--amber)",
+    "STORE_FORWARD_APP":  "#b0cf31",
+    "NEIGHBORINFO_APP":   "#acef8d",
+    "RANGE_TEST_APP":     "#c09020",
+    "ADMIN_APP":          "#20a3c0",
+    "PAXCOUNTER_APP":     "#5b20c0",
+    "UNKNOWN":            "var(--amber)",  
   };
 
   function _portnumColor(portnum) {
