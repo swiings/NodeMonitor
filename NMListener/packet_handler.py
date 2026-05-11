@@ -97,6 +97,13 @@ def handle_generic(
     if _my_node_id is not None and from_id == _my_node_id:
         return
 
+    # Refine encrypted (UNKNOWN) packets into broadcast vs. unicast subcategories
+    if portnum == "UNKNOWN":
+        if to_id is not None and (to_id & 0xFFFFFFFF) == 0xFFFFFFFF:
+            portnum = "UNKNOWN_PRIVATE_CH"
+        elif to_id is not None:
+            portnum = "UNKNOWN_DIRECT"
+
     # Always update in-memory node store and the live DB view (nodes table,
     # timeline buckets) so gauges and the map stay current regardless of the
     # save-packet-data flag.

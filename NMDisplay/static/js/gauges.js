@@ -143,9 +143,6 @@ const NMGauges = (() => {
     _set("g-router-count", data.router_count ?? "—");
     _set("g-client-count", data.client_count ?? "—");
 
-    // if (data.hop_dist) {
-    //   _drawHopPie(data.hop_dist);
-    // }
     if (data.hop_dist_raw) {
       _updateHopDistRaw(data.hop_dist_raw);
     }
@@ -166,62 +163,6 @@ const NMGauges = (() => {
     "1":  "#7a3818",   // deep rust
     "0":  "#710b00",   // dark red-slate — fewest hops, most traversed
   };
-
- /*  function _drawHopPie(dist) {
-    const canvas = document.getElementById("gauge-hops-canvas");
-    if (!canvas) return;
-    const gauge  = document.getElementById("gauge-hops");
-    if (!gauge) return;
-
-    // Size canvas to fit the gauge, leaving room for the caption below
-    const captionH = 20;
-    const size = Math.min(gauge.clientWidth, gauge.clientHeight - captionH) - 8;
-    if (size < 10) return;
-    canvas.width  = size;
-    canvas.height = size;
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, size, size);
-
-    const buckets = ["4+", "3", "2", "1", "0"];
-    const total = buckets.reduce((s, k) => s + (dist[k] || 0), 0);
-    if (total === 0) return;
-
-    const cx = size / 2, cy = size / 2, r = size / 2 - 1;
-    let angle = -Math.PI / 2;  // start at top
-
-    const slices = [];
-    for (const k of buckets) {
-      const count = dist[k] || 0;
-      if (count === 0) continue;
-      const sweep = (count / total) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, angle, angle + sweep);
-      ctx.closePath();
-      ctx.fillStyle = _HOP_COLORS[k];
-      ctx.fill();
-      slices.push({ k, count, midAngle: angle + sweep / 2 });
-      angle += sweep;
-    }
-
-    // Labels — only draw if slice is large enough to fit text
-    const fontSize = Math.max(9, Math.round(size * 0.14));
-    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const minSlice = 0.25;  // radians — skip tiny slices
-    for (const { k, count, midAngle } of slices) {
-      const sweep = (count / total) * 2 * Math.PI;
-      if (sweep < minSlice) continue;
-      const lx = cx + Math.cos(midAngle) * r * 0.62;
-      const ly = cy + Math.sin(midAngle) * r * 0.62;
-      ctx.fillStyle = "rgba(0,0,0,0.75)";
-      ctx.fillText(k, lx + 1, ly + 1);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(k, lx, ly);
-    }
-  } */
 
   // Dynamic hop-left list from raw per-value data (replaces static bucketed table)
   function _updateHopDistRaw(distRaw) {
@@ -284,11 +225,13 @@ const NMGauges = (() => {
 
   // Packet Breakdown list — colors per portnum
   const _PKT_COLORS = {
-    "TEXT_MESSAGE_APP": "var(--red)",
-    "POSITION_APP":     "var(--green)",
-    "TELEMETRY_APP":    "var(--accent)",
-    "NODEINFO_APP":     "var(--purple)",
-    "UNKNOWN":          "var(--amber)",
+    "TEXT_MESSAGE_APP":   "var(--red)",
+    "POSITION_APP":       "var(--green)",
+    "TELEMETRY_APP":      "var(--accent)",
+    "NODEINFO_APP":       "var(--purple)",
+    "UNKNOWN_PRIVATE_CH": "var(--amber)",
+    "UNKNOWN_DIRECT":     "#c06020",
+    "UNKNOWN":            "var(--amber)",
   };
 
   function _pktColor(portnum) {
@@ -297,11 +240,13 @@ const NMGauges = (() => {
 
   function _pktLabel(portnum) {
     const labels = {
-      "TEXT_MESSAGE_APP": "TEXT MSG",
-      "POSITION_APP":     "POSITION",
-      "TELEMETRY_APP":    "TELEMETRY",
-      "NODEINFO_APP":     "NODE INFO",
-      "UNKNOWN":          "ENCRYPTED",
+      "TEXT_MESSAGE_APP":   "PUBLIC CH",
+      "POSITION_APP":       "POSITION",
+      "TELEMETRY_APP":      "TELEMETRY",
+      "NODEINFO_APP":       "NODE INFO",
+      "UNKNOWN_PRIVATE_CH": "PRIVATE CH",
+      "UNKNOWN_DIRECT":     "DIRECT",
+      "UNKNOWN":            "ENCRYPTED",
     };
     return labels[portnum] || portnum.replace(/_APP$/, "").replace(/_/g, " ");
   }

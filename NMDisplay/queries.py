@@ -409,8 +409,15 @@ def get_packet_breakdown(conn, my_node_id=None) -> list[dict]:
         rows = conn.execute(
             """
             SELECT portnum, COUNT(*) AS cnt
-            FROM packets
-            WHERE from_node_id != :excl
+            FROM (
+                SELECT CASE
+                    WHEN portnum = 'UNKNOWN' AND to_node_id = 4294967295 THEN 'UNKNOWN_PRIVATE_CH'
+                    WHEN portnum = 'UNKNOWN' AND to_node_id IS NOT NULL  THEN 'UNKNOWN_DIRECT'
+                    ELSE portnum
+                END AS portnum
+                FROM packets
+                WHERE from_node_id != :excl
+            )
             GROUP BY portnum
             ORDER BY cnt DESC
             """,

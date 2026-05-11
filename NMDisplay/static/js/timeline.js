@@ -17,12 +17,14 @@ const NMTimeline = (() => {
   // Portnum display order (bottom of stack → top) and colors.
   // Dark palette: muted, low-brightness versions of each hue.
   const _PORTNUM_STACK = [
-    { key: "__OTHER__",       color: "rgba(44,51,60,0.95)",   eink: "rgba(0,0,0,0.3)"  },
-    { key: "NODEINFO_APP",    color: "rgba(100,48,152,0.9)",  eink: "rgba(0,0,0,0.5)"  },
-    { key: "TELEMETRY_APP",   color: "rgba(26,76,148,0.9)",   eink: "rgba(0,0,0,0.6)"  },
-    { key: "POSITION_APP",    color: "rgba(24,100,46,0.9)",   eink: "rgba(0,0,0,0.7)"  },
-    { key: "UNKNOWN",         color: "rgba(112,78,10,0.9)",   eink: "rgba(80,80,80,0.7)"},
-    { key: "TEXT_MESSAGE_APP",color: "rgba(138,30,26,0.9)",   eink: "rgba(0,0,0,0.9)"  },
+    { key: "__OTHER__",          color: "rgba(44,51,60,0.95)",   eink: "rgba(0,0,0,0.3)"   },
+    { key: "NODEINFO_APP",       color: "rgba(100,48,152,0.9)",  eink: "rgba(0,0,0,0.5)"   },
+    { key: "TELEMETRY_APP",      color: "rgba(26,76,148,0.9)",   eink: "rgba(0,0,0,0.6)"   },
+    { key: "POSITION_APP",       color: "rgba(24,100,46,0.9)",   eink: "rgba(0,0,0,0.7)"   },
+    { key: "UNKNOWN",            color: "rgba(90,60,5,0.75)",    eink: "rgba(60,60,60,0.6)" },
+    { key: "UNKNOWN_DIRECT",     color: "rgba(140,72,14,0.9)",   eink: "rgba(80,80,80,0.7)" },
+    { key: "UNKNOWN_PRIVATE_CH", color: "rgba(112,78,10,0.9)",   eink: "rgba(90,90,60,0.7)" },
+    { key: "TEXT_MESSAGE_APP",   color: "rgba(138,30,26,0.9)",   eink: "rgba(0,0,0,0.9)"   },
   ];
   const _KNOWN_PORTNUMS = new Set(_PORTNUM_STACK.map(p => p.key).filter(k => k !== "__OTHER__"));
 
@@ -200,8 +202,10 @@ const NMTimeline = (() => {
     // One stacked bar dataset per portnum in the display order (bottom → top)
     for (const { key, color, eink } of _PORTNUM_STACK) {
       datasets.push({
-        label: key === "__OTHER__" ? "Other"
-             : key === "UNKNOWN"    ? "Encrypted"
+        label: key === "__OTHER__"          ? "Other"
+             : key === "UNKNOWN_PRIVATE_CH" ? "Private Ch"
+             : key === "UNKNOWN_DIRECT"     ? "Direct"
+             : key === "UNKNOWN"            ? "Encrypted"
              : key.replace(/_APP$/, "").replace(/_/g, " "),
         data: buckets.map(b => {
           const byPortnum = b.by_portnum || {};
