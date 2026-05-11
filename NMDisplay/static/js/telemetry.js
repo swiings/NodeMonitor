@@ -173,20 +173,23 @@ const NMTelemetry = (() => {
     title.textContent = list.title;
     card.appendChild(title);
 
-    // Determine how many rows to display
-    // list.limit = configured default from server; fall back to node count if absent
-    const limit = _displayLimits[list.id] ?? list.limit ?? list.nodes.length;
-    const nodes = list.nodes.slice(0, Math.max(0, Math.min(limit, list.nodes.length)));
+    // Scrollable body — height is controlled by the resize handle
+    const limit = _displayLimits[list.id] ?? list.limit ?? 5;
+    const body = document.createElement("div");
+    body.className = "nm-list-body";
+    body.style.maxHeight = `${Math.max(1, limit) * ROW_HEIGHT}px`;
 
-    if (nodes.length === 0) {
+    if (list.nodes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "nm-list-empty";
       empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
       empty.textContent = "No data";
-      card.appendChild(empty);
+      body.appendChild(empty);
     } else {
-      for (const node of nodes) card.appendChild(_buildRow(node, list.id));
+      for (const node of list.nodes) body.appendChild(_buildRow(node, list.id));
     }
+
+    card.appendChild(body);
 
     // Resize handle at the bottom
     const handle = document.createElement("div");
@@ -202,7 +205,7 @@ const NMTelemetry = (() => {
 
   function _attachResizeDrag(handle, list) {
     const startDrag = (startY) => {
-      const startLimit = _displayLimits[list.id] ?? list.limit ?? list.nodes.length;
+      const startLimit = _displayLimits[list.id] ?? list.limit ?? 5;
 
       const onMove = (currentY) => {
         const dy     = currentY - startY;
@@ -212,7 +215,8 @@ const NMTelemetry = (() => {
           _displayLimits[list.id] = newLim;
           _saveDisplayLimits();
           const card = handle.closest(".nm-list-card");
-          if (card) _updateCardRows(card, list, newLim);
+          const body = card?.querySelector(".nm-list-body");
+          if (body) body.style.maxHeight = `${newLim * ROW_HEIGHT}px`;
         }
       };
 
@@ -247,20 +251,21 @@ const NMTelemetry = (() => {
   }
 
   function _updateCardRows(card, list, limit) {
-    card.querySelectorAll(".nm-list-row, .nm-list-empty").forEach(r => r.remove());
-    const handle = card.querySelector(".nm-list-resize-handle");
-    const nodes  = list.nodes.slice(0, Math.max(0, Math.min(limit, list.nodes.length)));
+    const body = card.querySelector(".nm-list-body");
+    if (!body) return;
+    body.style.maxHeight = `${Math.max(1, limit) * ROW_HEIGHT}px`;
+    body.innerHTML = "";
 
-    if (nodes.length === 0) {
+    if (list.nodes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "nm-list-empty";
       empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
       empty.textContent = "No data";
-      card.insertBefore(empty, handle || null);
+      body.appendChild(empty);
     } else {
       const frag = document.createDocumentFragment();
-      for (const node of nodes) frag.appendChild(_buildRow(node, list.id));
-      card.insertBefore(frag, handle || null);
+      for (const node of list.nodes) frag.appendChild(_buildRow(node, list.id));
+      body.appendChild(frag);
     }
   }
 

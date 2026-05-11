@@ -354,6 +354,10 @@ body.layout-split #nm-charts-container {
   overflow: hidden;
 }
 
+.nm-list-body {
+  overflow-y: auto;
+}
+
 .nm-list-title {
   font-size: 10px;
   font-weight: bold;
