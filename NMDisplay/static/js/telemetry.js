@@ -30,11 +30,13 @@ const NMTelemetry = (() => {
 
   // Matches _PKT_COLORS in gauges.js (same palette as the Packet Breakdown chart bars)
   const _PORTNUM_COLORS = {
-    "TEXT_MESSAGE_APP": "var(--red)",
-    "POSITION_APP":     "var(--green)",
-    "TELEMETRY_APP":    "var(--accent)",
-    "NODEINFO_APP":     "var(--purple)",
-    "UNKNOWN":          "var(--amber)",
+    "TEXT_MESSAGE_APP":   "var(--red)",
+    "POSITION_APP":       "var(--green)",
+    "TELEMETRY_APP":      "var(--accent)",
+    "NODEINFO_APP":       "var(--purple)",
+    "UNKNOWN_PRIVATE_CH": "var(--amber)",
+    "UNKNOWN_DIRECT":     "#c06020",
+    "UNKNOWN":            "var(--amber)",
   };
 
   function _portnumColor(portnum) {
