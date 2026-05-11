@@ -90,8 +90,8 @@ def validate_and_merge(current: dict, patch: dict) -> tuple[dict, list[str]]:
 
     limits = merged.get("telemetry_lists", {}).get("limits", {})
     for key, val in limits.items():
-        if not isinstance(val, int) or not (1 <= val <= 10):
-            errors.append(f"telemetry_lists.limits.{key} must be integer 1–10")
+        if not isinstance(val, int) or not (1 <= val <= 20):
+            errors.append(f"telemetry_lists.limits.{key} must be integer 1–20")
 
     enabled = merged.get("telemetry_lists", {}).get("enabled_lists", [])
     for item in enabled:

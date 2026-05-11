@@ -8,7 +8,7 @@
  *   - Drag the title bar of any card (including Hops Left / Packet Breakdown)
  *     to reorder it within the right panel.
  *   - Drag the bottom resize handle of a dynamic list card to change its
- *     displayed row count (min 1, max 10). Limit persists in localStorage.
+ *     displayed row count (min 1, max 20). Limit persists in localStorage.
  *   - Card order persists in localStorage.
  */
 
