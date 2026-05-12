@@ -34,14 +34,14 @@ const NMTelemetry = (() => {
     "POSITION_APP":       "var(--green)",
     "TELEMETRY_APP":      "var(--accent)",
     "NODEINFO_APP":       "var(--purple)",
-    "UNKNOWN_PRIVATE_CH": "var(--amber)",
+    "UNKNOWN_PRIVATE_CH": "#ddaaff",
     "UNKNOWN_DIRECT":     "#c06020",
     "STORE_FORWARD_APP":  "#b0cf31",
     "NEIGHBORINFO_APP":   "#acef8d",
     "RANGE_TEST_APP":     "#c09020",
     "ADMIN_APP":          "#20a3c0",
     "PAXCOUNTER_APP":     "#b389fd",
-    "UNKNOWN":            "var(--amber)",  
+    "UNKNOWN":            "#75f8f8",  
   };
 
   function _portnumColor(portnum) {
