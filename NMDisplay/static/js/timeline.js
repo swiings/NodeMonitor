@@ -25,7 +25,6 @@ const NMTimeline = (() => {
     { key: "UNKNOWN_DIRECT",     color: "rgba(140,72,14,0.9)",   eink: "rgba(80,80,80,0.7)" },
     { key: "UNKNOWN_PRIVATE_CH", color: "rgba(112,78,10,0.9)",   eink: "rgba(90,90,60,0.7)" },
     { key: "TEXT_MESSAGE_APP",   color: "rgba(138,30,26,0.9)",   eink: "rgba(0,0,0,0.9)"   },
- 
     { key: "STORE_FORWARD_APP",  color: "#b0cf31",               eink: "rgba(0,0,0,0.9)"   }, 
     { key: "NEIGHBORINFO_APP",   color: "#acef8d",               eink: "rgba(0,0,0,0.9)"   },
     { key: "RANGE_TEST_APP",     color: "#c09020",               eink: "rgba(0,0,0,0.9)"   },

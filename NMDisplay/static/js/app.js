@@ -300,11 +300,19 @@ function _portnumClass(line) {
   const m = line.match(/RECV\s+(\S+)/);
   if (!m) return "pkt-other";
   const pn = m[1];
-  if (pn === "TEXT_MESSAGE_APP")  return "pkt-text";
-  if (pn === "POSITION_APP")      return "pkt-position";
-  if (pn === "TELEMETRY_APP")     return "pkt-telemetry";
-  if (pn === "NODEINFO_APP")      return "pkt-nodeinfo";
-  if (pn === "UNKNOWN")           return "pkt-unknown";
+  if (pn === "TEXT_MESSAGE_APP")   return "pkt-text";
+  if (pn === "POSITION_APP")       return "pkt-position";
+  if (pn === "TELEMETRY_APP")      return "pkt-telemetry";
+  if (pn === "NODEINFO_APP")       return "pkt-nodeinfo";
+  if (pn === "UNKNOWN")            return "pkt-unknown";
+  if (pn === "UNKNOWN_PRIVATE_CH") return "pkt-private";       
+  if (pn === "UNKNOWN_DIRECT")     return "pkt-direct";    
+  if (pn === "STORE_FORWARD_APP")  return "pkt-forward";   
+  if (pn === "NEIGHBORINFO_APP")   return "pkt-neighbor";   
+  if (pn === "RANGE_TEST_APP")     return "pkt-range"; 
+  if (pn === "ADMIN_APP")          return "pkt-admin";
+  if (pn === "PAXCOUNTER_APP")     return "pkt-pax";
+
   return "pkt-other";
 }
 

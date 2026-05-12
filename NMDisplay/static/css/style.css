@@ -866,7 +866,13 @@ body.layout-split #nm-charts-container {
 .nm-log-line.pkt-telemetry{ color: var(--accent); }
 .nm-log-line.pkt-nodeinfo { color: var(--purple); }
 .nm-log-line.pkt-unknown  { color: var(--amber); }
-.nm-log-line.pkt-other    { color: var(--text-dim); }
+.nm-log-line.pkt-private  { color: #ad7855; }
+.nm-log-line.pkt-direct   { color: #c06020; }
+.nm-log-line.pkt-forward  { color: #b0cf31; }
+.nm-log-line.pkt-neighbor { color: #324b26; }
+.nm-log-line.pkt-range    { color: #672647; }
+.nm-log-line.pkt-admin    { color: #20a3c0; }
+.nm-log-line.pkt-pax      { color: #5b20c0; }
 
 /* ── Sessions section ───────────────────────────────────────── */
 #cfg-sessions-list {
