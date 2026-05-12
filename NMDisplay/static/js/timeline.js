@@ -29,7 +29,7 @@ const NMTimeline = (() => {
     { key: "NEIGHBORINFO_APP",   color: "#acef8d",               eink: "rgba(0,0,0,0.9)"   },
     { key: "RANGE_TEST_APP",     color: "#c09020",               eink: "rgba(0,0,0,0.9)"   },
     { key: "ADMIN_APP",          color: "#20a3c0",               eink: "rgba(0,0,0,0.9)"   },
-    { key: "PAXCOUNTER_APP",     color: "#833cff",               eink: "rgba(0,0,0,0.9)"   },
+    { key: "PAXCOUNTER_APP",     color: "#b389fd",               eink: "rgba(0,0,0,0.9)"   },
  
   ];
   const _KNOWN_PORTNUMS = new Set(_PORTNUM_STACK.map(p => p.key).filter(k => k !== "__OTHER__"));

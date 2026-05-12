@@ -40,7 +40,7 @@ const NMTelemetry = (() => {
     "NEIGHBORINFO_APP":   "#acef8d",
     "RANGE_TEST_APP":     "#c09020",
     "ADMIN_APP":          "#20a3c0",
-    "PAXCOUNTER_APP":     "#833cff",
+    "PAXCOUNTER_APP":     "#b389fd",
     "UNKNOWN":            "var(--amber)",  
   };
 
