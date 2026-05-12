@@ -41,8 +41,11 @@ const NMMap = (() => {
   let _filterIndicator = null;  // Leaflet control showing active hop filter
 
   // Age filter state — max age in minutes; Infinity = show all
-  const _AGE_STEPS  = [1, 5, 15, 30, 60, 360, 1440, Infinity];
-  const _AGE_LABELS = ["1m", "5m", "15m", "30m", "1h", "6h", "1d", "ALL"];
+  // const _AGE_STEPS  = [1, 5, 15, 30, 60, 360, 1440, Infinity];
+  // const _AGE_LABELS = ["1m", "5m", "15m", "30m", "1h", "6h", "1d", "ALL"];
+  const _AGE_STEPS  = [15, 60, 720, 1440, 2880, 4320, 5760, Infinity];
+  const _AGE_LABELS = ["15m", "1h", "12h", "1d", "2d", "3d", "4d", "ALL"];
+
   let _maxAgeFilter = Infinity;
 
   // Convex hull state
