@@ -872,7 +872,7 @@ body.layout-split #nm-charts-container {
 .nm-log-line.pkt-neighbor { color: #324b26; }
 .nm-log-line.pkt-range    { color: #672647; }
 .nm-log-line.pkt-admin    { color: #20a3c0; }
-.nm-log-line.pkt-pax      { color: #5b20c0; }
+.nm-log-line.pkt-pax      { color: #833cff; }
 
 /* ── Sessions section ───────────────────────────────────────── */
 #cfg-sessions-list {
