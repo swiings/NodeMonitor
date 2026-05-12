@@ -231,18 +231,18 @@ const NMGauges = (() => {
 
   // Packet Breakdown list — colors per portnum
   const _PKT_COLORS = {
-    "TEXT_MESSAGE_APP":   "var(--red)",
+    "TEXT_MESSAGE_APP":   "#e8a363",
     "POSITION_APP":       "var(--green)",
     "TELEMETRY_APP":      "var(--accent)",
     "NODEINFO_APP":       "var(--purple)",
-    "UNKNOWN_PRIVATE_CH": "var(--amber)",
-    "UNKNOWN_DIRECT":     "#d36a24",
+    "UNKNOWN_PRIVATE_CH": "#6dbad5",
+    "UNKNOWN_DIRECT":     "#afefd8",
     "STORE_FORWARD_APP":  "#bddf34",
     "NEIGHBORINFO_APP":   "#73eb3b",
     "RANGE_TEST_APP":     "#c09020",
     "ADMIN_APP":          "#20a3c0",
     "PAXCOUNTER_APP":     "#b389fd",
-    "UNKNOWN":            "var(--amber)",  
+    "UNKNOWN":            "#f5c2c2",  
   };
 
   function _pktColor(portnum) {
