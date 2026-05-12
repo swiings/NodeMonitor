@@ -290,6 +290,15 @@ def api_gauges():
     return jsonify(data)
 
 
+@app.route("/api/nodes/<int:node_id>", methods=["DELETE"])
+def api_delete_node(node_id):
+    try:
+        queries.delete_node(node_id)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
 @app.route("/api/packet_breakdown")
 def api_packet_breakdown():
     my_node_id = _effective_my_node_id()

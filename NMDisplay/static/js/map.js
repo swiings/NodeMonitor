@@ -258,6 +258,27 @@ const NMMap = (() => {
 
     document.addEventListener("nm:nodes-updated",   (e) => _handleNodes(e.detail));
     document.addEventListener("nm:settings-loaded", (e) => { _cfg = e.detail.cfg; });
+
+    _map.on("popupopen", (e) => {
+      const btn = e.popup.getElement()?.querySelector(".nm-node-delete-btn");
+      if (!btn) return;
+      btn.addEventListener("click", async (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        const nodeId = parseInt(btn.dataset.nodeId, 10);
+        const marker = e.popup._source;
+        const node   = marker?._nmNode;
+        const label  = node?.short_name || node?.node_id_hex || nodeId;
+        if (!confirm(`Delete node ${label} from this session?`)) return;
+        const resp = await fetch(`/api/nodes/${nodeId}`, { method: "DELETE" });
+        if (resp.ok) {
+          e.popup.remove();
+          document.dispatchEvent(new CustomEvent("nm:request-poll"));
+        } else {
+          const data = await resp.json().catch(() => ({}));
+          alert(data.error || "Delete failed");
+        }
+      });
+    });
   }
 
   // ── Filter bar: hop count slider ──────────────────────────────
@@ -662,7 +683,10 @@ const NMMap = (() => {
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
     ).join("");
-    return `<table style="font-size:10px;font-family:monospace;line-height:1.4">${trs}</table>`;
+    return `<table style="font-size:10px;font-family:monospace;line-height:1.4">${trs}</table>`
+      + `<div style="text-align:right;margin-top:6px">`
+      + `<button class="nm-btn-danger nm-node-delete-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Delete Node</button>`
+      + `</div>`;
   }
 
   // ── Bounds ────────────────────────────────────────────────────

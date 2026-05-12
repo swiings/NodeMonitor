@@ -442,6 +442,23 @@ const NMTelemetry = (() => {
       popup.remove();
     });
 
+    const deleteBtn = popup.querySelector(".nm-node-delete-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const label = node.short_name || node.node_id_hex || node.node_id;
+        if (!confirm(`Delete node ${label} from this session?`)) return;
+        const resp = await fetch(`/api/nodes/${node.node_id}`, { method: "DELETE" });
+        if (resp.ok) {
+          popup.remove();
+          document.dispatchEvent(new CustomEvent("nm:request-poll"));
+        } else {
+          const data = await resp.json().catch(() => ({}));
+          alert(data.error || "Delete failed");
+        }
+      });
+    }
+
     setTimeout(() => {
       const dismiss = (e) => {
         if (!popup.contains(e.target)) {
@@ -475,7 +492,10 @@ const NMTelemetry = (() => {
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:8px;white-space:nowrap">${k}</td><td>${v}</td></tr>`
     ).join("");
-    return `<table style="font-size:11px;font-family:monospace;line-height:1.5">${trs}</table>`;
+    return `<table style="font-size:11px;font-family:monospace;line-height:1.5">${trs}</table>`
+      + `<div style="text-align:right;margin-top:8px">`
+      + `<button class="nm-btn-danger nm-node-delete-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Delete Node</button>`
+      + `</div>`;
   }
 
   // ── Width responsiveness ──────────────────────────────────────

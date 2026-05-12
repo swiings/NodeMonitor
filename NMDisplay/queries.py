@@ -461,6 +461,23 @@ def get_role_breakdown(conn) -> list[dict]:
     return [{"role": row["role"], "count": row["cnt"]} for row in rows]
 
 
+def delete_node(node_id: int) -> None:
+    """Delete a node and all its associated data from the active session DB."""
+    db_path = _sessions.get_db_path()
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    try:
+        conn.execute("PRAGMA foreign_keys=OFF")
+        conn.execute("DELETE FROM message_counts WHERE node_id = ?", (node_id,))
+        conn.execute("DELETE FROM telemetry WHERE node_id = ?", (node_id,))
+        conn.execute("DELETE FROM positions WHERE node_id = ?", (node_id,))
+        conn.execute("DELETE FROM text_messages WHERE from_node_id = ?", (node_id,))
+        conn.execute("DELETE FROM packets WHERE from_node_id = ?", (node_id,))
+        conn.execute("DELETE FROM nodes WHERE node_id = ?", (node_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_packets_for_export(conn) -> list[dict]:
     """Return all packet rows (excluding raw payload blobs) for CSV export."""
     try:
