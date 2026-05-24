@@ -108,7 +108,8 @@ def _effective_my_node_id():
         return runtime["my_node_id"]
     return cfg_mod.load().get("my_node_id")
 
-TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
+# TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
+TILE_CACHE_DIR = "NMDisplay/tile_cache"
 
 # ── Stadia Maps API key ────────────────────────────────────────────────────────
 # Required: server-side proxies do NOT get Stadia's localhost exemption.
