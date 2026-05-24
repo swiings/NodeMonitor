@@ -638,9 +638,8 @@ const NMMap = (() => {
 
 
   function _labelText(node) {
-    const name = node.short_name || node.node_id_hex || "?";
-    const rssi = node.rssi != null ? ` ${node.rssi}` : "";
-    return `${name}${rssi}`;
+    const name = node.short_name || " - " || node.long_name;
+    return `${name}`;
   }
 
   // ── Popup ─────────────────────────────────────────────────────
