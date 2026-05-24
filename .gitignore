@@ -24,6 +24,7 @@ NMData/listener_runtime.json
 
 # Tile cache (large, regenerated at runtime)
 NMDisplay/tile_cache/
+tile_cache/
 
 # Claude Code settings
 .claude/
