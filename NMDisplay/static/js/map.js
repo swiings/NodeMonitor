@@ -33,6 +33,7 @@ const NMMap = (() => {
   let _firstLoad = true;
   let _myNodeId = null;
   let _allGpsNodes = [];        // full node list with GPS, stored for re-filtering
+  let _myNodeBtn = null;        // reference to "go to my node" button element
 
   // Hop filter state
   // _maxHopsFilter: max hops-traversed to show; Infinity = show all (ALL position)
@@ -138,6 +139,7 @@ const NMMap = (() => {
         const btn = L.DomUtil.create("button", "nm-my-node-btn");
         btn.innerHTML = "&#8982;";
         btn.title = "Zoom to my node";
+        _myNodeBtn = btn;
         L.DomEvent.on(btn, "click", (e) => {
           L.DomEvent.stopPropagation(e);
           _zoomToMyNode();
@@ -260,11 +262,29 @@ const NMMap = (() => {
     document.addEventListener("nm:settings-loaded", (e) => { _cfg = e.detail.cfg; });
 
     _map.on("popupopen", (e) => {
-      const btn = e.popup.getElement()?.querySelector(".nm-node-delete-btn");
-      if (!btn) return;
-      btn.addEventListener("click", async (ev) => {
+      const popupEl = e.popup.getElement();
+      if (!popupEl) return;
+
+      const trafficBtn = popupEl.querySelector(".nm-traffic-btn");
+      if (trafficBtn) {
+        trafficBtn.addEventListener("click", (ev) => {
+          L.DomEvent.stopPropagation(ev);
+          const nodeId = parseInt(trafficBtn.dataset.nodeId, 10);
+          const marker = e.popup._source;
+          const node   = marker?._nmNode;
+          const label  = node?.short_name || `!${(nodeId >>> 0).toString(16).padStart(8, "0")}`;
+          document.dispatchEvent(new CustomEvent("nm:open-traffic", {
+            detail: { by: "node", value: nodeId, label }
+          }));
+          e.popup.remove();
+        });
+      }
+
+      const deleteBtn = popupEl.querySelector(".nm-node-delete-btn");
+      if (!deleteBtn) return;
+      deleteBtn.addEventListener("click", async (ev) => {
         L.DomEvent.stopPropagation(ev);
-        const nodeId = parseInt(btn.dataset.nodeId, 10);
+        const nodeId = parseInt(deleteBtn.dataset.nodeId, 10);
         const marker = e.popup._source;
         const node   = marker?._nmNode;
         const label  = node?.short_name || node?.node_id_hex || nodeId;
@@ -433,11 +453,26 @@ const NMMap = (() => {
   // ── Node update ───────────────────────────────────────────────
 
   function _zoomToMyNode() {
-    if (_myNodeId == null) return;
+    if (_myNodeId == null || !_markers.has(_myNodeId)) {
+      if (_myNodeBtn) _showFloatTooltip(_myNodeBtn, "Location Unknown");
+      return;
+    }
     const m = _markers.get(_myNodeId);
-    if (!m) return;
     _map.setView(m.getLatLng(), 14);
     _showLabel(_myNodeId);
+  }
+
+  let _floatTooltipTimer = null;
+  function _showFloatTooltip(anchorEl, msg) {
+    const tooltip = document.getElementById("nm-float-tooltip");
+    if (!tooltip) return;
+    tooltip.textContent = msg;
+    const rect = anchorEl.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 8}px`;
+    tooltip.style.top  = `${Math.round(rect.top + rect.height / 2) - 11}px`;
+    tooltip.classList.remove("hidden");
+    clearTimeout(_floatTooltipTimer);
+    _floatTooltipTimer = setTimeout(() => tooltip.classList.add("hidden"), 1800);
   }
 
   function _handleNodes(data) {
@@ -604,15 +639,44 @@ const NMMap = (() => {
   function _triggerPulse(nodeId) {
     const m = _markers.get(nodeId);
     if (!m) return;
+
+    // Icon pulse: 0.5 s expand 20%, 1.5 s return (2 s total)
     const el = m.getElement();
-    if (!el) return;
-    const wrap = el.querySelector(".nm-pin-wrap");
-    if (!wrap) return;
-    // Remove first to restart the animation if it's already playing
-    wrap.classList.remove("nm-marker-pulse");
-    void wrap.offsetWidth; // force reflow
-    wrap.classList.add("nm-marker-pulse");
-    setTimeout(() =>  wrap.classList.remove("nm-marker-pulse"),  10000);
+    if (el) {
+      const wrap = el.querySelector(".nm-pin-wrap");
+      if (wrap) {
+        wrap.classList.remove("nm-marker-pulse");
+        void wrap.offsetWidth;  // force reflow to restart animation
+        wrap.classList.add("nm-marker-pulse");
+        setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 2000);
+      }
+    }
+
+    // Expanding circle ripple via Leaflet circleMarker (pixel radius, zoom-stable)
+    const ripple = L.circleMarker(m.getLatLng(), {
+      radius: 6,
+      color: "#58a6ff",
+      fillColor: "transparent",
+      weight: 2,
+      opacity: 0.85,
+      interactive: false,
+    }).addTo(_map);
+
+    const startMs = Date.now();
+    const duration = 2000;
+    const maxRadius = 55;
+
+    const _animateRipple = () => {
+      const progress = Math.min(1, (Date.now() - startMs) / duration);
+      ripple.setRadius(6 + (maxRadius - 6) * progress);
+      ripple.setStyle({ opacity: 0.85 * (1 - progress) });
+      if (progress < 1) {
+        requestAnimationFrame(_animateRipple);
+      } else {
+        ripple.remove();
+      }
+    };
+    requestAnimationFrame(_animateRipple);
   }
 
   function flyToNode(nodeId) {
@@ -683,7 +747,8 @@ const NMMap = (() => {
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
     ).join("");
     return `<table style="font-size:10px;font-family:monospace;line-height:1.4">${trs}</table>`
-      + `<div style="text-align:right;margin-top:6px">`
+      + `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">`
+      + `<button class="nm-text-btn nm-traffic-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">See Traffic</button>`
       + `<button class="nm-btn-danger nm-node-delete-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Delete Node</button>`
       + `</div>`;
   }
@@ -811,5 +876,10 @@ const NMMap = (() => {
     return Math.abs(area / 2) * R * R;
   }
 
-  return { init, invalidate, highlightNode, flyToNode, hasMarker };
+  function closePopups() {
+    if (_map) _map.closePopup();
+    _dismissLabel();
+  }
+
+  return { init, invalidate, highlightNode, flyToNode, hasMarker, closePopups };
 })();

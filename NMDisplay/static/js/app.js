@@ -58,6 +58,7 @@ async function boot() {
   NMGauges.init();
 
   restorePanelSizes();
+  initTrafficWindow();
 
   // Give browser time to finish flex layout before Leaflet measures
   setTimeout(() => { NMMap.invalidate(); NMTelemetry.checkWidth(); }, 400);
@@ -96,6 +97,11 @@ function startPollLoop(intervalSec) {
 }
 
 async function pollAll() {
+  // Close any open node info popups so stale data doesn't linger
+  NMMap.closePopups();
+  const nodeInfoPopup = document.getElementById("nm-node-info-popup");
+  if (nodeInfoPopup) nodeInfoPopup.remove();
+
   try {
     const gq = _geoQuery();
     const [nodesResp, listsResp, timelineResp, gaugesResp, brkResp] = await Promise.all([
@@ -314,6 +320,117 @@ function _portnumClass(line) {
   if (pn === "PAXCOUNTER_APP")     return "pkt-pax";
 
   return "pkt-other";
+}
+
+// ── Traffic Log window ───────────────────────────────────────────
+
+function initTrafficWindow() {
+  const win      = document.getElementById("nm-traffic-window");
+  const closeBtn = document.getElementById("nm-traffic-close");
+  const header   = document.getElementById("nm-traffic-header");
+  if (!win || !closeBtn || !header) return;
+
+  closeBtn.addEventListener("click", () => {
+    win.classList.add("hidden");
+    document.getElementById("nm-traffic-body").innerHTML = "";
+  });
+
+  document.addEventListener("nm:open-traffic", async (e) => {
+    const { by, value, label } = e.detail;
+    await _openTrafficWindow(by, value, label);
+  });
+
+  // Make window draggable by its header
+  let _dragX = 0, _dragY = 0;
+  header.addEventListener("mousedown", (e) => {
+    if (e.target === closeBtn) return;
+    e.preventDefault();
+    const rect = win.getBoundingClientRect();
+    // Switch from transform-based centering to fixed coordinates
+    win.style.transform = "none";
+    win.style.left = `${rect.left}px`;
+    win.style.top  = `${rect.top}px`;
+    _dragX = e.clientX - rect.left;
+    _dragY = e.clientY - rect.top;
+    const move = (e2) => {
+      win.style.left = `${e2.clientX - _dragX}px`;
+      win.style.top  = `${e2.clientY - _dragY}px`;
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+}
+
+const _TRAFFIC_PKT_COLORS = {
+  "TEXT_MESSAGE_APP":   "var(--red)",
+  "POSITION_APP":       "var(--green)",
+  "TELEMETRY_APP":      "var(--accent)",
+  "NODEINFO_APP":       "var(--purple)",
+  "UNKNOWN_PRIVATE_CH": "#6dbad5",
+  "UNKNOWN_DIRECT":     "#afefd8",
+  "STORE_FORWARD_APP":  "#bddf34",
+  "NEIGHBORINFO_APP":   "#73eb3b",
+  "UNKNOWN":            "#f5c2c2",
+};
+
+async function _openTrafficWindow(by, value, label) {
+  const win   = document.getElementById("nm-traffic-window");
+  const body  = document.getElementById("nm-traffic-body");
+  const title = document.getElementById("nm-traffic-title");
+  if (!win || !body || !title) return;
+
+  title.textContent = `TRAFFIC: ${label}`;
+  body.innerHTML = `<div style="padding:10px;color:var(--text-dim);font-size:11px">Loading…</div>`;
+
+  // Reset to centered position each time
+  win.style.transform = "translateX(-50%)";
+  win.style.left = "50%";
+  win.style.top  = "90px";
+  win.classList.remove("hidden");
+
+  try {
+    const resp = await fetch(`/api/traffic?by=${encodeURIComponent(by)}&value=${encodeURIComponent(value)}`);
+    const data = await resp.json();
+    _renderTrafficBody(body, data.packets || []);
+  } catch (err) {
+    body.innerHTML = `<div style="padding:10px;color:var(--red);font-size:11px">Error: ${_escHtml(err.message)}</div>`;
+  }
+}
+
+function _renderTrafficBody(body, packets) {
+  if (packets.length === 0) {
+    body.innerHTML = `<div style="padding:10px;color:var(--text-dim);font-size:11px">No packets found.</div>`;
+    return;
+  }
+  const hdr = `<div class="nm-traffic-row nm-traffic-hdr">
+    <span class="nm-traffic-col" style="color:var(--text-dim)">Time</span>
+    <span class="nm-traffic-col" style="color:var(--text-dim)">From</span>
+    <span class="nm-traffic-col" style="color:var(--text-dim)">Type</span>
+    <span class="nm-traffic-col" style="color:var(--text-dim);text-align:right">RSSI</span>
+    <span class="nm-traffic-col" style="color:var(--text-dim);text-align:right">SNR</span>
+  </div>`;
+
+  const rows = packets.map(p => {
+    const ts   = p.rx_time ? new Date(p.rx_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
+    const from = _escHtml(p.from_display || p.from_node_id_hex || "—");
+    const type = p.portnum ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ") : "?";
+    const color = _TRAFFIC_PKT_COLORS[p.portnum] || "var(--text-dim)";
+    const rssi  = p.rx_rssi != null ? p.rx_rssi : "—";
+    const snr   = p.rx_snr  != null ? p.rx_snr  : "—";
+    return `<div class="nm-traffic-row">
+      <span class="nm-traffic-col">${ts}</span>
+      <span class="nm-traffic-col" style="color:var(--accent)">${from}</span>
+      <span class="nm-traffic-col" style="color:${color}">${type}</span>
+      <span class="nm-traffic-col" style="text-align:right">${rssi}</span>
+      <span class="nm-traffic-col" style="text-align:right">${snr}</span>
+    </div>`;
+  }).join("");
+
+  body.innerHTML = hdr + rows;
 }
 
 // ── Draggable dividers ──────────────────────────────────────────
@@ -610,24 +727,127 @@ function _initNewSessionForm() {
   const cancelBtn = document.getElementById("ns-cancel-btn");
   const createBtn = document.getElementById("ns-create-btn");
 
+  // ── Connection type button group ────────────────────────────────
+  let _activeConnType = null;
+
+  function _setConnType(type) {
+    _activeConnType = type;
+    document.querySelectorAll(".nm-conn-type-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.type === type);
+    });
+    for (const id of ["ns-serial-config", "ns-ble-config", "ns-tcp-config"]) {
+      document.getElementById(id)?.classList.add("hidden");
+    }
+    if (type) document.getElementById(`ns-${type}-config`)?.classList.remove("hidden");
+  }
+
+  document.querySelectorAll(".nm-conn-type-btn").forEach(btn => {
+    btn.addEventListener("click", () => _setConnType(btn.dataset.type));
+  });
+
+  // Default to SERIAL selected
+  _setConnType("serial");
+
+  // ── Serial scan ─────────────────────────────────────────────────
+  function _setupScan(scanBtnId, statusId, resultsId, hiddenInputId, apiPath, labelFn, valueFn) {
+    const scanBtn     = document.getElementById(scanBtnId);
+    const statusEl   = document.getElementById(statusId);
+    const resultsEl  = document.getElementById(resultsId);
+    const hiddenInput = document.getElementById(hiddenInputId);
+    if (!scanBtn) return;
+
+    scanBtn.addEventListener("click", async () => {
+      statusEl.textContent = "Scanning…";
+      resultsEl.classList.add("hidden");
+      resultsEl.innerHTML = "";
+      hiddenInput.value = "";
+      try {
+        const resp = await fetch(apiPath);
+        const data = await resp.json();
+        const items = data.ports || data.devices || [];
+        if (items.length === 0) {
+          statusEl.textContent = "None found";
+          return;
+        }
+        if (items.length === 1) {
+          hiddenInput.value = valueFn(items[0]);
+          statusEl.textContent = `Selected: ${labelFn(items[0])}`;
+          return;
+        }
+        statusEl.textContent = `${items.length} found — pick one:`;
+        resultsEl.classList.remove("hidden");
+        items.forEach(item => {
+          const row = document.createElement("div");
+          row.className = "nm-scan-item";
+          row.textContent = labelFn(item);
+          row.addEventListener("click", () => {
+            hiddenInput.value = valueFn(item);
+            statusEl.textContent = `Selected: ${labelFn(item)}`;
+            resultsEl.classList.add("hidden");
+            resultsEl.querySelectorAll(".nm-scan-item").forEach(r => r.classList.remove("active"));
+            row.classList.add("active");
+            resultsEl.classList.remove("hidden");
+          });
+          resultsEl.appendChild(row);
+        });
+      } catch (_) {
+        statusEl.textContent = "Scan failed";
+      }
+    });
+  }
+
+  _setupScan(
+    "ns-serial-scan", "ns-serial-status", "ns-serial-results", "ns-serial-dev",
+    "/api/listener/scan/serial",
+    p => p.description ? `${p.device} — ${p.description}` : p.device,
+    p => p.device,
+  );
+  _setupScan(
+    "ns-ble-scan", "ns-ble-status", "ns-ble-results", "ns-ble-address",
+    "/api/listener/scan/ble",
+    d => d.name ? `${d.name} (${d.address})` : d.address,
+    d => d.address,
+  );
+
+  // ── Build connection config from form state ─────────────────────
+  function _buildConnection() {
+    if (_activeConnType === "serial") {
+      const dev = document.getElementById("ns-serial-dev").value.trim();
+      return dev ? { type: "serial", device: dev } : { type: "serial" };
+    }
+    if (_activeConnType === "ble") {
+      const addr = document.getElementById("ns-ble-address").value.trim();
+      return addr ? { type: "ble", address: addr } : { type: "ble" };
+    }
+    if (_activeConnType === "tcp") {
+      const host = document.getElementById("ns-tcp-host").value.trim();
+      const port = parseInt(document.getElementById("ns-tcp-port").value) || 4403;
+      return host ? { type: "tcp", host, port } : { type: "tcp", port };
+    }
+    return { type: "serial" };
+  }
+
+  // ── Open / cancel ───────────────────────────────────────────────
   openBtn.addEventListener("click", () => form.classList.toggle("hidden"));
   cancelBtn.addEventListener("click", () => {
     form.classList.add("hidden");
     document.getElementById("ns-error").textContent = "";
   });
 
+  // ── Create ──────────────────────────────────────────────────────
   createBtn.addEventListener("click", async () => {
     const errEl = document.getElementById("ns-error");
     errEl.textContent = "";
 
-    const name     = document.getElementById("ns-name").value.trim();
-    const seed     = document.getElementById("ns-seed").checked;
-    const saveData = document.getElementById("ns-save-data")?.checked ?? true;
+    const name       = document.getElementById("ns-name").value.trim();
+    const seed       = document.getElementById("ns-seed").checked;
+    const saveData   = document.getElementById("ns-save-data")?.checked ?? true;
+    const connection = _buildConnection();
 
     const resp = await fetch("/api/sessions/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, seed_on_connect: seed, save_packet_data: saveData }),
+      body: JSON.stringify({ name, seed_on_connect: seed, save_packet_data: saveData, connection }),
     });
     const data = await resp.json();
     if (!resp.ok) { errEl.textContent = data.error; return; }

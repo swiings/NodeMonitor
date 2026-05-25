@@ -461,6 +461,50 @@ def get_role_breakdown(conn) -> list[dict]:
     return [{"role": row["role"], "count": row["cnt"]} for row in rows]
 
 
+def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
+    """Return packets filtered by portnum / hardware_model / role / node_id."""
+    base = """
+        SELECT p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+               p.rx_rssi, p.rx_snr, p.hop_limit,
+               n.short_name, n.long_name
+        FROM packets p
+        LEFT JOIN nodes n ON n.node_id = p.from_node_id
+    """
+    try:
+        if by == "portnum":
+            if value == "UNKNOWN_PRIVATE_CH":
+                sql = base + "WHERE p.portnum = 'UNKNOWN' AND p.to_node_id = 4294967295 ORDER BY p.rx_time DESC LIMIT ?"
+                rows = conn.execute(sql, (limit,)).fetchall()
+            elif value == "UNKNOWN_DIRECT":
+                sql = base + "WHERE p.portnum = 'UNKNOWN' AND p.to_node_id IS NOT NULL AND p.to_node_id != 4294967295 ORDER BY p.rx_time DESC LIMIT ?"
+                rows = conn.execute(sql, (limit,)).fetchall()
+            else:
+                sql = base + "WHERE p.portnum = ? ORDER BY p.rx_time DESC LIMIT ?"
+                rows = conn.execute(sql, (str(value), limit)).fetchall()
+        elif by == "hardware":
+            sql = base + "WHERE COALESCE(n.hardware_model, 'Unknown') = ? ORDER BY p.rx_time DESC LIMIT ?"
+            rows = conn.execute(sql, (str(value), limit)).fetchall()
+        elif by == "role":
+            sql = base + "WHERE COALESCE(n.role, 'Unknown') = ? ORDER BY p.rx_time DESC LIMIT ?"
+            rows = conn.execute(sql, (str(value), limit)).fetchall()
+        elif by == "node":
+            sql = base + "WHERE p.from_node_id = ? ORDER BY p.rx_time DESC LIMIT ?"
+            rows = conn.execute(sql, (int(value), limit)).fetchall()
+        else:
+            return []
+    except (sqlite3.OperationalError, TypeError, ValueError):
+        return []
+
+    result = []
+    for row in rows:
+        d = dict(row)
+        node_id = d.get("from_node_id")
+        d["from_node_id_hex"] = f"!{node_id & 0xFFFFFFFF:08x}" if node_id else "—"
+        d["from_display"] = d.get("short_name") or d["from_node_id_hex"]
+        result.append(d)
+    return result
+
+
 def delete_node(node_id: int) -> None:
     """Delete a node and all its associated data from the active session DB."""
     db_path = _sessions.get_db_path()

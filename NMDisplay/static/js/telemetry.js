@@ -442,6 +442,18 @@ const NMTelemetry = (() => {
       popup.remove();
     });
 
+    const trafficBtn = popup.querySelector(".nm-traffic-btn");
+    if (trafficBtn) {
+      trafficBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const label = node.short_name || node.node_id_hex || String(node.node_id);
+        document.dispatchEvent(new CustomEvent("nm:open-traffic", { detail: {
+          by: "node", value: node.node_id, label,
+        }}));
+        popup.remove();
+      });
+    }
+
     const deleteBtn = popup.querySelector(".nm-node-delete-btn");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async (e) => {
@@ -493,7 +505,8 @@ const NMTelemetry = (() => {
       `<tr><td style="color:#888;padding-right:8px;white-space:nowrap">${k}</td><td>${v}</td></tr>`
     ).join("");
     return `<table style="font-size:11px;font-family:monospace;line-height:1.5">${trs}</table>`
-      + `<div style="text-align:right;margin-top:8px">`
+      + `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">`
+      + `<button class="nm-text-btn nm-traffic-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">See Traffic</button>`
       + `<button class="nm-btn-danger nm-node-delete-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Delete Node</button>`
       + `</div>`;
   }

@@ -224,6 +224,49 @@
             <div class="nm-form-row">
               <label>Name<input type="text" id="ns-name" placeholder="e.g. HAXX home"></label>
             </div>
+
+            <!-- Step 1: connection type -->
+            <div class="nm-form-row" style="flex-direction:column;gap:4px;align-items:flex-start">
+              <span style="font-size:11px;color:var(--text-dim)">Connection Type</span>
+              <div style="display:flex;gap:6px">
+                <button class="nm-conn-type-btn" data-type="serial">SERIAL</button>
+                <button class="nm-conn-type-btn" data-type="ble">BLE</button>
+                <button class="nm-conn-type-btn" data-type="tcp">TCP</button>
+              </div>
+            </div>
+
+            <!-- Serial config -->
+            <div id="ns-serial-config" class="hidden" style="margin-bottom:4px">
+              <div class="nm-form-row">
+                <button class="nm-scan-btn" id="ns-serial-scan">Scan Serial Ports</button>
+                <span id="ns-serial-status" class="nm-hint-inline"></span>
+              </div>
+              <div id="ns-serial-results" class="nm-scan-results hidden"></div>
+              <input type="hidden" id="ns-serial-dev">
+            </div>
+
+            <!-- BLE config -->
+            <div id="ns-ble-config" class="hidden" style="margin-bottom:4px">
+              <div class="nm-form-row">
+                <button class="nm-scan-btn" id="ns-ble-scan">Scan BLE Devices</button>
+                <span id="ns-ble-status" class="nm-hint-inline"></span>
+              </div>
+              <div id="ns-ble-results" class="nm-scan-results hidden"></div>
+              <input type="hidden" id="ns-ble-address">
+            </div>
+
+            <!-- TCP config -->
+            <div id="ns-tcp-config" class="hidden" style="margin-bottom:4px">
+              <div class="nm-form-row">
+                <label style="flex-direction:row;align-items:center;gap:6px">Host
+                  <input type="text" id="ns-tcp-host" placeholder="192.168.1.25" style="width:140px">
+                </label>
+                <label style="flex-direction:row;align-items:center;gap:6px">Port
+                  <input type="number" id="ns-tcp-port" value="4403" min="1" max="65535" style="width:58px">
+                </label>
+              </div>
+            </div>
+
             <div class="nm-form-row">
               <label><input type="checkbox" id="ns-seed" checked> Seed node list from device on connect</label>
             </div>
@@ -389,6 +432,18 @@
         <span id="af-error" class="error-text"></span>
       </div>
     </div>
+  </div>
+
+  <!-- ── Floating tooltip (slider, location unknown, etc.) ─────── -->
+  <div id="nm-float-tooltip" class="hidden"></div>
+
+  <!-- ── Traffic Log floating window ───────────────────────────── -->
+  <div id="nm-traffic-window" class="hidden">
+    <div id="nm-traffic-header">
+      <span id="nm-traffic-title">TRAFFIC LOG</span>
+      <button id="nm-traffic-close">&times;</button>
+    </div>
+    <div id="nm-traffic-body"></div>
   </div>
 
   <!-- ── Scripts ─────────────────────────────────────────────────── -->

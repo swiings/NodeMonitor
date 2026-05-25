@@ -119,7 +119,9 @@ body {
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
-  height: 80px;
+  height: 95px;
+  gap: 4px;
+  padding: 4px;
 }
 
 /* ── Main layout (map+timeline left, lists right) ────────────── */
@@ -154,12 +156,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid var(--border);
-  padding: 4px 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
   overflow: hidden;
   min-width: 0;
 }
-.nm-gauge:last-child { border-right: none; }
 
 /* Nodes gauge gets the width taken from PKT/MIN */
 #gauge-nodes { flex: 1.25; }
@@ -589,22 +592,13 @@ body.layout-split #nm-charts-container {
 }
 
 @keyframes nm-marker-pulse {
-  0%   {
-    transform: scale(1);
-    filter: brightness(1) drop-shadow(0 0 0px transparent);
-  }
-  18%  {
-    transform: scale(1.9);
-    filter: brightness(2.8) drop-shadow(0 0 10px rgba(255,255,255,0.95));
-  }
-  100% {
-    transform: scale(1);
-    filter: brightness(1) drop-shadow(0 0 0px transparent);
-  }
+  0%   { transform: scale(1);   filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+  25%  { transform: scale(1.2); filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,255,255,0.9)); }
+  100% { transform: scale(1);   filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
 
 .nm-marker-pulse {
-  animation: nm-marker-pulse  10s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  animation: nm-marker-pulse 2s ease-in-out forwards;
 }
 
 /* ── Map fullscreen ──────────────────────────────────────────── */
@@ -1341,3 +1335,118 @@ body.layout-split #nm-charts-container {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Floating tooltip (slider value, location unknown, etc.) ─── */
+#nm-float-tooltip {
+  position: fixed;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: bold;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 9500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: opacity 0.15s;
+}
+#nm-float-tooltip.hidden { display: none; }
+
+/* ── Traffic Log floating window ─────────────────────────────── */
+#nm-traffic-window {
+  position: fixed;
+  z-index: 8000;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 560px;
+  max-width: 96vw;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+#nm-traffic-window.hidden { display: none; }
+
+#nm-traffic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+  flex-shrink: 0;
+  cursor: move;
+  user-select: none;
+}
+#nm-traffic-title {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+#nm-traffic-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+#nm-traffic-close:hover { color: var(--red); }
+
+#nm-traffic-body {
+  flex: 1;
+  overflow-y: auto;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+}
+
+.nm-traffic-hdr {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.nm-traffic-row {
+  display: grid;
+  grid-template-columns: 70px 80px 1fr 44px 44px;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--divider);
+}
+.nm-traffic-row:not(.nm-traffic-hdr):hover { background: var(--bg3); }
+.nm-traffic-row:last-child { border-bottom: none; }
+.nm-traffic-col {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Connection type selector buttons ────────────────────────── */
+.nm-conn-type-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+.nm-conn-type-btn:hover { border-color: var(--accent); color: var(--text); }
+.nm-conn-type-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }

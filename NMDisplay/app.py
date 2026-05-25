@@ -300,6 +300,20 @@ def api_delete_node(node_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/traffic")
+def api_traffic():
+    by    = request.args.get("by", "")
+    value = request.args.get("value", "")
+    if by not in ("portnum", "hardware", "role", "node"):
+        return jsonify({"error": "invalid filter type", "packets": []}), 400
+    conn = queries.get_conn()
+    try:
+        packets = queries.get_filtered_traffic(conn, by, value)
+    finally:
+        conn.close()
+    return jsonify({"packets": packets, "count": len(packets)})
+
+
 @app.route("/api/packet_breakdown")
 def api_packet_breakdown():
     my_node_id = _effective_my_node_id()
@@ -505,7 +519,10 @@ def api_sessions_new():
 
     seed = bool(data.get("seed_on_connect", True))
     save = bool(data.get("save_packet_data", True))
-    session = sess_mod.create(name, {"type": "serial"}, seed_on_connect=seed, save_packet_data=save)
+    conn_cfg = data.get("connection") or {}
+    if conn_cfg.get("type") not in ("serial", "tcp", "ble"):
+        conn_cfg = {"type": "serial"}
+    session = sess_mod.create(name, conn_cfg, seed_on_connect=seed, save_packet_data=save)
     return jsonify({"session": session})
 
 

@@ -122,6 +122,35 @@ const NMTimeline = (() => {
     slider.addEventListener("input", () => {
       _applySliderValue(parseInt(slider.value));
     });
+
+    slider.addEventListener("mouseup",  () => _showSliderTooltip(slider));
+    slider.addEventListener("touchend", () => _showSliderTooltip(slider));
+  }
+
+  let _tooltipTimer = null;
+  function _showSliderTooltip(slider) {
+    const tooltip = document.getElementById("nm-float-tooltip");
+    if (!tooltip) return;
+    const mins = parseInt(slider.value);
+    let label;
+    if (mins < 60) {
+      label = `${mins} min`;
+    } else if (mins < 1440 && mins % 60 === 0) {
+      label = `${mins / 60} hr`;
+    } else if (mins < 1440) {
+      label = `${(mins / 60).toFixed(1)} hr`;
+    } else {
+      const d = Math.floor(mins / 1440);
+      const h = Math.round((mins % 1440) / 60);
+      label = h > 0 ? `${d}d ${h}h` : `${d}d`;
+    }
+    tooltip.textContent = label;
+    const rect = slider.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 8}px`;
+    tooltip.style.top  = `${Math.round(rect.top + rect.height / 2) - 11}px`;
+    tooltip.classList.remove("hidden");
+    clearTimeout(_tooltipTimer);
+    _tooltipTimer = setTimeout(() => tooltip.classList.add("hidden"), 1800);
   }
 
   let _sliderDebounce = null;

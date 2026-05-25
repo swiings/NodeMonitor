@@ -96,7 +96,30 @@ def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
     if _repo is not None:
         node_requester.start(interface, _repo, _node_store, seed_on_connect=_seed_on_connect)
 
+    _request_reference_position(interface, my_node_id)
     _start_poll_thread()
+
+
+def _request_reference_position(interface, my_node_id: int | None) -> None:
+    """Trigger an immediate position broadcast from the reference node on connect."""
+    try:
+        local_node = (interface.nodes or {}).get(
+            f"!{my_node_id:08x}" if my_node_id else "", {}
+        )
+        pos = local_node.get("position", {})
+        lat = pos.get("latitude")
+        lon = pos.get("longitude")
+        if lat is not None and lon is not None:
+            interface.sendPosition(
+                latitude=lat,
+                longitude=lon,
+                altitude=int(pos.get("altitude", 0)),
+            )
+            log.info("Triggered position broadcast from reference node (lat=%.5f lon=%.5f)", lat, lon)
+        else:
+            log.info("Reference node has no stored GPS fix — position broadcast skipped")
+    except Exception as exc:
+        log.warning("Could not trigger position broadcast: %s", exc)
 
 
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
@@ -282,8 +305,17 @@ def _log_packet(packet: dict) -> None:
             extras = f'  msg="{text[:40]}"'
 
     from_str = f"!{from_id:08x}" if isinstance(from_id, int) else str(from_id)
+
+    name_str = ""
+    if _node_store is not None and isinstance(from_id, int):
+        rec = _node_store.get(from_id)
+        if rec is not None:
+            parts = [p for p in [rec.short_name, rec.long_name] if p]
+            if parts:
+                name_str = f"  ({' / '.join(parts)})"
+
     rssi_str = f"rssi={rssi}" if rssi is not None else ""
     snr_str = f"snr={snr}" if snr is not None else ""
     sig = "  ".join(filter(None, [rssi_str, snr_str]))
 
-    print(f"[{ts}] RECV {portnum:<22} from={from_str}  {sig}{extras}")
+    print(f"[{ts}] RECV {portnum:<22} from={from_str}{name_str}  {sig}{extras}")

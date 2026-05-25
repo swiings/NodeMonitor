@@ -97,6 +97,19 @@ const NMGauges = (() => {
     document.getElementById("gauge-farthest").addEventListener("click", () => {
       if (_farthestNodeId != null) NMMap.flyToNode(_farthestNodeId);
     });
+
+    // Delegated click → open traffic window from breakdown rows
+    for (const tableId of ["nm-pkt-breakdown-table", "nm-hw-breakdown-table", "nm-role-breakdown-table"]) {
+      document.getElementById(tableId)?.addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-traffic-by]");
+        if (!tr) return;
+        document.dispatchEvent(new CustomEvent("nm:open-traffic", { detail: {
+          by:    tr.dataset.trafficBy,
+          value: tr.dataset.trafficValue,
+          label: tr.dataset.trafficLabel,
+        }}));
+      });
+    }
   }
 
   // Role → emoji (mirrors map.js mapping)
@@ -284,10 +297,10 @@ const NMGauges = (() => {
     }
     const maxCount = Math.max(1, ...rows.map(r => r.count));
     table.innerHTML = rows.map(r => {
-      const pct = Math.round((r.count / maxCount) * 100);
+      const pct   = Math.round((r.count / maxCount) * 100);
       const color = _pktColor(r.portnum);
       const label = _pktLabel(r.portnum);
-      return `<tr>
+      return `<tr data-traffic-by="portnum" data-traffic-value="${r.portnum}" data-traffic-label="${label}" style="cursor:pointer">
         <td class="nm-hop-label" style="min-width:48px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></td>
         <td class="nm-hop-count">${r.count}</td>
@@ -312,11 +325,11 @@ const NMGauges = (() => {
       return;
     }
     const maxCount = Math.max(1, ...rows.map(r => r.count));
-    const color = "var(--accent)";
-    table.innerHTML = rows.map(r => {
+    table.innerHTML = rows.map((r, i) => {
+      const color = `hsl(${(200 + i * 28) % 360}, 55%, 52%)`;
       const pct   = Math.round((r.count / maxCount) * 100);
       const label = r.hardware_model || "Unknown";
-      return `<tr>
+      return `<tr data-traffic-by="hardware" data-traffic-value="${r.hardware_model || ''}" data-traffic-label="${label}" style="cursor:pointer">
         <td class="nm-hop-label" style="min-width:60px;color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.75"></div></td>
         <td class="nm-hop-count">${r.count}</td>
@@ -357,11 +370,11 @@ const NMGauges = (() => {
       return;
     }
     const maxCount = Math.max(1, ...rows.map(r => r.count));
-    const color = "var(--purple)";
-    table.innerHTML = rows.map(r => {
+    table.innerHTML = rows.map((r, i) => {
+      const color = `hsl(${(270 + i * 30) % 360}, 55%, 52%)`;
       const pct   = Math.round((r.count / maxCount) * 100);
       const label = _ROLE_LABELS[r.role] || `👻 ${r.role}`;
-      return `<tr>
+      return `<tr data-traffic-by="role" data-traffic-value="${r.role || ''}" data-traffic-label="${label}" style="cursor:pointer">
         <td class="nm-hop-label" style="color:${color}">${label}</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color};opacity:0.75"></div></td>
         <td class="nm-hop-count">${r.count}</td>
