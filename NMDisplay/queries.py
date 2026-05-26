@@ -464,7 +464,7 @@ def get_role_breakdown(conn) -> list[dict]:
 def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
     """Return packets filtered by portnum / hardware_model / role / node_id."""
     base = """
-        SELECT p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+        SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
                p.rx_rssi, p.rx_snr, p.hop_limit,
                n.short_name, n.long_name
         FROM packets p
@@ -503,6 +503,57 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
         d["from_display"] = d.get("short_name") or d["from_node_id_hex"]
         result.append(d)
     return result
+
+
+def get_packet_detail(conn, packet_id: int) -> dict | None:
+    """Return full decoded payload for a single packet, joining related tables."""
+    import json as _json
+    row = conn.execute(
+        """SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+                  p.rx_rssi, p.rx_snr, p.hop_limit, p.payload_json,
+                  n.short_name, n.long_name
+           FROM packets p
+           LEFT JOIN nodes n ON n.node_id = p.from_node_id
+           WHERE p.id = ?""",
+        (packet_id,)
+    ).fetchone()
+    if row is None:
+        return None
+
+    d = dict(row)
+    node_id = d.get("from_node_id")
+    d["from_node_id_hex"] = f"!{node_id & 0xFFFFFFFF:08x}" if node_id else "—"
+
+    if d.get("payload_json"):
+        try:
+            d["payload"] = _json.loads(d["payload_json"])
+        except Exception:
+            d["payload"] = None
+    else:
+        d["payload"] = None
+    del d["payload_json"]
+
+    tel = conn.execute(
+        """SELECT battery_level, voltage, channel_util, air_util_tx,
+                  temperature, relative_humidity, barometric_pressure
+           FROM telemetry WHERE packet_id = ? LIMIT 1""",
+        (packet_id,)
+    ).fetchone()
+    d["telemetry"] = dict(tel) if tel else None
+
+    pos = conn.execute(
+        "SELECT lat, lon, altitude_m, precision_bits FROM positions WHERE packet_id = ? LIMIT 1",
+        (packet_id,)
+    ).fetchone()
+    d["position"] = dict(pos) if pos else None
+
+    msg = conn.execute(
+        "SELECT message_text, to_node_id FROM text_messages WHERE packet_id = ? LIMIT 1",
+        (packet_id,)
+    ).fetchone()
+    d["text_message"] = dict(msg) if msg else None
+
+    return d
 
 
 def delete_node(node_id: int) -> None:

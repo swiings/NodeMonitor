@@ -314,6 +314,18 @@ def api_traffic():
     return jsonify({"packets": packets, "count": len(packets)})
 
 
+@app.route("/api/packet/<int:packet_id>")
+def api_packet_detail(packet_id):
+    conn = queries.get_conn()
+    try:
+        detail = queries.get_packet_detail(conn, packet_id)
+    finally:
+        conn.close()
+    if detail is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(detail)
+
+
 @app.route("/api/packet_breakdown")
 def api_packet_breakdown():
     my_node_id = _effective_my_node_id()

@@ -477,7 +477,7 @@ function _showTrafficDetail(p, rowEl) {
     ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ")
     : "—";
 
-  const fields = [
+  const baseFields = [
     ["Time",       _ts(p.rx_time)],
     ["From",       fromStr],
     ["To",         toStr],
@@ -487,12 +487,59 @@ function _showTrafficDetail(p, rowEl) {
     ["Hop Limit",  hopStr],
   ];
 
-  const detail = document.getElementById("nm-traffic-detail");
+  const detail     = document.getElementById("nm-traffic-detail");
   const detailBody = document.getElementById("nm-traffic-detail-body");
-  detailBody.innerHTML = fields.map(([k, v]) =>
-    `<span class="nm-detail-key">${k}</span><span class="nm-detail-val">${_escHtml(String(v))}</span>`
-  ).join("");
+
+  const _render = (fields) => {
+    detailBody.innerHTML = fields.map(([k, v]) =>
+      `<span class="nm-detail-key">${_escHtml(k)}</span><span class="nm-detail-val">${_escHtml(String(v ?? "—"))}</span>`
+    ).join("");
+  };
+
+  _render(baseFields);
   detail.classList.remove("hidden");
+
+  if (p.id == null) return;
+  fetch(`/api/packet/${p.id}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d) return;
+      const extra = [];
+
+      if (d.telemetry) {
+        const t = d.telemetry;
+        if (t.battery_level  != null) extra.push(["Battery",     `${t.battery_level}%`]);
+        if (t.voltage        != null) extra.push(["Voltage",     `${t.voltage.toFixed(2)} V`]);
+        if (t.channel_util   != null) extra.push(["Ch Util",     `${t.channel_util.toFixed(1)}%`]);
+        if (t.air_util_tx    != null) extra.push(["Air Util TX", `${t.air_util_tx.toFixed(1)}%`]);
+        if (t.temperature    != null) extra.push(["Temp",        `${t.temperature.toFixed(1)} °C`]);
+        if (t.relative_humidity != null) extra.push(["Humidity", `${t.relative_humidity.toFixed(1)}%`]);
+        if (t.barometric_pressure != null) extra.push(["Pressure", `${t.barometric_pressure.toFixed(1)} hPa`]);
+      }
+
+      if (d.position) {
+        const pos = d.position;
+        extra.push(["Lat / Lon", `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`]);
+        if (pos.altitude_m   != null) extra.push(["Altitude",  `${pos.altitude_m.toFixed(0)} m`]);
+        if (pos.precision_bits != null) extra.push(["Precision", `${pos.precision_bits} bits`]);
+      }
+
+      if (d.text_message) {
+        extra.push(["Message", d.text_message.message_text]);
+      }
+
+      if (d.payload && typeof d.payload === "object") {
+        const known = new Set(["battery_level","voltage","channel_util","air_util_tx",
+          "temperature","relative_humidity","barometric_pressure"]);
+        for (const [k, v] of Object.entries(d.payload)) {
+          if (!known.has(k) && v != null && v !== "" && typeof v !== "object")
+            extra.push([k.replace(/_/g, " "), String(v)]);
+        }
+      }
+
+      if (extra.length) _render([...baseFields, ["──────", "──────────────────"], ...extra]);
+    })
+    .catch(() => {});
 }
 
 // ── Draggable dividers ──────────────────────────────────────────
