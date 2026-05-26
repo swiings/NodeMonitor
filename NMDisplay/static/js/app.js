@@ -415,7 +415,7 @@ function _renderTrafficBody(body, packets) {
   </div>`;
 
   const rows = packets.map(p => {
-    const ts   = p.rx_time ? new Date(p.rx_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
+    const ts   = p.rx_time ? new Date(p.rx_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "—";
     const from = _escHtml(p.from_display || p.from_node_id_hex || "—");
     const type = p.portnum ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ") : "?";
     const color = _TRAFFIC_PKT_COLORS[p.portnum] || "var(--text-dim)";
