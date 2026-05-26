@@ -98,9 +98,9 @@ function startPollLoop(intervalSec) {
 
 async function pollAll() {
   // Close any open node info popups so stale data doesn't linger
-  NMMap.closePopups();
-  const nodeInfoPopup = document.getElementById("nm-node-info-popup");
-  if (nodeInfoPopup) nodeInfoPopup.remove();
+  // NMMap.closePopups();
+  // const nodeInfoPopup = document.getElementById("nm-node-info-popup");
+  // if (nodeInfoPopup) nodeInfoPopup.remove();
 
   try {
     const gq = _geoQuery();
