@@ -186,14 +186,15 @@ const NMTelemetry = (() => {
     body.className = "nm-list-body";
     body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
 
-    if (list.nodes.length === 0) {
+    const visibleNodes = _visibleNodes(list.nodes, list.id);
+    if (visibleNodes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "nm-list-empty";
       empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
-      empty.textContent = "No data";
+      empty.textContent = (list.id === "msgs_sent" || list.id === "msgs_rcvd") ? "None" : "No data";
       body.appendChild(empty);
     } else {
-      for (const node of list.nodes) body.appendChild(_buildRow(node, list.id));
+      for (const node of visibleNodes) body.appendChild(_buildRow(node, list.id));
     }
 
     card.appendChild(body);
@@ -263,15 +264,16 @@ const NMTelemetry = (() => {
     body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
     body.innerHTML = "";
 
-    if (list.nodes.length === 0) {
+    const visibleNodes = _visibleNodes(list.nodes, list.id);
+    if (visibleNodes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "nm-list-empty";
       empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
-      empty.textContent = "No data";
+      empty.textContent = (list.id === "msgs_sent" || list.id === "msgs_rcvd") ? "None" : "No data";
       body.appendChild(empty);
     } else {
       const frag = document.createDocumentFragment();
-      for (const node of list.nodes) frag.appendChild(_buildRow(node, list.id));
+      for (const node of visibleNodes) frag.appendChild(_buildRow(node, list.id));
       body.appendChild(frag);
     }
   }
@@ -376,7 +378,7 @@ const NMTelemetry = (() => {
 
     const shortName = node.short_name || node.node_id_hex || "—";
     const longName  = node.long_name  || node.node_id_hex || "—";
-    const combined  = `${shortName} - ${longName}`;
+    const combined  = shortName === longName ? shortName : `${shortName} - ${longName}`;
 
     const emojiEl = document.createElement("span");
     emojiEl.className = "nm-role-icon";
@@ -523,6 +525,14 @@ const NMTelemetry = (() => {
       if (el.dataset.showing === "click") return;
       el.textContent = _wideMode ? el.dataset.combined : el.dataset.short;
     });
+  }
+
+  // ── Node filter for count-based lists ────────────────────────
+
+  function _visibleNodes(nodes, listId) {
+    if (listId === "msgs_sent") return nodes.filter(n => (n.sent_count || 0) > 0);
+    if (listId === "msgs_rcvd") return nodes.filter(n => (n.received_count || 0) > 0);
+    return nodes;
   }
 
   // ── Meta value formatter ──────────────────────────────────────

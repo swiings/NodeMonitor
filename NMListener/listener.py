@@ -310,7 +310,7 @@ def _log_packet(packet: dict) -> None:
     if _node_store is not None and isinstance(from_id, int):
         rec = _node_store.get(from_id)
         if rec is not None:
-            parts = [p for p in [rec.short_name, rec.long_name] if p]
+            parts = list(dict.fromkeys(p for p in [rec.short_name, rec.long_name] if p))
             if parts:
                 name_str = f"  ({' / '.join(parts)})"
 

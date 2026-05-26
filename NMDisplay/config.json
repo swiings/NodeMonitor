@@ -33,7 +33,7 @@
   },
   "display": {
     "theme": "color",
-    "poll_interval_seconds": 20,
+    "poll_interval_seconds": 10,
     "panel_layout": "split"
   }
 }

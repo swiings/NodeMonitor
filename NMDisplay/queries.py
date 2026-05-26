@@ -207,9 +207,9 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
 
     # Node counts
     total = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-    # Active: heard in the last hour
+    # Active: heard in the last 65 minutes (buffer for nodes that broadcast nodeinfo hourly)
     active = conn.execute(
-        "SELECT COUNT(*) FROM nodes WHERE last_heard > ?", (now - 3600,)
+        "SELECT COUNT(*) FROM nodes WHERE last_heard > ?", (now - 3900,)
     ).fetchone()[0]
     # Direct: nodes from which we received a packet with no relay hops (hop_limit >= 3)
     direct = conn.execute(

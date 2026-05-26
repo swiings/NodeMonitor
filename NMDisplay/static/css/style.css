@@ -18,7 +18,7 @@ body.theme-color {
   --bg3:        #1f2733;
   --border:     #30363d;
   --text:       #c9d1d9;
-  --text-dim:   #6e7681;
+  --text-dim:   #9fa8b5;
   --accent:     #58a6ff;
   --green:      #3fb950;
   --amber:      #d29922;
@@ -71,13 +71,13 @@ body {
   font-weight: bold;
   color: var(--accent);
   letter-spacing: 0.05em;
-  font-size: 12px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
 #nm-status {
   flex: 1;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
@@ -95,7 +95,7 @@ body {
 }
 
 #nm-beep-volume {
-  width: 64px;
+  width: 75px;
   accent-color: var(--accent);
   cursor: pointer;
   height: 4px;
@@ -116,12 +116,15 @@ body {
 /* ── Gauge row (full width, below header) ────────────────────── */
 #nm-gauges {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap; 
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
-  height: 95px;
-  gap: 4px;
+  min-height: 0px;
+  min-width: 0px;
+  gap: 8px;
   padding: 4px;
+  overflow: visible;
+  justify-content: flex-start;
 }
 
 /* ── Main layout (map+timeline left, lists right) ────────────── */
@@ -151,61 +154,60 @@ body {
 }
 
 .nm-gauge {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center; 
+  /* align-items: stretch; */
   justify-content: center;
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 3px 7px;
   overflow: hidden;
-  min-width: 0;
+  min-height: 90px;
 }
 
-/* Nodes gauge gets the width taken from PKT/MIN */
-#gauge-nodes { flex: 1.25; }
-/* PKT/MIN is 25% narrower than a standard gauge */
-#gauge-ppm   { flex: 0.75; }
+#gauge-nodes { 
+  text-align: center;
+}
 
-/* Roles gauge */
-#gauge-roles { flex: 1; }
+#gauge-ppm   {   
+  text-align: center;
+}
+#gauge-roles { 
+  text-align: center;
+}
 .nm-gauge-roles {
   text-align: center;
 }
 .nm-gauge-role-row {
-  display: inline !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
   line-height: 1;
-  white-space: nowrap;
 }
 .nm-role-emoji {
-  /* font-size: clamp(26px, 2.4vw, 37px); */
-  font-size: clamp(26px, 1.75vw, 40.5px);
-  line-height: 1;
+  font-size: clamp(26px, 1.0vw, 40.5px);
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  overflow: visible;
 }
 .nm-role-num {
-  /* font-size: clamp(26px, 2.4vw, 37px) !important; */
-  font-size: clamp(28px, 1.75vw, 46.5px);
+  text-align: center;
 }
 
-/* ELAPSED uses the same smaller font as the triple NODES gauge */
 #g-elapsed {
-  /* font-size: clamp(28px, 2.4vw, 42px); */
-  font-size: clamp(32px, 3.75vw, 52px);
+  text-align: center;
 }
 
-/* CLOSEST / FARTHEST names can be long (8-char hex IDs) — fixed size, no padding */
 #gauge-closest,
 #gauge-farthest {
-  padding: 2px 2px;
-  flex: 1;
+  text-align: center;
 }
 #g-closest-name,
 #g-farthest-name {
-  /* font-size: clamp(20px, 1.5vw, 37px); */
-  font-size: clamp(30px, 2.25vw, 55.5px);
-  letter-spacing: 0;
+  text-align: center;
 }
 
 .nm-gauge-tap {
@@ -217,14 +219,12 @@ body {
 
 .nm-gauge-num {
   font-family: Impact, "Arial Narrow", Arial, sans-serif;
-   font-size: clamp(34px, 4.55vw, 52px);
-  /* font-size: clamp(35px, 5.0vw, 55px); */
+  font-size: clamp(30px, 3.0vw, 40px);
   line-height: 1;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
   text-align: center;
 }
 
@@ -242,7 +242,7 @@ body {
 /* Nodes gauge: three mini values side by side */
 .nm-gauge-triple {
   display: flex;
-  gap: 6px;
+  gap: 16px;
   align-items: flex-end;
 }
 
@@ -264,7 +264,6 @@ body {
   line-height: 1;
 }
 
-/* Distance sub-label on Closest/Farthest gauges — white, same size as caption */
 .nm-gauge-dist {
   font-size: clamp(13px, 0.98vw, 18px);
   font-weight: bold;
@@ -593,12 +592,12 @@ body.layout-split #nm-charts-container {
 
 @keyframes nm-marker-pulse {
   0%   { transform: scale(1);   filter: brightness(1)   drop-shadow(0 0 0px transparent); }
-  25%  { transform: scale(1.2); filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,255,255,0.9)); }
+  50%  { transform: scale(3);   filter: brightness(1.1) drop-shadow(0 0 5x rgba(237, 71, 71, 0.9)); }
   100% { transform: scale(1);   filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
 
 .nm-marker-pulse {
-  animation: nm-marker-pulse 2s ease-in-out forwards;
+  animation: nm-marker-pulse 3.5s ease-in-out forwards;
 }
 
 /* ── Map fullscreen ──────────────────────────────────────────── */
@@ -782,7 +781,7 @@ body.layout-split #nm-charts-container {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: bold;
   letter-spacing: 0.06em;
   padding: 1px 6px;
@@ -807,7 +806,7 @@ body.layout-split #nm-charts-container {
   50%       { opacity: 0.2; }
 }
 .nm-listener-running #nm-listener-dot {
-  animation: nm-pulse 3s ease-in-out infinite;
+  animation: nm-pulse 4s ease-in-out infinite;
 }
 
 /* ── Packet log panel ───────────────────────────────────────── */

@@ -89,6 +89,21 @@ const NMMap = (() => {
     const tfAtlas     = L.tileLayer("/tiles/tf_atlas/{z}/{x}/{y}.png",     { maxZoom: 22, attribution: tfAttr, tileSize: 256, errorTileUrl: "" });
     // ── End Thunderforest block ────────────────────────────────────────────────
 
+    const _addTileRetry = (layer) => {
+      layer.on("tileerror", (err) => {
+        const tile = err.tile;
+        const retries = parseInt(tile.dataset.nmRetries || "0");
+        if (retries < 3) {
+          tile.dataset.nmRetries = retries + 1;
+          setTimeout(() => {
+            const base = tile.src.replace(/[?&]nm_retry=\d+/, "");
+            tile.src = base + (base.includes("?") ? "&" : "?") + "nm_retry=" + tile.dataset.nmRetries;
+          }, 1000 * (retries + 1));
+        }
+      });
+    };
+    [standardLayer, humanitarianLayer, topoLayer, stadiaDark, tfAtlas].forEach(_addTileRetry);
+
     standardLayer.addTo(_map);
 
     // ── Layer control ──────────────────────────────────────────────────────────
@@ -169,6 +184,23 @@ const NMMap = (() => {
       },
     });
     new FullscreenControl().addTo(_map);
+
+    // Move floating overlays into/out of the fullscreen element so they
+    // stay above the map in the browser's fullscreen stacking context.
+    const _overlayIds = ["nm-traffic-window"];
+    document.addEventListener("fullscreenchange", () => {
+      const mapEl = document.getElementById("nm-map");
+      const entering = !!document.fullscreenElement;
+      _overlayIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (entering) {
+          mapEl.appendChild(el);
+        } else {
+          document.body.appendChild(el);
+        }
+      });
+    });
 
     // "Fit all markers" button
     const FitAllControl = L.Control.extend({
@@ -648,28 +680,35 @@ const NMMap = (() => {
         wrap.classList.remove("nm-marker-pulse");
         void wrap.offsetWidth;  // force reflow to restart animation
         wrap.classList.add("nm-marker-pulse");
-        setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 2000);
+        setTimeout(() => wrap.classList.remove("nm-marker-pulse"), 3500);
       }
     }
 
     // Expanding circle ripple via Leaflet circleMarker (pixel radius, zoom-stable)
     const ripple = L.circleMarker(m.getLatLng(), {
       radius: 6,
-      color: "#58a6ff",
+      color: "#7ec8ff",
       fillColor: "transparent",
-      weight: 2,
-      opacity: 0.85,
+      weight: 2.5,
+      opacity: 1.0,
       interactive: false,
     }).addTo(_map);
 
     const startMs = Date.now();
-    const duration = 2000;
-    const maxRadius = 55;
+    const duration = 2500;
+    const markerPx = _map.latLngToContainerPoint(m.getLatLng());
+    const mapSize  = _map.getSize();
+    const maxRadius = Math.ceil(Math.max(
+      Math.hypot(markerPx.x,              markerPx.y),
+      Math.hypot(mapSize.x - markerPx.x,  markerPx.y),
+      Math.hypot(markerPx.x,              mapSize.y - markerPx.y),
+      Math.hypot(mapSize.x - markerPx.x,  mapSize.y - markerPx.y)
+    ));
 
     const _animateRipple = () => {
       const progress = Math.min(1, (Date.now() - startMs) / duration);
       ripple.setRadius(6 + (maxRadius - 6) * progress);
-      ripple.setStyle({ opacity: 0.85 * (1 - progress) });
+      ripple.setStyle({ opacity: 1.0 * (1 - progress) });
       if (progress < 1) {
         requestAnimationFrame(_animateRipple);
       } else {

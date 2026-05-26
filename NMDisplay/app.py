@@ -676,10 +676,18 @@ def tile(provider, z, x, y):
 
     if not os.path.exists(path):
         url = _build_tile_url(provider, z, x, y)
-        try:
-            resp = req_lib.get(url, headers=_build_tile_headers(provider), timeout=10)
-            resp.raise_for_status()
-        except Exception:
+        last_exc = None
+        for attempt in range(3):
+            try:
+                resp = req_lib.get(url, headers=_build_tile_headers(provider), timeout=10)
+                resp.raise_for_status()
+                last_exc = None
+                break
+            except Exception as e:
+                last_exc = e
+                if attempt < 2:
+                    import time; time.sleep(0.5 * (attempt + 1))
+        if last_exc is not None:
             abort(502)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as f:
