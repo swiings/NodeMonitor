@@ -333,6 +333,12 @@ function initTrafficWindow() {
   closeBtn.addEventListener("click", () => {
     win.classList.add("hidden");
     document.getElementById("nm-traffic-body").innerHTML = "";
+    document.getElementById("nm-traffic-detail").classList.add("hidden");
+  });
+
+  document.getElementById("nm-traffic-detail-close").addEventListener("click", () => {
+    document.getElementById("nm-traffic-detail").classList.add("hidden");
+    document.querySelectorAll(".nm-traffic-row--selected").forEach(r => r.classList.remove("nm-traffic-row--selected"));
   });
 
   document.addEventListener("nm:open-traffic", async (e) => {
@@ -414,23 +420,79 @@ function _renderTrafficBody(body, packets) {
     <span class="nm-traffic-col" style="color:var(--text-dim);text-align:right">SNR</span>
   </div>`;
 
-  const rows = packets.map(p => {
-    const ts   = p.rx_time ? new Date(p.rx_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "—";
-    const from = _escHtml(p.from_display || p.from_node_id_hex || "—");
-    const type = p.portnum ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ") : "?";
+  const frag = document.createDocumentFragment();
+  const hdrEl = document.createElement("div");
+  hdrEl.innerHTML = hdr;
+  frag.appendChild(hdrEl.firstElementChild);
+
+  for (const p of packets) {
+    const ts    = p.rx_time ? new Date(p.rx_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "—";
+    const from  = _escHtml(p.from_display || p.from_node_id_hex || "—");
+    const type  = p.portnum ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ") : "?";
     const color = _TRAFFIC_PKT_COLORS[p.portnum] || "var(--text-dim)";
     const rssi  = p.rx_rssi != null ? p.rx_rssi : "—";
     const snr   = p.rx_snr  != null ? p.rx_snr  : "—";
-    return `<div class="nm-traffic-row">
+
+    const row = document.createElement("div");
+    row.className = "nm-traffic-row";
+    row.style.cursor = "pointer";
+    row.innerHTML = `
       <span class="nm-traffic-col">${ts}</span>
       <span class="nm-traffic-col" style="color:var(--accent)">${from}</span>
       <span class="nm-traffic-col" style="color:${color}">${type}</span>
       <span class="nm-traffic-col" style="text-align:right">${rssi}</span>
-      <span class="nm-traffic-col" style="text-align:right">${snr}</span>
-    </div>`;
-  }).join("");
+      <span class="nm-traffic-col" style="text-align:right">${snr}</span>`;
+    row.addEventListener("click", () => _showTrafficDetail(p, row));
+    frag.appendChild(row);
+  }
 
-  body.innerHTML = hdr + rows;
+  body.innerHTML = "";
+  body.appendChild(frag);
+}
+
+function _showTrafficDetail(p, rowEl) {
+  document.querySelectorAll(".nm-traffic-row--selected").forEach(r => r.classList.remove("nm-traffic-row--selected"));
+  rowEl.classList.add("nm-traffic-row--selected");
+
+  const BROADCAST = 4294967295;
+  const _hex = id => id != null ? `!${(id >>> 0).toString(16).padStart(8, "0")}` : "—";
+  const _ts  = t  => t  ? new Date(t * 1000).toLocaleString([], { hour12: false }) : "—";
+
+  const toId  = p.to_node_id;
+  const toStr = toId === BROADCAST ? "Broadcast (0xFFFFFFFF)"
+              : toId != null       ? _hex(toId)
+              : "—";
+
+  const hopsUsed = p.hop_limit != null ? (3 - p.hop_limit) : null;
+  const hopStr   = p.hop_limit != null
+    ? `${p.hop_limit} remaining (${hopsUsed >= 0 ? hopsUsed : "?"} used)`
+    : "—";
+
+  const fromFull = [p.short_name, p.long_name].filter(Boolean);
+  const fromStr  = fromFull.length
+    ? `${_hex(p.from_node_id)}  ${fromFull.join(" / ")}`
+    : _hex(p.from_node_id);
+
+  const typeStr = p.portnum
+    ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ")
+    : "—";
+
+  const fields = [
+    ["Time",       _ts(p.rx_time)],
+    ["From",       fromStr],
+    ["To",         toStr],
+    ["Type",       typeStr],
+    ["RSSI",       p.rx_rssi != null ? `${p.rx_rssi} dBm` : "—"],
+    ["SNR",        p.rx_snr  != null ? `${p.rx_snr} dB`   : "—"],
+    ["Hop Limit",  hopStr],
+  ];
+
+  const detail = document.getElementById("nm-traffic-detail");
+  const detailBody = document.getElementById("nm-traffic-detail-body");
+  detailBody.innerHTML = fields.map(([k, v]) =>
+    `<span class="nm-detail-key">${k}</span><span class="nm-detail-val">${_escHtml(String(v))}</span>`
+  ).join("");
+  detail.classList.remove("hidden");
 }
 
 // ── Draggable dividers ──────────────────────────────────────────

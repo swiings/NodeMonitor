@@ -1434,6 +1434,61 @@ body.layout-split #nm-charts-container {
   white-space: nowrap;
 }
 
+/* ── Traffic packet detail sub-panel ────────────────────────── */
+#nm-traffic-detail {
+  border-top: 1px solid var(--border);
+  background: var(--bg1);
+  flex-shrink: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#nm-traffic-detail.hidden { display: none; }
+#nm-traffic-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+}
+#nm-traffic-detail-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+#nm-traffic-detail-close:hover { color: var(--red); }
+#nm-traffic-detail-body {
+  padding: 6px 10px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+.nm-detail-key {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.nm-detail-val {
+  color: var(--text);
+  word-break: break-all;
+}
+.nm-traffic-row.nm-traffic-row--selected { background: var(--bg3); outline: 1px solid var(--accent); }
+
 /* ── Connection type selector buttons ────────────────────────── */
 .nm-conn-type-btn {
   background: var(--bg3);
