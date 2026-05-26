@@ -741,7 +741,7 @@ const NMMap = (() => {
 
 
   function _labelText(node) {
-    const name = node.short_name || " - " || node.long_name;
+    const name = node.short_name || node.node_id_hex || String(node.node_id);
     return `${name}`;
   }
 
