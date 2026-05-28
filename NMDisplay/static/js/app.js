@@ -520,7 +520,7 @@ function _showTrafficDetail(p, rowEl) {
       if (d.position) {
         const pos = d.position;
         extra.push(["Lat / Lon", `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`]);
-        if (pos.altitude_m   != null) extra.push(["Altitude",  `${pos.altitude_m.toFixed(0)} m`]);
+        if (pos.altitude_m   != null) extra.push(["Altitude",  `${(pos.altitude_m * 3.281).toFixed(0)} ft`]);
         if (pos.precision_bits != null) extra.push(["Precision", `${pos.precision_bits} bits`]);
       }
 
