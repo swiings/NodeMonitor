@@ -142,7 +142,7 @@ const NMGauges = (() => {
     if (data.closest) {
       _closestNodeId = data.closest.node_id;
       _set("g-closest-name", `${_roleEmoji(data.closest.role)} ${data.closest.short_name}`);
-      _set("g-closest-text", `${data.closest.distance_mi} mi`);
+      _set("g-closest-text", `${data.closest.distance_mi} mi - xx hops`);
     } else {
       _closestNodeId = null;
       _set("g-closest-name", "—");
@@ -151,11 +151,8 @@ const NMGauges = (() => {
 
     if (data.farthest) {
       _farthestNodeId = data.farthest.node_id;
-      _hopsAway = (node.hop_limit != null && _dataMaxHopLimit > 0)
-      ? (_dataMaxHopLimit - node.hop_limit)
-      : null;
       _set("g-farthest-name", `${_roleEmoji(data.farthest.role)} ${data.farthest.short_name}`);
-      _set("g-farthest-text", `${data.farthest.distance_mi} mi - ${_hopsAway} hops`);
+      _set("g-farthest-text", `${data.farthest.distance_mi} mi - xx hops`);
     } else {
       _farthestNodeId = null;
       _set("g-farthest-name", "—");
