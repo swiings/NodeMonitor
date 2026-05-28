@@ -235,9 +235,14 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     farthest = None
     if my_lat is not None and my_lon is not None:
         excl = my_node_id if my_node_id is not None else -1
+        max_hop_row = conn.execute(
+            "SELECT MAX(hop_limit) FROM packets WHERE hop_limit IS NOT NULL AND from_node_id != ?",
+            (excl,)
+        ).fetchone()
+        max_hop = max_hop_row[0] if max_hop_row and max_hop_row[0] is not None else 3
         rows = conn.execute(
             """
-            SELECT node_id, short_name, role,
+            SELECT node_id, short_name, role, hop_limit,
                    haversine(lat, lon, :lat, :lon) AS dist_km
             FROM nodes
             WHERE lat IS NOT NULL AND lon IS NOT NULL
@@ -250,7 +255,9 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
             def _fmt(row):
                 name = row["short_name"] or f"!{row['node_id'] & 0xFFFFFFFF:08x}"
                 mi = round((row["dist_km"] or 0) * 0.621371, 1)
-                return {"node_id": row["node_id"], "short_name": name, "distance_mi": mi, "role": row["role"]}
+                hl = row["hop_limit"]
+                hops_away = (max_hop - hl) if hl is not None else None
+                return {"node_id": row["node_id"], "short_name": name, "distance_mi": mi, "role": row["role"], "hops_away": hops_away}
             closest  = _fmt(rows[0])
             farthest = _fmt(rows[-1])
 

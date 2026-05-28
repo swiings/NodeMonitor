@@ -130,6 +130,12 @@ const NMGauges = (() => {
     return "👻";
   }
 
+  function _hopsLabel(hops_away) {
+    if (hops_away == null) return "?";
+    if (hops_away === 0)   return "direct";
+    return `${hops_away} hop${hops_away === 1 ? "" : "s"}`;
+  }
+
   function _update(data) {
     _set("g-direct", data.direct_count ?? "—");
     _set("g-active", data.active_count  ?? "—");
@@ -142,7 +148,7 @@ const NMGauges = (() => {
     if (data.closest) {
       _closestNodeId = data.closest.node_id;
       _set("g-closest-name", `${_roleEmoji(data.closest.role)} ${data.closest.short_name}`);
-      _set("g-closest-text", `${data.closest.distance_mi} mi`);
+      _set("g-closest-text", `${data.closest.distance_mi} mi · ${_hopsLabel(data.closest.hops_away)}`);
     } else {
       _closestNodeId = null;
       _set("g-closest-name", "—");
@@ -152,7 +158,7 @@ const NMGauges = (() => {
     if (data.farthest) {
       _farthestNodeId = data.farthest.node_id;
       _set("g-farthest-name", `${_roleEmoji(data.farthest.role)} ${data.farthest.short_name}`);
-      _set("g-farthest-text", `${data.farthest.distance_mi} mi`);
+      _set("g-farthest-text", `${data.farthest.distance_mi} mi · ${_hopsLabel(data.farthest.hops_away)}`);
     } else {
       _farthestNodeId = null;
       _set("g-farthest-name", "—");
