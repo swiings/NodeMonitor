@@ -20,7 +20,7 @@
     }
   },
   "timeline": {
-    "time_scale_minutes": 60,
+    "time_scale_minutes": 58,
     "y_axis_mode": "auto",
     "y_axis_max": 30,
     "message_accent": true,

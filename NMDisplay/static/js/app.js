@@ -512,9 +512,9 @@ function _showTrafficDetail(p, rowEl) {
         if (t.voltage        != null) extra.push(["Voltage",     `${t.voltage.toFixed(2)} V`]);
         if (t.channel_util   != null) extra.push(["Ch Util",     `${t.channel_util.toFixed(1)}%`]);
         if (t.air_util_tx    != null) extra.push(["Air Util TX", `${t.air_util_tx.toFixed(1)}%`]);
-        if (t.temperature    != null) extra.push(["Temp",        `${(t.temperature.toFixed(1)*1.8)+32} °F`]);
+        if (t.temperature    != null) extra.push(["Temp",        `${((t.temperature*1.8)+32).toFixed(1)} °F`]);
         if (t.relative_humidity != null) extra.push(["Humidity", `${t.relative_humidity.toFixed(1)}%`]);
-        if (t.barometric_pressure != null) extra.push(["Pressure", `${(t.barometric_pressure.toFixed(1)*0.02953)} inHg`]);
+        if (t.barometric_pressure != null) extra.push(["Pressure", `${((t.barometric_pressure*0.02953)).toFixed(1)} inHg`]);
       }
 
       if (d.position) {
