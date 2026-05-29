@@ -1403,6 +1403,18 @@ body.layout-split #nm-charts-container {
   padding: 0 2px;
 }
 #nm-traffic-close:hover { color: var(--red); }
+#nm-traffic-csv {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-size: 9px;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+#nm-traffic-csv:hover { color: var(--accent); border-color: var(--accent); }
 
 #nm-traffic-body {
   flex: 1;

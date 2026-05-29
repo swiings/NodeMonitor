@@ -324,9 +324,13 @@ function _portnumClass(line) {
 
 // ── Traffic Log window ───────────────────────────────────────────
 
+let _currentTrafficPackets = [];
+let _currentTrafficLabel   = "";
+
 function initTrafficWindow() {
   const win      = document.getElementById("nm-traffic-window");
   const closeBtn = document.getElementById("nm-traffic-close");
+  const csvBtn   = document.getElementById("nm-traffic-csv");
   const header   = document.getElementById("nm-traffic-header");
   if (!win || !closeBtn || !header) return;
 
@@ -335,6 +339,8 @@ function initTrafficWindow() {
     document.getElementById("nm-traffic-body").innerHTML = "";
     document.getElementById("nm-traffic-detail").classList.add("hidden");
   });
+
+  csvBtn.addEventListener("click", () => _exportTrafficCsv());
 
   document.getElementById("nm-traffic-detail-close").addEventListener("click", () => {
     document.getElementById("nm-traffic-detail").classList.add("hidden");
@@ -349,7 +355,7 @@ function initTrafficWindow() {
   // Make window draggable by its header
   let _dragX = 0, _dragY = 0;
   header.addEventListener("mousedown", (e) => {
-    if (e.target === closeBtn) return;
+    if (e.target === closeBtn || e.target === csvBtn) return;
     e.preventDefault();
     const rect = win.getBoundingClientRect();
     // Switch from transform-based centering to fixed coordinates
@@ -389,6 +395,7 @@ async function _openTrafficWindow(by, value, label) {
   const title = document.getElementById("nm-traffic-title");
   if (!win || !body || !title) return;
 
+  _currentTrafficLabel = label;
   title.textContent = `TRAFFIC: ${label}`;
   body.innerHTML = `<div style="padding:10px;color:var(--text-dim);font-size:11px">Loading…</div>`;
 
@@ -401,7 +408,8 @@ async function _openTrafficWindow(by, value, label) {
   try {
     const resp = await fetch(`/api/traffic?by=${encodeURIComponent(by)}&value=${encodeURIComponent(value)}`);
     const data = await resp.json();
-    _renderTrafficBody(body, data.packets || []);
+    _currentTrafficPackets = data.packets || [];
+    _renderTrafficBody(body, _currentTrafficPackets);
   } catch (err) {
     body.innerHTML = `<div style="padding:10px;color:var(--red);font-size:11px">Error: ${_escHtml(err.message)}</div>`;
   }
@@ -448,6 +456,35 @@ function _renderTrafficBody(body, packets) {
 
   body.innerHTML = "";
   body.appendChild(frag);
+}
+
+function _exportTrafficCsv() {
+  if (!_currentTrafficPackets.length) return;
+  const cols = ["Time", "From", "From ID", "To ID", "Type", "RSSI (dBm)", "SNR (dB)", "Hop Limit"];
+  const rows = _currentTrafficPackets.map(p => {
+    const ts = p.rx_time ? new Date(p.rx_time * 1000).toISOString().replace("T", " ").slice(0, 19) : "";
+    const toId = p.to_node_id != null
+      ? (p.to_node_id === -1 || p.to_node_id === 4294967295 ? "broadcast" : `!${(p.to_node_id & 0xFFFFFFFF).toString(16).padStart(8, "0")}`)
+      : "";
+    return [
+      ts,
+      p.from_display || p.from_node_id_hex || "",
+      p.from_node_id_hex || "",
+      toId,
+      p.portnum || "",
+      p.rx_rssi != null ? p.rx_rssi : "",
+      p.rx_snr  != null ? p.rx_snr  : "",
+      p.hop_limit != null ? p.hop_limit : "",
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+  });
+  const csv  = [cols.join(","), ...rows].join("\r\n");
+  const slug = _currentTrafficLabel.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+  const name = `traffic_${slug}.csv`;
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
 }
 
 function _showTrafficDetail(p, rowEl) {
