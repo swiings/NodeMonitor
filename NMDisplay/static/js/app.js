@@ -721,6 +721,7 @@ function initSettingsModal() {
   _initListDragging();
   _initSaveDataToggle();
   _initRequeuButton();
+  _initRequestPositionButton();
   initActivateModal();
 }
 
@@ -753,6 +754,31 @@ function _initRequeuButton() {
       btn.disabled = false;
       if (status) status.textContent = "";
     }, 3000);
+  });
+}
+
+function _initRequestPositionButton() {
+  const btn    = document.getElementById("cfg-request-position");
+  const status = document.getElementById("cfg-request-position-status");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    if (status) status.textContent = "Requesting…";
+    try {
+      const resp = await fetch("/api/listener/request-position", { method: "POST" });
+      const data = await resp.json();
+      if (data.ok) {
+        if (status) status.textContent = "Sent — position will appear within ~10 s";
+      } else {
+        if (status) status.textContent = data.error || "Error";
+      }
+    } catch (_) {
+      if (status) status.textContent = "Error";
+    }
+    setTimeout(() => {
+      btn.disabled = false;
+      if (status) status.textContent = "";
+    }, 12000);
   });
 }
 

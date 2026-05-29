@@ -610,6 +610,18 @@ def api_listener_requeue_nodes():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/listener/request-position", methods=["POST"])
+def api_listener_request_position():
+    """Write the position-request trigger file; NMListener picks it up within 5 s."""
+    import bundle_paths as bp
+    trigger = os.path.join(bp.data_dir(), ".request_position_trigger")
+    try:
+        open(trigger, "w").close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/sessions/active/save_packet_data", methods=["PATCH"])
 def api_patch_save_packet_data():
     """Toggle save_packet_data for the active session immediately."""

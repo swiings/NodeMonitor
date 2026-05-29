@@ -30,6 +30,7 @@ _node_store: NodeStore | None = None
 _timeline: PacketTimeline | None = None
 _msg_counter: MessageCounter | None = None
 _seed_on_connect: bool = True
+_interface = None  # held so the poll thread can act on trigger files
 
 # Signals main loop when the connection drops
 connection_lost_event = threading.Event()
@@ -39,8 +40,9 @@ _here = os.path.dirname(os.path.abspath(__file__))
 _nm_data_dir = os.environ.get("NM_DATA_DIR") or os.path.abspath(
     os.path.join(_here, "..", "NMData")
 )
-_RUNTIME_FILE   = os.path.join(_nm_data_dir, "listener_runtime.json")
-_REQUEUE_TRIGGER = os.path.join(_nm_data_dir, ".requeue_trigger")
+_RUNTIME_FILE            = os.path.join(_nm_data_dir, "listener_runtime.json")
+_REQUEUE_TRIGGER         = os.path.join(_nm_data_dir, ".requeue_trigger")
+_REQUEST_POSITION_TRIGGER = os.path.join(_nm_data_dir, ".request_position_trigger")
 
 # Background polling thread state
 _poll_thread: threading.Thread | None = None
@@ -80,8 +82,10 @@ def _on_receive(packet: dict, interface) -> None:
 
 
 def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
+    global _interface
     log.info("Connected to Meshtastic node")
     connection_lost_event.clear()
+    _interface = interface
 
     # Capture reference node identity and write runtime file
     my_node_id = _read_my_node_id(interface)
@@ -123,8 +127,10 @@ def _request_reference_position(interface, my_node_id: int | None) -> None:
 
 
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
+    global _interface
     log.warning("Connection to Meshtastic node lost")
     connection_lost_event.set()
+    _interface = None
     node_requester.stop()
     _stop_poll_thread()
 
@@ -207,6 +213,18 @@ def _poll_loop() -> None:
                     log.info("Re-queued unresolved nodes for name lookup")
             except Exception:
                 log.exception("Error processing requeue trigger")
+
+        # Manual position request trigger
+        if os.path.exists(_REQUEST_POSITION_TRIGGER):
+            try:
+                os.remove(_REQUEST_POSITION_TRIGGER)
+                if _interface is not None:
+                    _request_reference_position(_interface, _read_my_node_id(_interface))
+                    log.info("Manual position request processed")
+                else:
+                    log.warning("Position request trigger found but no interface connected")
+            except Exception:
+                log.exception("Error processing position request trigger")
 
 
 # ------------------------------------------------------------------
