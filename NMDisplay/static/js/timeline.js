@@ -61,6 +61,13 @@ const NMTimeline = (() => {
             callbacks: {
               title: (items) => items[0]?.label || "",
               label: (item) => ` ${item.dataset.label}: ${item.parsed.y}`,
+              footer: (items) => {
+                const idx = items[0]?.dataIndex;
+                if (idx == null) return "";
+                const chanDs = _chart.data.datasets.find(d => d.yAxisID === "yChan");
+                const val = chanDs?.data[idx];
+                return val != null ? `Ch Util: ${val.toFixed(1)}%` : "";
+              },
             },
           },
         },
