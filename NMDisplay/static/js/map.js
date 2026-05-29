@@ -777,6 +777,7 @@ const NMMap = (() => {
       ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
       ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
       ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
+      ...(node.precision_bits != null ? [["Precision", _precisionLabel(node.precision_bits)]] : []),
       ["Street",     node.street || "—"],
       ["City, State", (node.city || node.state)
                         ? [node.city, node.state].filter(Boolean).join(", ")

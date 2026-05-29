@@ -100,6 +100,7 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 n.street,
                 n.city,
                 n.state,
+                lpos.precision_bits,
                 COALESCE(pc.total_packets, 0)   AS total_packets,
                 COALESCE(mc.sent_count, 0)      AS sent_count,
                 COALESCE(mc.received_count, 0)  AS received_count,
@@ -129,6 +130,11 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 ) mx ON p.from_node_id = mx.from_node_id AND p.rx_time = mx.max_rx
                 GROUP BY p.from_node_id
             ) lp ON lp.from_node_id = n.node_id
+            LEFT JOIN (
+                SELECT node_id, precision_bits
+                FROM positions
+                WHERE id IN (SELECT MAX(id) FROM positions GROUP BY node_id)
+            ) lpos ON lpos.node_id = n.node_id
             ORDER BY n.last_heard DESC
             """,
             {"my_lat": my_lat, "my_lon": my_lon},
