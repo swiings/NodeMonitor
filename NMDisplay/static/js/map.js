@@ -778,8 +778,9 @@ const NMMap = (() => {
       ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
       ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
       ["Street",     node.street || "—"],
-      ["City",       node.city   || "—"],
-      ["State",      node.state  || "—"],
+      ["City, State", (node.city || node.state)
+                        ? [node.city, node.state].filter(Boolean).join(", ")
+                        : "—"],
       ["Altitude",   altStr],
       ["Packets",    node.total_packets],
       ["Last heard", ts],
