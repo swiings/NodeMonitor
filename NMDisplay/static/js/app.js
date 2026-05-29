@@ -487,6 +487,19 @@ function _exportTrafficCsv() {
   URL.revokeObjectURL(url);
 }
 
+function _precisionLabel(bits) {
+  // Lat/lon are stored as int32 × 1e-7 degrees. With p precision bits the
+  // lower (32-p) bits are zeroed, so the max offset from the true position
+  // is half a step: 2^(32-p-1) / 1e7 degrees ≈ that × 111.32 km.
+  if (bits <= 0)  return `${bits} bits`;
+  if (bits >= 32) return `${bits} bits  (exact)`;
+  const radiusMi = (Math.pow(2, 32 - bits - 1) / 1e7) * 111.32 * 0.621371;
+  const radiusStr = radiusMi < 0.1
+    ? `+/- ${Math.round(radiusMi * 5280)} ft`
+    : `+/- ${radiusMi.toFixed(1)} mi`;
+  return `${bits} bits  (${radiusStr})`;
+}
+
 function _showTrafficDetail(p, rowEl) {
   document.querySelectorAll(".nm-traffic-row--selected").forEach(r => r.classList.remove("nm-traffic-row--selected"));
   rowEl.classList.add("nm-traffic-row--selected");
@@ -558,7 +571,7 @@ function _showTrafficDetail(p, rowEl) {
         const pos = d.position;
         extra.push(["Lat / Lon", `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`]);
         if (pos.altitude_m   != null) extra.push(["Altitude",  `${(pos.altitude_m * 3.281).toFixed(0)} ft`]);
-        if (pos.precision_bits != null) extra.push(["Precision", `${pos.precision_bits} bits`]);
+        if (pos.precision_bits != null) extra.push(["Precision", _precisionLabel(pos.precision_bits)]);
       }
 
       if (d.text_message) {
