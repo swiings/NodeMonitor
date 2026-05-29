@@ -20,6 +20,7 @@ import requests as req_lib
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
 import bundle_paths
+import geocode as geocode_mod
 import listener_proc
 import queries
 import sessions as sess_mod
@@ -128,6 +129,11 @@ STADIA_API_KEY   = ""                  # API key alternative; leave "" if using 
 # REMOVE THIS BLOCK when removing all Thunderforest providers.
 THUNDERFOREST_API_KEY = "ccd1da931ab04f45b3ca124f3f694f08"
 # ── End Thunderforest block ────────────────────────────────────────────────────
+
+# ── Google Maps API key ────────────────────────────────────────────────────────
+# Used for reverse geocoding (lat/lon → street address) on the node info popup.
+GOOGLE_MAPS_API_KEY = "AIzaSyBaB6pT0oSaZGqa_hTx5v6__gAVM259acc"
+# ── End Google Maps block ──────────────────────────────────────────────────────
 
 TILE_PROVIDERS = {
     # ── Original providers ─────────────────────────────────────────────────────
@@ -719,6 +725,7 @@ def run_server() -> None:
 
     os.makedirs(TILE_CACHE_DIR, exist_ok=True)
     sess_mod.get_active()
+    geocode_mod.start(GOOGLE_MAPS_API_KEY)
     cert, key = _ensure_ssl_cert()
     lan_ip = _get_lan_ip()
     print("\nNMDisplay — Meshtastic Node Monitor")

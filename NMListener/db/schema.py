@@ -131,6 +131,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("nodes", "seeded",            "INTEGER NOT NULL DEFAULT 0"),
         ("nodes", "device_last_heard", "INTEGER"),
         ("nodes", "role",              "TEXT"),
+        ("nodes", "street",            "TEXT"),
+        ("nodes", "city",              "TEXT"),
+        ("nodes", "state",             "TEXT"),
     ]
     for table, col, definition in new_columns:
         try:
