@@ -252,8 +252,13 @@ class Repository:
         )
         self._conn.commit()
 
-    def get_next_pending(self, nack_cooldown_s: int = 120) -> Optional[dict]:
-        """Return next PENDING row, or a NACKED row whose cooldown has elapsed."""
+    def get_next_pending(self, nack_cooldown_s: int = 120, sent_timeout_s: int = 90) -> Optional[dict]:
+        """Return the next actionable row:
+        - PENDING: ready immediately
+        - NACKED: cooldown elapsed, attempts remaining
+        - SENT/ACKED: no response arrived within sent_timeout_s (wantAck=False means
+          we never get a routing ACK, so timeout is the only retry signal)
+        """
         now = int(time.time())
         cur = self._conn.execute(
             """
@@ -263,10 +268,13 @@ class Repository:
                OR (status = 'NACKED'
                    AND attempts < 3
                    AND (? - COALESCE(last_attempt_ts, 0)) >= ?)
+               OR (status IN ('SENT', 'ACKED')
+                   AND attempts < 3
+                   AND (? - COALESCE(last_attempt_ts, 0)) >= ?)
             ORDER BY (status = 'PENDING') DESC, last_attempt_ts ASC
             LIMIT 1
             """,
-            (now, nack_cooldown_s),
+            (now, nack_cooldown_s, now, sent_timeout_s),
         )
         row = cur.fetchone()
         if row is None:

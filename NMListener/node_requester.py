@@ -213,7 +213,7 @@ def _worker() -> None:
                         b"",
                         destinationId=node_id_hex,
                         portNum=portnums_pb2.PortNum.NODEINFO_APP,
-                        wantAck=True,
+                        wantAck=False,
                         wantResponse=True,
                     )
                     pkt_id = getattr(sent, "id", None) if sent is not None else None
