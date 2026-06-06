@@ -120,16 +120,6 @@ def create_tables(conn: sqlite3.Connection) -> None:
             last_updated    INTEGER NOT NULL,
             FOREIGN KEY (node_id) REFERENCES nodes(node_id)
         );
-
-        -- ACK/NACK-aware NODEINFO request queue
-        -- State machine: PENDING → SENT → ACKED/NACKED (→ retry or delete on resolution)
-        CREATE TABLE IF NOT EXISTS requestor_queue (
-            node_id         INTEGER PRIMARY KEY,
-            packet_id       INTEGER,
-            attempts        INTEGER NOT NULL DEFAULT 0,
-            status          TEXT    NOT NULL DEFAULT 'PENDING',
-            last_attempt_ts INTEGER
-        );
     """)
     conn.commit()
     _migrate(conn)

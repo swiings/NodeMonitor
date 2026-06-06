@@ -57,15 +57,6 @@ def _on_receive(packet: dict, interface) -> None:
     _log_packet(packet)
     if _repo is None:
         return
-
-    # Routing ACKs/NACKs arrive from the reference node (!49b79990) and are
-    # dropped by dispatch()'s reference-node filter.  Handle them here first,
-    # before dispatch runs, regardless of whether meshtastic.routing pubsub fires.
-    decoded = packet.get("decoded", {})
-    if decoded.get("portnum") == "ROUTING_APP":
-        _on_routing(packet, interface)
-        return
-
     try:
         packet_handler.dispatch(
             packet, interface, _repo, _node_store, _timeline, _msg_counter
@@ -135,22 +126,6 @@ def _request_reference_position(interface, my_node_id: int | None) -> None:
         log.warning("Could not trigger position broadcast: %s", exc)
 
 
-def _on_routing(packet: dict, interface) -> None:
-    """Advance the requestor state machine based on routing ACK/NACK."""
-    decoded    = packet.get("decoded", {})
-    routing    = decoded.get("routing", {})
-    error      = routing.get("errorReason", "NONE")
-    request_id = decoded.get("requestId") or packet.get("requestId")
-    log.info("Routing packet: request_id=%s error=%s raw_keys=%s", request_id, error, list(decoded.keys()))
-    if not request_id:
-        return
-    if not error or error == "NONE":
-        node_requester.ack(request_id)
-    else:
-        node_requester.nack(request_id)
-        log.info("Routing NACK for packet_id=%d: %s", request_id, error)
-
-
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
     global _interface
     log.warning("Connection to Meshtastic node lost")
@@ -183,7 +158,6 @@ def register(
     pub.subscribe(_on_receive, "meshtastic.receive")
     pub.subscribe(_on_connected, "meshtastic.connection.established")
     pub.subscribe(_on_lost, "meshtastic.connection.lost")
-    pub.subscribe(_on_routing, "meshtastic.routing")
 
 
 def unregister() -> None:
@@ -194,7 +168,6 @@ def unregister() -> None:
         (_on_receive, "meshtastic.receive"),
         (_on_connected, "meshtastic.connection.established"),
         (_on_lost, "meshtastic.connection.lost"),
-        (_on_routing, "meshtastic.routing"),
     ]:
         try:
             pub.unsubscribe(fn, topic)
