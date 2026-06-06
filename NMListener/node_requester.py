@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 INTERVAL_S    = 30   # seconds between outbound requests
 NACK_COOLDOWN = 120  # seconds before retrying a NACKED node
+SENT_TIMEOUT  = 200  # seconds to wait for a NODEINFO response before retrying
 MAX_ATTEMPTS  = 3
 
 _lock       = threading.Lock()
@@ -198,7 +199,7 @@ def _worker() -> None:
     while not _stop_event.is_set():
         if _iface and _repo:
             try:
-                row = _repo.get_next_pending(NACK_COOLDOWN)
+                row = _repo.get_next_pending(NACK_COOLDOWN, SENT_TIMEOUT)
             except Exception as e:
                 log.debug("Node requester: DB query failed: %s", e)
                 row = None
