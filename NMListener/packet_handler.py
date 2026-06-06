@@ -249,6 +249,8 @@ def handle_nodeinfo(
         role=role,
         last_heard=rx_time,
     )
+    if short_name:
+        repo.remove_request(from_id)
 
 
 def handle_position(
