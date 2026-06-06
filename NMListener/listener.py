@@ -132,13 +132,14 @@ def _on_routing(packet: dict, interface) -> None:
     routing    = decoded.get("routing", {})
     error      = routing.get("errorReason", "NONE")
     request_id = decoded.get("requestId") or packet.get("requestId")
+    log.info("Routing packet: request_id=%s error=%s raw_keys=%s", request_id, error, list(decoded.keys()))
     if not request_id:
         return
     if not error or error == "NONE":
         node_requester.ack(request_id)
     else:
         node_requester.nack(request_id)
-        log.debug("Routing NACK for packet_id=%d: %s", request_id, error)
+        log.info("Routing NACK for packet_id=%d: %s", request_id, error)
 
 
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
