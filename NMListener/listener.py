@@ -57,6 +57,15 @@ def _on_receive(packet: dict, interface) -> None:
     _log_packet(packet)
     if _repo is None:
         return
+
+    # Routing ACKs/NACKs arrive from the reference node (!49b79990) and are
+    # dropped by dispatch()'s reference-node filter.  Handle them here first,
+    # before dispatch runs, regardless of whether meshtastic.routing pubsub fires.
+    decoded = packet.get("decoded", {})
+    if decoded.get("portnum") == "ROUTING_APP":
+        _on_routing(packet, interface)
+        return
+
     try:
         packet_handler.dispatch(
             packet, interface, _repo, _node_store, _timeline, _msg_counter
