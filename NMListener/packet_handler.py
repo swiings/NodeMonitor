@@ -50,6 +50,15 @@ def dispatch(
     timeline: PacketTimeline,
     msg_counter: MessageCounter,
 ) -> None:
+    # Drop all packets from the reference node before any handler runs.
+    # handle_generic had a mid-function return, but portnum-specific handlers
+    # (telemetry, position, etc.) still executed and wrote the reference node
+    # into the DB/node_store as a nameless node, causing it to be queued for
+    # its own nodeinfo request.
+    from_raw = packet.get("from") or packet.get("fromId")
+    if _my_node_id is not None and _to_int(from_raw) == _my_node_id:
+        return
+
     rx_lat, rx_lon = get_rx_position(interface)
     handle_generic(packet, interface, repo, node_store, timeline, rx_lat, rx_lon)
 
