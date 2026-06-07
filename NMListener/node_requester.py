@@ -179,6 +179,7 @@ def _worker() -> None:
                     b"",
                     destinationId=node_id_hex,
                     portNum=portnums_pb2.PortNum.NODEINFO_APP,
+                    hopLimit=7,
                     wantAck=False,
                     wantResponse=True,
                 )
