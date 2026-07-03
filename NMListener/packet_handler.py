@@ -93,7 +93,7 @@ def handle_generic(
     from_id = _to_int(from_id)
     to_id = _to_int(to_id) if to_id is not None else None
 
-    # Skip packets originating from the reference node itself
+    # Skip packets originating from the reference node itself - - changed to allow saving of packets from the reference node for debugging purposes
     # if _my_node_id is not None and from_id == _my_node_id:
     #     return
 
