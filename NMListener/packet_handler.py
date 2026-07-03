@@ -94,8 +94,8 @@ def handle_generic(
     to_id = _to_int(to_id) if to_id is not None else None
 
     # Skip packets originating from the reference node itself
-    # if _my_node_id is not None and from_id == _my_node_id:
-    #     return
+    if _my_node_id is not None and from_id == _my_node_id:
+        return
 
     # Refine encrypted (UNKNOWN) packets into broadcast vs. unicast subcategories
     if portnum == "UNKNOWN":
