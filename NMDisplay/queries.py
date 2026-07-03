@@ -192,14 +192,11 @@ def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
             continue
         key_fn, reverse = _SORT[list_id]
         limit = limits.get(list_id, 5)
-        # pool = [n for n in nodes if not (
-        #     list_id in _EXCLUDE_MY_NODE
-        #     and my_node_id is not None
-        #     and (n["node_id"] & 0xFFFFFFFF) == (my_node_id & 0xFFFFFFFF)
-        # )]
-        # leave my node in the list for debugging purposes
-        pool = [n for n in nodes]
-  
+        pool = [n for n in nodes if not (
+            list_id in _EXCLUDE_MY_NODE
+            and my_node_id is not None
+            and (n["node_id"] & 0xFFFFFFFF) == (my_node_id & 0xFFFFFFFF)
+        )]
         # Always return up to 20 nodes so the client can increase the display
         # count via drag without a settings round-trip. The configured limit is
         # passed as "limit" so the client knows the saved default.
