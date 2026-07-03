@@ -24,7 +24,7 @@ from typing import Optional
 
 import bundle_paths
 
-LOG_MAXLEN = 200   # lines kept in the ring buffer
+LOG_MAXLEN = 300   # lines kept in the ring buffer DR: Changed to 300 to keep more logs for debugging
 
 _proc:   Optional[subprocess.Popen] = None
 _log:    collections.deque           = collections.deque(maxlen=LOG_MAXLEN)
