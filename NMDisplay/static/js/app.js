@@ -127,7 +127,8 @@ async function pollAll() {
     document.dispatchEvent(new CustomEvent("nm:breakdown-updated", { detail: brkData }));
 
     _lastPollOk = Date.now();
-    let statusMsg = `${nodesData.nodes.length} nodes · updated ${_timeStr()}`;
+    const pollSec = (_cfg.display || {}).poll_interval_seconds || 30;
+    let statusMsg = `Poll: ${pollSec}s · updated ${_timeStr()}`;
     const tele = _formatReferenceTelemetry(nodesData.reference_telemetry);
     if (tele) statusMsg += ` · ${tele}`;
     setStatus(statusMsg);
@@ -200,11 +201,11 @@ function _formatReferenceTelemetry(t) {
   // Meshtastic reports battery_level > 100 (typically 101) to mean the node is
   // on external/USB power rather than discharging a battery.
   if (t.battery_level != null) {
-    parts.push(t.battery_level > 100 ? "Batt: PWR" : `Batt: ${Math.round(t.battery_level)}%`);
+    parts.push(t.battery_level > 100 ? "Battery:PWR" : `Battery:${Math.round(t.battery_level)}%`);
   }
-  if (t.temperature         != null) parts.push(`Tmp: ${Math.round(t.temperature * 1.8 + 32)}°F`);
-  if (t.relative_humidity   != null) parts.push(`Hum: ${Math.round(t.relative_humidity)}%`);
-  if (t.barometric_pressure != null) parts.push(`Pr: ${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
+  if (t.temperature         != null) parts.push(`· Temp:${Math.round(t.temperature * 1.8 + 32)}°F`);
+  if (t.relative_humidity   != null) parts.push(`· Humidity:${Math.round(t.relative_humidity)}%`);
+  if (t.barometric_pressure != null) parts.push(`· Pressure:${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
   const gas = _fmtGas(t.gas_resistance);
   if (gas) parts.push(`Gas: ${gas}`);
   return parts.join("  ");

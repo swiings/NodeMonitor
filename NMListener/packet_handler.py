@@ -209,6 +209,10 @@ def handle_telemetry(
     pressure = env.get("barometricPressure")
     gas_resistance = env.get("gasResistance")
 
+    # LocalStats variant carries the node's own receiver noise floor (dBm)
+    local_stats = telemetry.get("localStats", {})
+    noise_floor = local_stats.get("noiseFloor")
+
     # Keep the node's battery/voltage current regardless of origin.
     node_store.upsert(from_id, battery_level=battery, voltage=voltage)
     repo.upsert_node(from_id, battery_level=battery, voltage=voltage, last_heard=rx_time)
@@ -224,6 +228,7 @@ def handle_telemetry(
             "relative_humidity":   humidity,
             "barometric_pressure": pressure,
             "gas_resistance":      gas_resistance,
+            "noise_floor":         noise_floor,
             "rx_time":             rx_time,
         })
         return

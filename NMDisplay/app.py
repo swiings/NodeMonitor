@@ -293,6 +293,8 @@ def api_gauges():
         data = queries.get_gauges(conn, my_node_id, my_lat, my_lon)
         data["hardware_breakdown"] = queries.get_hardware_breakdown(conn)
         data["role_breakdown"]     = queries.get_role_breakdown(conn)
+        # Reference node's own receiver noise floor (dBm), shown in the SIGNAL card
+        data["noise_floor"] = listener_proc.get_reference_telemetry().get("noise_floor")
     finally:
         conn.close()
     return jsonify(data)
