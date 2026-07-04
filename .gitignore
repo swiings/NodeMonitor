@@ -18,6 +18,7 @@ nodemonitor.db-wal
 NMData/active.json
 NMData/sessions.json
 NMData/listener_runtime.json
+NMData/reference_telemetry.json
 
 # TLS certificates (secrets)
 *.pem
