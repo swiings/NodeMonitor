@@ -48,6 +48,11 @@ _REQUEST_POSITION_TRIGGER = os.path.join(_nm_data_dir, ".request_position_trigge
 _poll_thread: threading.Thread | None = None
 _poll_stop = threading.Event()
 
+# Hourly reference-node telemetry request (forces a fresh BME680 read).
+# _last_telemetry_request is reset on each connect so a request fires promptly.
+TELEMETRY_REQUEST_INTERVAL_S = 3600
+_last_telemetry_request: float = 0.0
+
 
 # ------------------------------------------------------------------
 # pubsub callbacks
@@ -101,6 +106,11 @@ def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
         node_requester.start(interface, _repo, _node_store, seed_on_connect=_seed_on_connect)
 
     _request_reference_position(interface, my_node_id)
+
+    # Force the first telemetry request to fire on the next poll tick
+    global _last_telemetry_request
+    _last_telemetry_request = 0.0
+
     _start_poll_thread()
 
 
@@ -124,6 +134,31 @@ def _request_reference_position(interface, my_node_id: int | None) -> None:
             log.info("Reference node has no stored GPS fix — position broadcast skipped")
     except Exception as exc:
         log.warning("Could not trigger position broadcast: %s", exc)
+
+
+def _request_reference_telemetry(interface, my_node_id: int | None) -> None:
+    """Request a fresh TELEMETRY_APP packet from the reference node.
+
+    Mirrors node_requester's NODEINFO request pattern. The response arrives as
+    a normal TELEMETRY_APP packet from my_node_id and is cached to
+    reference_telemetry.json by packet_handler.handle_telemetry().
+    """
+    if interface is None or my_node_id is None:
+        return
+    try:
+        from meshtastic import portnums_pb2
+        my_hex = f"!{my_node_id & 0xFFFFFFFF:08x}"
+        interface.sendData(
+            b"",
+            destinationId=my_hex,
+            portNum=portnums_pb2.PortNum.TELEMETRY_APP,
+            hopLimit=7,
+            wantAck=False,
+            wantResponse=True,
+        )
+        log.info("Requested telemetry from reference node %s", my_hex)
+    except Exception as exc:
+        log.warning("Could not request reference telemetry: %s", exc)
 
 
 def _on_lost(interface, topic=pub.AUTO_TOPIC) -> None:
@@ -197,12 +232,20 @@ def _stop_poll_thread() -> None:
 
 def _poll_loop() -> None:
     """Every 5 s: reload active.json flags and check for requeue trigger."""
+    global _last_telemetry_request
     while not _poll_stop.wait(5):
         # Reload save_packet_data flag
         try:
             config.reload()
         except Exception:
             pass
+
+        # Hourly reference-node telemetry request
+        if _interface is not None and (
+            time.time() - _last_telemetry_request >= TELEMETRY_REQUEST_INTERVAL_S
+        ):
+            _request_reference_telemetry(_interface, _read_my_node_id(_interface))
+            _last_telemetry_request = time.time()
 
         # Requeue trigger
         if os.path.exists(_REQUEUE_TRIGGER):
@@ -291,6 +334,19 @@ def _compute_frequency(lora) -> float | None:
 
 def _log_packet(packet: dict) -> None:
     if not config.PACKET_LOG_VERBOSE:
+        return
+
+    # Suppress the reference node's own packets (received over the local
+    # serial/USB/BLE link) — they flood the log and aren't mesh traffic.
+    from_raw = packet.get("from") or packet.get("fromId")
+    from_int = from_raw if isinstance(from_raw, int) else None
+    if from_int is None and isinstance(from_raw, str) and from_raw.startswith("!"):
+        try:
+            from_int = int(from_raw[1:], 16)
+        except ValueError:
+            from_int = None
+    if (from_int is not None and packet_handler._my_node_id is not None
+            and from_int == packet_handler._my_node_id):
         return
 
     decoded = packet.get("decoded", {})

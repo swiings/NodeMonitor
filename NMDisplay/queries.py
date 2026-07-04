@@ -239,6 +239,20 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     ).fetchone()
     pph = pph_row[0] or 0
 
+    # Average RF signal over the last hour. AVG() ignores NULLs, so the
+    # reference node's self-echo packets (null rssi/snr) are excluded for free.
+    avg_rssi_1h = avg_snr_1h = None
+    try:
+        sig_row = conn.execute(
+            "SELECT AVG(rx_rssi), AVG(rx_snr) FROM packets WHERE rx_time >= ?",
+            (now - 3600,),
+        ).fetchone()
+        if sig_row:
+            avg_rssi_1h = round(sig_row[0]) if sig_row[0] is not None else None
+            avg_snr_1h  = round(sig_row[1], 1) if sig_row[1] is not None else None
+    except sqlite3.OperationalError:
+        pass
+
     # Closest and farthest nodes — only needs a reference position, not necessarily my_node_id
     closest = None
     farthest = None
@@ -321,6 +335,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "total_count":        total,
         "packets_per_minute": ppm,
         "packets_per_hour":   pph,
+        "avg_rssi_1h":        avg_rssi_1h,
+        "avg_snr_1h":         avg_snr_1h,
         "closest":            closest,
         "farthest":           farthest,
         "session_packets":    session_packets,
@@ -551,7 +567,7 @@ def get_packet_detail(conn, packet_id: int) -> dict | None:
 
     tel = conn.execute(
         """SELECT battery_level, voltage, channel_util, air_util_tx,
-                  temperature, relative_humidity, barometric_pressure
+                  temperature, relative_humidity, barometric_pressure, gas_resistance
            FROM telemetry WHERE packet_id = ? LIMIT 1""",
         (packet_id,)
     ).fetchone()

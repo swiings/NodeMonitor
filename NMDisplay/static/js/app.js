@@ -127,7 +127,10 @@ async function pollAll() {
     document.dispatchEvent(new CustomEvent("nm:breakdown-updated", { detail: brkData }));
 
     _lastPollOk = Date.now();
-    setStatus(`${nodesData.nodes.length} nodes · updated ${_timeStr()}`);
+    let statusMsg = `${nodesData.nodes.length} nodes · updated ${_timeStr()}`;
+    const tele = _formatReferenceTelemetry(nodesData.reference_telemetry);
+    if (tele) statusMsg += ` · ${tele}`;
+    setStatus(statusMsg);
   } catch (err) {
     setStatus(`Poll error — ${err.message}`);
   }
@@ -174,6 +177,37 @@ function _timeStr() {
   if (!_lastPollOk) return "never";
   const d = new Date(_lastPollOk);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+// Format the BME680 gas resistance for display. The Meshtastic proto reports
+// gas_resistance in MOhm (see EnvironmentMetrics in telemetry.proto), so the
+// raw value is megohms. We show kΩ by default (higher = cleaner air), scaling
+// up to MΩ for large readings.
+function _fmtGas(mohm) {
+  if (mohm == null) return null;
+  const kohm = mohm * 1000;
+  if (kohm >= 1000) return `${mohm.toFixed(1)}MΩ`;
+  if (kohm >= 1)    return `${Math.round(kohm)}kΩ`;
+  return `${Math.round(kohm * 1000)}Ω`;
+}
+
+// Build the reference-node telemetry sentence for the title row, e.g.
+// "Batt: 99%  Tmp: 113°F  Hum: 44%  Pr: 32.9inHg  Gas: 52kΩ".
+// Temperature/pressure use the app's existing °F / inHg conventions.
+function _formatReferenceTelemetry(t) {
+  if (!t) return "";
+  const parts = [];
+  // Meshtastic reports battery_level > 100 (typically 101) to mean the node is
+  // on external/USB power rather than discharging a battery.
+  if (t.battery_level != null) {
+    parts.push(t.battery_level > 100 ? "Batt: PWR" : `Batt: ${Math.round(t.battery_level)}%`);
+  }
+  if (t.temperature         != null) parts.push(`Tmp: ${Math.round(t.temperature * 1.8 + 32)}°F`);
+  if (t.relative_humidity   != null) parts.push(`Hum: ${Math.round(t.relative_humidity)}%`);
+  if (t.barometric_pressure != null) parts.push(`Pr: ${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
+  const gas = _fmtGas(t.gas_resistance);
+  if (gas) parts.push(`Gas: ${gas}`);
+  return parts.join("  ");
 }
 
 // ── Listener status polling ─────────────────────────────────────
@@ -565,6 +599,7 @@ function _showTrafficDetail(p, rowEl) {
         if (t.temperature    != null) extra.push(["Temp",        `${((t.temperature*1.8)+32).toFixed(1)} °F`]);
         if (t.relative_humidity != null) extra.push(["Humidity", `${t.relative_humidity.toFixed(1)}%`]);
         if (t.barometric_pressure != null) extra.push(["Pressure", `${((t.barometric_pressure*0.02953)).toFixed(1)} inHg`]);
+        if (t.gas_resistance != null) extra.push(["Gas Resistance", _fmtGas(t.gas_resistance)]);
       }
 
       if (d.position) {
@@ -580,7 +615,7 @@ function _showTrafficDetail(p, rowEl) {
 
       if (d.payload && typeof d.payload === "object") {
         const known = new Set(["battery_level","voltage","channel_util","air_util_tx",
-          "temperature","relative_humidity","barometric_pressure"]);
+          "temperature","relative_humidity","barometric_pressure","gas_resistance"]);
         for (const [k, v] of Object.entries(d.payload)) {
           if (!known.has(k) && v != null && v !== "" && typeof v !== "object")
             extra.push([k.replace(/_/g, " "), String(v)]);

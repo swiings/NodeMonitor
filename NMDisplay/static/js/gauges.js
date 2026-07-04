@@ -142,6 +142,8 @@ const NMGauges = (() => {
     _set("g-total",  data.total_count   ?? "—");
     _set("g-ppm",    data.packets_per_minute != null ? data.packets_per_minute.toFixed(1) : "—");
     _set("g-pph",    data.packets_per_hour   ?? "—");
+    _set("g-avg-snr",  data.avg_snr_1h  != null ? data.avg_snr_1h.toFixed(1) : "—");
+    _set("g-avg-rssi", data.avg_rssi_1h != null ? data.avg_rssi_1h            : "—");
     _set("g-session-pkts", data.session_packets != null ? _fmt(data.session_packets) : "—");
     _set("g-elapsed", data.session_start_ts ? _elapsed(data.session_start_ts) : "—");
 

@@ -78,6 +78,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
             temperature         REAL,
             relative_humidity   REAL,
             barometric_pressure REAL,
+            gas_resistance      REAL,   -- BME680 VOC gas resistance (raw, from environmentMetrics)
             FOREIGN KEY (packet_id) REFERENCES packets(id),
             FOREIGN KEY (node_id)   REFERENCES nodes(node_id)
         );
@@ -134,6 +135,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("nodes", "street",            "TEXT"),
         ("nodes", "city",              "TEXT"),
         ("nodes", "state",             "TEXT"),
+        ("telemetry", "gas_resistance", "REAL"),
     ]
     for table, col, definition in new_columns:
         try:

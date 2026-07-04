@@ -6,6 +6,8 @@ It always calls handle_generic() (timeline + node upsert), then routes to
 the portnum-specific handler.
 """
 
+import json
+import os
 import time
 from typing import Optional
 
@@ -18,6 +20,13 @@ from store.timeline import PacketTimeline
 # Reference node ID — packets from this node are excluded from DB writes
 # and timeline counts. Set via set_my_node() when the listener connects.
 _my_node_id: Optional[int] = None
+
+# Latest reference-node telemetry is cached here for NMDisplay to read
+# (title-row sentence). Mirrors listener.py's NMData path resolution.
+_NM_DATA_DIR = os.environ.get("NM_DATA_DIR") or os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "NMData")
+)
+_REFERENCE_TELEMETRY_FILE = os.path.join(_NM_DATA_DIR, "reference_telemetry.json")
 
 
 def set_my_node(node_id: Optional[int]) -> None:
@@ -195,9 +204,29 @@ def handle_telemetry(
     chan_util = device.get("channelUtilization")
     air_util = device.get("airUtilTx")
 
-    # Update node store with battery info
+    temperature = env.get("temperature")
+    humidity = env.get("relativeHumidity")
+    pressure = env.get("barometricPressure")
+    gas_resistance = env.get("gasResistance")
+
+    # Keep the node's battery/voltage current regardless of origin.
     node_store.upsert(from_id, battery_level=battery, voltage=voltage)
     repo.upsert_node(from_id, battery_level=battery, voltage=voltage, last_heard=rx_time)
+
+    # Reference-node telemetry (arrives over the local serial/USB/BLE link) is
+    # cached to a JSON file for NMDisplay's title-row sentence rather than the
+    # packet DB — its self-echo has no packet row and no RF signal metrics.
+    if _my_node_id is not None and from_id == _my_node_id:
+        _write_reference_telemetry({
+            "battery_level":       battery,
+            "voltage":             voltage,
+            "temperature":         temperature,
+            "relative_humidity":   humidity,
+            "barometric_pressure": pressure,
+            "gas_resistance":      gas_resistance,
+            "rx_time":             rx_time,
+        })
+        return
 
     packet_id = _last_packet_id(repo)
     if packet_id is None:
@@ -211,9 +240,10 @@ def handle_telemetry(
         voltage=voltage,
         channel_util=chan_util,
         air_util_tx=air_util,
-        temperature=env.get("temperature"),
-        relative_humidity=env.get("relativeHumidity"),
-        barometric_pressure=env.get("barometricPressure"),
+        temperature=temperature,
+        relative_humidity=humidity,
+        barometric_pressure=pressure,
+        gas_resistance=gas_resistance,
     )
 
 
@@ -298,6 +328,31 @@ def handle_position(
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
+def _write_reference_telemetry(metrics: dict) -> None:
+    """
+    Merge the given metrics into reference_telemetry.json. Device-metric and
+    environment-metric packets arrive separately, so we merge (only non-None
+    values overwrite) to keep a complete picture for the title-row sentence.
+    """
+    try:
+        existing: dict = {}
+        if os.path.exists(_REFERENCE_TELEMETRY_FILE):
+            with open(_REFERENCE_TELEMETRY_FILE) as f:
+                existing = json.load(f)
+    except Exception:
+        existing = {}
+
+    for key, value in metrics.items():
+        if value is not None:
+            existing[key] = value
+
+    try:
+        with open(_REFERENCE_TELEMETRY_FILE, "w") as f:
+            json.dump(existing, f)
+    except Exception:
+        pass
+
 
 def _to_int(value) -> Optional[int]:
     if value is None:

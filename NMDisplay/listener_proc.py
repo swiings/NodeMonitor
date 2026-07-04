@@ -109,6 +109,21 @@ def get_runtime_info() -> dict:
         return {}
 
 
+def get_reference_telemetry() -> dict:
+    """
+    Return the reference node's latest cached telemetry written by NMListener
+    (reference_telemetry.json): battery_level, voltage, temperature,
+    relative_humidity, barometric_pressure, gas_resistance, rx_time.
+    Returns empty dict if the file doesn't exist or can't be read.
+    """
+    tele_file = os.path.join(bundle_paths.data_dir(), "reference_telemetry.json")
+    try:
+        with open(tele_file) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 
 
 # ------------------------------------------------------------------

@@ -160,19 +160,20 @@ class Repository:
         temperature: Optional[float] = None,
         relative_humidity: Optional[float] = None,
         barometric_pressure: Optional[float] = None,
+        gas_resistance: Optional[float] = None,
     ) -> None:
         self._conn.execute(
             """
             INSERT INTO telemetry
                 (packet_id, rx_time, node_id,
                  battery_level, voltage, channel_util, air_util_tx,
-                 temperature, relative_humidity, barometric_pressure)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 temperature, relative_humidity, barometric_pressure, gas_resistance)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 packet_id, rx_time, node_id,
                 battery_level, voltage, channel_util, air_util_tx,
-                temperature, relative_humidity, barometric_pressure,
+                temperature, relative_humidity, barometric_pressure, gas_resistance,
             ),
         )
         self._conn.commit()

@@ -232,6 +232,7 @@ def api_nodes():
     return jsonify({
         "nodes": nodes,
         "my_node_id": my_node_id,
+        "reference_telemetry": listener_proc.get_reference_telemetry(),
         "server_time": int(time.time()),
     })
 
