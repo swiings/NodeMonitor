@@ -45,8 +45,6 @@ def _log_device_config(iface) -> None:
     """Log Meshtastic device configuration at startup for debugging."""
     import json as json_module
     try:
-        # Get device config
-        config_obj = iface.radioConfig
         myinfo = iface.myInfo
         
         # Build a summary dict
@@ -55,20 +53,30 @@ def _log_device_config(iface) -> None:
             "hw_model": myinfo.hw_model if myinfo else None,
             "firmware_version": myinfo.firmware_version if myinfo else None,
             "device_state_version": myinfo.device_state_version if myinfo else None,
-            "region": config_obj.lora.region if hasattr(config_obj, 'lora') else None,
-            "modem_preset": config_obj.lora.modem_preset if hasattr(config_obj, 'lora') else None,
         }
         
-        # Convert to JSON and wrap at ~300 chars per line for readability
+        # Try to get radio config via getConfig() method (works across interface types)
+        try:
+            radio_config = iface.getConfig("lora")
+            if radio_config:
+                config_summary["lora_region"] = radio_config.get("region")
+                config_summary["lora_modem_preset"] = radio_config.get("modemPreset")
+        except Exception:
+            pass
+        
+        # Try to get telemetry config
+        try:
+            tel_config = iface.getConfig("telemetry")
+            if tel_config:
+                config_summary["telemetry_config"] = tel_config
+        except Exception:
+            pass
+        
+        # Convert to JSON and log each line
         config_json = json_module.dumps(config_summary, indent=2)
         for line in config_json.split('\n'):
             if line.strip():
                 log.info("DEVICE_CONFIG: %s", line)
-        
-        # Also try to get telemetry config if available
-        if hasattr(config_obj, 'device'):
-            telemetry_cfg = config_obj.device.role if hasattr(config_obj.device, 'role') else None
-            log.info("DEVICE_CONFIG: telemetry role/config: %s", telemetry_cfg)
     except Exception as e:
         log.warning("Could not log device config: %s", e)
 
