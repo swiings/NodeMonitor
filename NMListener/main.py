@@ -60,15 +60,19 @@ def _log_device_config(iface) -> None:
             except Exception as e:
                 log.info("DEVICE_CONFIG: Could not convert myInfo: %s", e)
         
-        # Inspect available attributes on the interface
-        log.info("DEVICE_CONFIG: === Interface attributes ===")
+        # Inspect available attributes on the interface (skip known large ones)
+        log.info("DEVICE_CONFIG: === Interface attributes (non-collection) ===")
+        skip_attrs = {'nodes', 'nodesByNum', '_timeout', '_writeQueue', '_readThread', 'localConfig', 'remoteConfig'}
         for attr in dir(iface):
-            if not attr.startswith('_'):
+            if not attr.startswith('_') and attr not in skip_attrs:
                 try:
                     value = getattr(iface, attr)
-                    # Skip methods and large objects
+                    # Skip methods, and skip if it's a dict/list with many items
                     if not callable(value):
-                        log.info("DEVICE_CONFIG: %s: %s (type: %s)", attr, value, type(value).__name__)
+                        if isinstance(value, (dict, list)):
+                            log.info("DEVICE_CONFIG: %s: <%s with %d items> (skipped)", attr, type(value).__name__, len(value))
+                        else:
+                            log.info("DEVICE_CONFIG: %s: %s", attr, value)
                 except Exception:
                     pass
         
