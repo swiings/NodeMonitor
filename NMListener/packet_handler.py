@@ -210,7 +210,8 @@ def handle_telemetry(
     gas_resistance = env.get("iaq") or env.get("gasResistance") or env.get("gas_resistance") or env.get("gas")
     # print(f"DEBUG ENV KEYS: {env.keys()}")  # Print all available keys
     # print(f"DEBUG GAS: {gas_resistance}")
-    print(f"DEBUG FULL ENV: {env}")  # Show entire dict, not just keys
+    if env is not None:
+        print(f"DEBUG FULL ENV: {env}")  # Show entire dict, not just keys
 
     # LocalStats variant carries the node's own receiver noise floor (dBm)
     local_stats = telemetry.get("localStats", {})
