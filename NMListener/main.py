@@ -60,36 +60,34 @@ def _log_device_config(iface) -> None:
             except Exception as e:
                 log.info("DEVICE_CONFIG: Could not convert myInfo: %s", e)
         
-        # Inspect available attributes on the interface (skip known large ones)
-        log.info("DEVICE_CONFIG: === Interface attributes (non-collection) ===")
-        skip_attrs = {'nodes', 'nodesByNum', '_timeout', '_writeQueue', '_readThread', 'localConfig', 'remoteConfig'}
-        for attr in dir(iface):
-            if not attr.startswith('_') and attr not in skip_attrs:
-                try:
-                    value = getattr(iface, attr)
-                    # Skip methods, and skip if it's a dict/list with many items
-                    if not callable(value):
-                        if isinstance(value, (dict, list)):
-                            log.info("DEVICE_CONFIG: %s: <%s with %d items> (skipped)", attr, type(value).__name__, len(value))
-                        else:
-                            log.info("DEVICE_CONFIG: %s: %s", attr, value)
-                except Exception:
-                    pass
-        
-        # Try accessing radioConfig directly
-        log.info("DEVICE_CONFIG: === Trying radioConfig ===")
+        # Try to access localNode.localConfig
+        log.info("DEVICE_CONFIG: === localNode.localConfig ===")
         try:
-            if hasattr(iface, 'radioConfig'):
-                from google.protobuf.json_format import MessageToDict
-                radio_dict = MessageToDict(iface.radioConfig, preserving_proto_field_name=True)
-                radio_json = json_module.dumps(radio_dict, indent=2, default=str)
-                for line in radio_json.split('\n'):
-                    if line.strip():
-                        log.info("DEVICE_CONFIG: %s", line)
+            local_node = getattr(iface, 'localNode', None)
+            if local_node:
+                local_config = getattr(local_node, 'localConfig', None)
+                if local_config:
+                    from google.protobuf.json_format import MessageToDict
+                    config_dict = MessageToDict(local_config, preserving_proto_field_name=True)
+                    config_json = json_module.dumps(config_dict, indent=2, default=str)
+                    for line in config_json.split('\n'):
+                        if line.strip():
+                            log.info("DEVICE_CONFIG: %s", line)
+                else:
+                    log.info("DEVICE_CONFIG: localNode.localConfig is None")
             else:
-                log.info("DEVICE_CONFIG: No radioConfig attribute")
+                log.info("DEVICE_CONFIG: No localNode")
         except Exception as e:
-            log.info("DEVICE_CONFIG: Could not access radioConfig: %s", e)
+            log.info("DEVICE_CONFIG: Could not access localNode.localConfig: %s", e)
+        
+        # Log the excluded_modules value specifically
+        log.info("DEVICE_CONFIG: === Key Findings ===")
+        try:
+            excluded = iface.metadata.excluded_modules if hasattr(iface.metadata, 'excluded_modules') else None
+            log.info("DEVICE_CONFIG: excluded_modules bitmask: %d (0x%x)", excluded or 0, excluded or 0)
+            log.info("DEVICE_CONFIG: (Bit 8 = ENVIRONMENTAL/TELEMETRY = %s)", "DISABLED" if excluded and (excluded & 256) else "ENABLED")
+        except Exception as e:
+            log.info("DEVICE_CONFIG: Could not read excluded_modules: %s", e)
         
     except Exception as e:
         log.warning("Could not log device config: %s", e)
