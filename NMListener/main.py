@@ -58,34 +58,34 @@ def _log_device_config(iface) -> None:
                     if line.strip():
                         log.info("DEVICE_CONFIG: %s", line)
             except Exception as e:
-                # Fallback: just iterate over the message fields
-                log.info("DEVICE_CONFIG: myInfo (fields):")
-                try:
-                    for field, value in myinfo.ListFields():
-                        log.info("DEVICE_CONFIG:   %s: %s", field.name, value)
-                except Exception as e2:
-                    log.info("DEVICE_CONFIG: Could not list fields: %s", e2)
+                log.info("DEVICE_CONFIG: Could not convert myInfo: %s", e)
         
-        # Try to get and log all config sections
-        config_sections = ["lora", "telemetry", "device", "position", "power", "network", "display"]
-        for section in config_sections:
-            try:
-                config_data = iface.getConfig(section)
-                log.info("DEVICE_CONFIG: getConfig('%s') returned: %s (type: %s)", section, config_data, type(config_data).__name__)
-                
-                if config_data:
-                    log.info("DEVICE_CONFIG: === %s ===", section)
-                    try:
-                        from google.protobuf.json_format import MessageToDict
-                        config_dict = MessageToDict(config_data, preserving_proto_field_name=True)
-                        config_json = json_module.dumps(config_dict, indent=2, default=str)
-                    except Exception:
-                        config_json = json_module.dumps(config_data, indent=2, default=str)
-                    for line in config_json.split('\n'):
-                        if line.strip():
-                            log.info("DEVICE_CONFIG: %s", line)
-            except Exception as e:
-                log.info("DEVICE_CONFIG: Error getting config for '%s': %s", section, e)
+        # Inspect available attributes on the interface
+        log.info("DEVICE_CONFIG: === Interface attributes ===")
+        for attr in dir(iface):
+            if not attr.startswith('_'):
+                try:
+                    value = getattr(iface, attr)
+                    # Skip methods and large objects
+                    if not callable(value):
+                        log.info("DEVICE_CONFIG: %s: %s (type: %s)", attr, value, type(value).__name__)
+                except Exception:
+                    pass
+        
+        # Try accessing radioConfig directly
+        log.info("DEVICE_CONFIG: === Trying radioConfig ===")
+        try:
+            if hasattr(iface, 'radioConfig'):
+                from google.protobuf.json_format import MessageToDict
+                radio_dict = MessageToDict(iface.radioConfig, preserving_proto_field_name=True)
+                radio_json = json_module.dumps(radio_dict, indent=2, default=str)
+                for line in radio_json.split('\n'):
+                    if line.strip():
+                        log.info("DEVICE_CONFIG: %s", line)
+            else:
+                log.info("DEVICE_CONFIG: No radioConfig attribute")
+        except Exception as e:
+            log.info("DEVICE_CONFIG: Could not access radioConfig: %s", e)
         
     except Exception as e:
         log.warning("Could not log device config: %s", e)
