@@ -207,7 +207,7 @@ def handle_telemetry(
     temperature = env.get("temperature")
     humidity = env.get("relativeHumidity")
     pressure = env.get("barometricPressure")
-    gas_resistance = env.get("gasResistance")
+    gas_resistance = env.get("iaq") or env.get("gasResistance") or env.get("gas_resistance") or env.get("gas")
 
     # LocalStats variant carries the node's own receiver noise floor (dBm)
     local_stats = telemetry.get("localStats", {})
