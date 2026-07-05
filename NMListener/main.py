@@ -47,36 +47,33 @@ def _log_device_config(iface) -> None:
     try:
         myinfo = iface.myInfo
         
-        # Build a summary dict
-        config_summary = {
-            "my_node_num": myinfo.my_node_num if myinfo else None,
-            "hw_model": myinfo.hw_model if myinfo else None,
-            "firmware_version": myinfo.firmware_version if myinfo else None,
-            "device_state_version": myinfo.device_state_version if myinfo else None,
-        }
+        # Log raw myInfo object
+        if myinfo:
+            log.info("DEVICE_CONFIG: === myInfo ===")
+            try:
+                # Try to convert to dict
+                myinfo_dict = vars(myinfo) if hasattr(myinfo, '__dict__') else myinfo
+                myinfo_json = json_module.dumps(myinfo_dict, indent=2, default=str)
+                for line in myinfo_json.split('\n'):
+                    if line.strip():
+                        log.info("DEVICE_CONFIG: %s", line)
+            except Exception as e:
+                log.info("DEVICE_CONFIG: myInfo (repr): %s", repr(myinfo))
         
-        # Try to get radio config via getConfig() method (works across interface types)
-        try:
-            radio_config = iface.getConfig("lora")
-            if radio_config:
-                config_summary["lora_region"] = radio_config.get("region")
-                config_summary["lora_modem_preset"] = radio_config.get("modemPreset")
-        except Exception:
-            pass
+        # Try to get and log all config sections
+        config_sections = ["lora", "telemetry", "device", "position", "power", "network", "display"]
+        for section in config_sections:
+            try:
+                config_data = iface.getConfig(section)
+                if config_data:
+                    log.info("DEVICE_CONFIG: === %s ===", section)
+                    config_json = json_module.dumps(config_data, indent=2, default=str)
+                    for line in config_json.split('\n'):
+                        if line.strip():
+                            log.info("DEVICE_CONFIG: %s", line)
+            except Exception as e:
+                pass  # Section may not exist
         
-        # Try to get telemetry config
-        try:
-            tel_config = iface.getConfig("telemetry")
-            if tel_config:
-                config_summary["telemetry_config"] = tel_config
-        except Exception:
-            pass
-        
-        # Convert to JSON and log each line
-        config_json = json_module.dumps(config_summary, indent=2)
-        for line in config_json.split('\n'):
-            if line.strip():
-                log.info("DEVICE_CONFIG: %s", line)
     except Exception as e:
         log.warning("Could not log device config: %s", e)
 
