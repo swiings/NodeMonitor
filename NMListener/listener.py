@@ -48,9 +48,10 @@ _REQUEST_POSITION_TRIGGER = os.path.join(_nm_data_dir, ".request_position_trigge
 _poll_thread: threading.Thread | None = None
 _poll_stop = threading.Event()
 
-# Hourly reference-node telemetry request (forces a fresh BME680 read).
+#  reference-node telemetry request (forces a fresh BME680 read).
 # _last_telemetry_request is reset on each connect so a request fires promptly.
-TELEMETRY_REQUEST_INTERVAL_S = 3600
+# changed to 5 minutes to keep the BME680 heater from cycling on/off too frequently (which can cause the sensor to fail)
+TELEMETRY_REQUEST_INTERVAL_S = 300
 _last_telemetry_request: float = 0.0
 
 
