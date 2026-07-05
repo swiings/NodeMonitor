@@ -241,12 +241,13 @@ def _poll_loop() -> None:
         except Exception:
             pass
 
-        # Hourly reference-node telemetry request
-        if _interface is not None and (
-            time.time() - _last_telemetry_request >= TELEMETRY_REQUEST_INTERVAL_S
-        ):
-            _request_reference_telemetry(_interface, _read_my_node_id(_interface))
-            _last_telemetry_request = time.time()
+        # Hourly reference-node telemetry request 
+        # Removed since learning Meshtastic does this every 60 seconds for serial connected nodes
+        # if _interface is not None and (
+        #     time.time() - _last_telemetry_request >= TELEMETRY_REQUEST_INTERVAL_S
+        # ):
+        #     _request_reference_telemetry(_interface, _read_my_node_id(_interface))
+        #     _last_telemetry_request = time.time()
 
         # Requeue trigger
         if os.path.exists(_REQUEUE_TRIGGER):
