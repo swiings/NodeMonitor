@@ -222,8 +222,9 @@ def handle_telemetry(
     repo.upsert_node(from_id, battery_level=battery, voltage=voltage, last_heard=rx_time)
 
     # Reference-node telemetry (arrives over the local serial/USB/BLE link) is
-    # cached to a JSON file for NMDisplay's title-row sentence rather than the
-    # packet DB — its self-echo has no packet row and no RF signal metrics.
+    # cached to a JSON file for NMDisplay's title-row sentence. For the
+    # timeline chart we also persist a synthetic packet/telemetry row so the
+    # reference node's utilization values can be plotted.
     if _my_node_id is not None and from_id == _my_node_id:
         _write_reference_telemetry({
             "battery_level":       battery,
@@ -235,11 +236,26 @@ def handle_telemetry(
             "noise_floor":         noise_floor,
             "rx_time":             rx_time,
         })
-        return
 
-    packet_id = _last_packet_id(repo)
-    if packet_id is None:
-        return
+    if _my_node_id is not None and from_id == _my_node_id:
+        packet_id = repo.insert_packet(
+            rx_time=rx_time,
+            from_node_id=from_id,
+            to_node_id=None,
+            portnum="TELEMETRY_APP",
+            portnum_int=None,
+            hop_limit=None,
+            rx_rssi=None,
+            rx_snr=None,
+            rx_lat=None,
+            rx_lon=None,
+            payload_raw=None,
+            payload_dict=decoded,
+        )
+    else:
+        packet_id = _last_packet_id(repo)
+        if packet_id is None:
+            return
 
     repo.insert_telemetry(
         packet_id,
