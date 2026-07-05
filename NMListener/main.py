@@ -47,18 +47,24 @@ def _log_device_config(iface) -> None:
     try:
         myinfo = iface.myInfo
         
-        # Log raw myInfo object
+        # Log raw myInfo object using protobuf's MessageToDict
         if myinfo:
             log.info("DEVICE_CONFIG: === myInfo ===")
             try:
-                # Try to convert to dict
-                myinfo_dict = vars(myinfo) if hasattr(myinfo, '__dict__') else myinfo
+                from google.protobuf.json_format import MessageToDict
+                myinfo_dict = MessageToDict(myinfo, preserving_proto_field_name=True)
                 myinfo_json = json_module.dumps(myinfo_dict, indent=2, default=str)
                 for line in myinfo_json.split('\n'):
                     if line.strip():
                         log.info("DEVICE_CONFIG: %s", line)
             except Exception as e:
-                log.info("DEVICE_CONFIG: myInfo (repr): %s", repr(myinfo))
+                # Fallback: just iterate over the message fields
+                log.info("DEVICE_CONFIG: myInfo (fields):")
+                try:
+                    for field, value in myinfo.ListFields():
+                        log.info("DEVICE_CONFIG:   %s: %s", field.name, value)
+                except Exception as e2:
+                    log.info("DEVICE_CONFIG: Could not list fields: %s", e2)
         
         # Try to get and log all config sections
         config_sections = ["lora", "telemetry", "device", "position", "power", "network", "display"]
@@ -67,7 +73,12 @@ def _log_device_config(iface) -> None:
                 config_data = iface.getConfig(section)
                 if config_data:
                     log.info("DEVICE_CONFIG: === %s ===", section)
-                    config_json = json_module.dumps(config_data, indent=2, default=str)
+                    try:
+                        from google.protobuf.json_format import MessageToDict
+                        config_dict = MessageToDict(config_data, preserving_proto_field_name=True)
+                        config_json = json_module.dumps(config_dict, indent=2, default=str)
+                    except:
+                        config_json = json_module.dumps(config_data, indent=2, default=str)
                     for line in config_json.split('\n'):
                         if line.strip():
                             log.info("DEVICE_CONFIG: %s", line)
