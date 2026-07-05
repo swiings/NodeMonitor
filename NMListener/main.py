@@ -71,19 +71,21 @@ def _log_device_config(iface) -> None:
         for section in config_sections:
             try:
                 config_data = iface.getConfig(section)
+                log.info("DEVICE_CONFIG: getConfig('%s') returned: %s (type: %s)", section, config_data, type(config_data).__name__)
+                
                 if config_data:
                     log.info("DEVICE_CONFIG: === %s ===", section)
                     try:
                         from google.protobuf.json_format import MessageToDict
                         config_dict = MessageToDict(config_data, preserving_proto_field_name=True)
                         config_json = json_module.dumps(config_dict, indent=2, default=str)
-                    except:
+                    except Exception:
                         config_json = json_module.dumps(config_data, indent=2, default=str)
                     for line in config_json.split('\n'):
                         if line.strip():
                             log.info("DEVICE_CONFIG: %s", line)
             except Exception as e:
-                pass  # Section may not exist
+                log.info("DEVICE_CONFIG: Error getting config for '%s': %s", section, e)
         
     except Exception as e:
         log.warning("Could not log device config: %s", e)
