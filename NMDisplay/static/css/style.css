@@ -1011,7 +1011,7 @@ body.layout-split #nm-charts-container {
   #nm-gauges { height: 72px; }
 
   .nm-gauge-num {
-    font-size: clamp(18px, 5.8vw, 27px);
+    font-size: clamp(18px, 5.8vw, 20px);
   }
   .nm-gauge-mini .nm-gauge-num {
     font-size: clamp(13px, 4.5vw, 20px);
