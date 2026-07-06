@@ -523,11 +523,11 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None
                 sql = base + "WHERE p.portnum = ? ORDER BY p.rx_time DESC LIMIT ?"
                 rows = conn.execute(sql, (str(value), limit)).fetchall()
         elif by == "hardware":
-            sql = base + "WHERE COALESCE(n.hardware_model, 'Unknown') = ? ORDER BY p.rx_time DESC LIMIT ?"
-            rows = conn.execute(sql, (str(value), limit)).fetchall()
+            sql = base + "WHERE COALESCE(n.hardware_model, 'Unknown') = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
+            rows = conn.execute(sql, {"value": str(value), "excl": excl, "limit": limit}).fetchall()
         elif by == "role":
-            sql = base + "WHERE COALESCE(n.role, 'Unknown') = ? ORDER BY p.rx_time DESC LIMIT ?"
-            rows = conn.execute(sql, (str(value), limit)).fetchall()
+            sql = base + "WHERE COALESCE(n.role, 'Unknown') = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
+            rows = conn.execute(sql, {"value": str(value), "excl": excl, "limit": limit}).fetchall()
         elif by == "node":
             sql = base + "WHERE p.from_node_id = ? ORDER BY p.rx_time DESC LIMIT ?"
             rows = conn.execute(sql, (int(value), limit)).fetchall()
