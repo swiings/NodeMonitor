@@ -433,7 +433,9 @@ def get_timeline(conn, time_scale_minutes: int, my_node_id=None) -> tuple[list[d
 def get_packet_breakdown(conn, my_node_id=None) -> list[dict]:
     """
     Return packet counts grouped by portnum, sorted by count descending.
-    Reference node packets are excluded via my_node_id.
+    Reference node packets are excluded via my_node_id, and the reference
+    node's periodic TELEMETRY_APP self-reports are ignored here so the Packet
+    Breakdown card reflects peer traffic rather than the local serial stream.
     UNKNOWN portnum = encrypted / undecodeable packets.
     """
     excl = my_node_id if my_node_id is not None else -1
@@ -449,6 +451,9 @@ def get_packet_breakdown(conn, my_node_id=None) -> list[dict]:
                 END AS portnum
                 FROM packets
                 WHERE from_node_id != :excl
+                  AND NOT (
+                      portnum = 'TELEMETRY_APP' AND from_node_id = :excl
+                  )
             )
             GROUP BY portnum
             ORDER BY cnt DESC
