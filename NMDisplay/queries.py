@@ -498,7 +498,7 @@ def get_role_breakdown(conn) -> list[dict]:
     return [{"role": row["role"], "count": row["cnt"]} for row in rows]
 
 
-def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
+def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None) -> list[dict]:
     """Return packets filtered by portnum / hardware_model / role / node_id."""
     base = """
         SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
@@ -507,6 +507,7 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
         FROM packets p
         LEFT JOIN nodes n ON n.node_id = p.from_node_id
     """
+    excl = my_node_id if my_node_id is not None else -1
     try:
         if by == "portnum":
             if value == "UNKNOWN_PRIVATE_CH":
@@ -515,6 +516,9 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200) -> list[dict]:
             elif value == "UNKNOWN_DIRECT":
                 sql = base + "WHERE p.portnum = 'UNKNOWN' AND p.to_node_id IS NOT NULL AND p.to_node_id != 4294967295 ORDER BY p.rx_time DESC LIMIT ?"
                 rows = conn.execute(sql, (limit,)).fetchall()
+            elif value == "TELEMETRY_APP" and my_node_id is not None:
+                sql = base + "WHERE p.portnum = 'TELEMETRY_APP' AND p.from_node_id != :excl ORDER BY p.rx_time DESC LIMIT :limit"
+                rows = conn.execute(sql, {"excl": excl, "limit": limit}).fetchall()
             else:
                 sql = base + "WHERE p.portnum = ? ORDER BY p.rx_time DESC LIMIT ?"
                 rows = conn.execute(sql, (str(value), limit)).fetchall()

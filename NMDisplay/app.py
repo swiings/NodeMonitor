@@ -315,9 +315,10 @@ def api_traffic():
     value = request.args.get("value", "")
     if by not in ("portnum", "hardware", "role", "node"):
         return jsonify({"error": "invalid filter type", "packets": []}), 400
+    my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
-        packets = queries.get_filtered_traffic(conn, by, value)
+        packets = queries.get_filtered_traffic(conn, by, value, my_node_id=my_node_id)
     finally:
         conn.close()
     return jsonify({"packets": packets, "count": len(packets)})
