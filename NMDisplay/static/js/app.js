@@ -207,7 +207,7 @@ function _formatReferenceTelemetry(t) {
   if (t.relative_humidity   != null) parts.push(`· Humidity:${Math.round(t.relative_humidity)}%`);
   if (t.barometric_pressure != null) parts.push(`· Pressure:${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
   const gas = _fmtGas(t.gas_resistance);
-  if (gas) parts.push(`Gas: ${gas}`);
+  if (gas) parts.push(`· Gas:${gas}`);
   return parts.join("  ");
 }
 
