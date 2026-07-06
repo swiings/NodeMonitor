@@ -201,13 +201,13 @@ function _formatReferenceTelemetry(t) {
   // Meshtastic reports battery_level > 100 (typically 101) to mean the node is
   // on external/USB power rather than discharging a battery.
   if (t.battery_level != null) {
-    parts.push(t.battery_level > 100 ? "Battery:PWR" : `Battery:${Math.round(t.battery_level)}%`);
+    parts.push(t.battery_level > 100 ? "🔋PWR" : `🔋${Math.round(t.battery_level)}%`);
   }
-  if (t.temperature         != null) parts.push(`· Temp:${Math.round(t.temperature * 1.8 + 32)}°F`);
-  if (t.relative_humidity   != null) parts.push(`· Humidity:${Math.round(t.relative_humidity)}%`);
-  if (t.barometric_pressure != null) parts.push(`· Pressure:${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
+  if (t.temperature         != null) parts.push(`· 🌡️${Math.round(t.temperature * 1.8 + 32)}°F`);
+  if (t.relative_humidity   != null) parts.push(`· 💧${Math.round(t.relative_humidity)}%`);
+  if (t.barometric_pressure != null) parts.push(`· 💨${(t.barometric_pressure * 0.02953).toFixed(1)}inHg`);
   const gas = _fmtGas(t.gas_resistance);
-  if (gas) parts.push(`· Gas:${gas}`);
+  if (gas) parts.push(`· 🍃${gas}`);
   return parts.join("  ");
 }
 
