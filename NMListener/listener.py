@@ -340,21 +340,24 @@ def _compute_frequency(lora, primary_channel_name: str = "LongFast") -> float | 
     except Exception:
         pass
 
-    # 2. Fallback: Parse the slot number
+    # 2. Parse the slot number from the radio config
     slot = int(lora.channel_num)
 
-    # Handle the '0' (Auto) configuration
+    # If slot is 0, Meshtastic dynamically hashes the channel name.
+    # "LongFast" resolves to hardware index 19.
     if slot == 0:
         if primary_channel_name == "LongFast":
-            slot = 20  # Default US915 LongFast slot
+            slot = 19  
         else:
-            # Custom channel names shift the slot dynamically.
-            # If you use a custom name, you must manually provide the explicit slot.
+            # If the user changed their primary channel name, we can't hardcode it.
             return None 
+    else:
+        # If the user manually forced a channel slot in the app (1-indexed),
+        # convert it to the firmware's 0-indexed layout.
+        slot = slot - 1
 
-    # 3. Apply the precise US915 firmware formula
-    # Center frequency = 902.0 + (slot * 0.25) + 0.25
-    frequency = 902.0 + (slot * 0.25) + 0.25
+    # 3. Apply the exact firmware formula
+    frequency = 902.0 + (slot * 0.25) + 0.125
     return round(frequency, 3)
 
 
