@@ -186,10 +186,15 @@ function _timeStr() {
 // up to MΩ for large readings.
 function _fmtGas(mohm) {
   if (mohm == null) return null;
-  const kohm = mohm * 1000;
-  if (kohm >= 1000) return `${mohm.toFixed(1)}MΩ`;
-  if (kohm >= 1)    return `${Math.round(kohm)}kΩ`;
-  return `${Math.round(kohm * 1000)}Ω`;
+const kohm = mohm * 1000;
+
+if (kohm >= 1000) {
+    // Keeps up to 2 decimal places for MΩ, but drops trailing .0 or .00
+    const precisionMohm = Math.round(mohm * 100) / 100;
+    return `${precisionMohm}MΩ`;
+}
+if (kohm >= 1) return `${Math.round(kohm)}kΩ`;
+return `${Math.round(kohm * 1000)}Ω`;
 }
 
 // Build the reference-node telemetry sentence for the title row, e.g.
