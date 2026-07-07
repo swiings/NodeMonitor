@@ -315,20 +315,47 @@ def _write_runtime_info(interface, my_node_id: int | None) -> None:
         log.warning("Could not write listener_runtime.json")
 
 
-def _compute_frequency(lora) -> float | None:
-    """Compute centre frequency in MHz from LoRa config."""
-    # Try meshtastic's own utility first (available in some library versions)
+# def _compute_frequency(lora) -> float | None:
+#     """Compute centre frequency in MHz from LoRa config."""
+#     # Try meshtastic's own utility first (available in some library versions)
+#     try:
+#         from meshtastic import util as mu
+#         return round(mu.compute_freq(lora.channel_num, lora.modem_preset), 3)
+#     except Exception:
+#         pass
+#     # Fallback: Meshtastic US915 formula. channel_num is 1-indexed (matches
+#     # Heltec display); subtract 1 to get the 0-based slot offset.
+#     try:
+#         return round(902.0 + (int(lora.channel_num) - 1) * 0.25 + 0.125, 3)
+#     except Exception:
+#         return None   
+    
+
+def _compute_frequency(lora, primary_channel_name: str = "LongFast") -> float | None:
+    """Compute center frequency in MHz from LoRa config, matching Heltec V4."""
+    # 1. Try Meshtastic's native utility first
     try:
         from meshtastic import util as mu
         return round(mu.compute_freq(lora.channel_num, lora.modem_preset), 3)
     except Exception:
         pass
-    # Fallback: Meshtastic US915 formula. channel_num is 1-indexed (matches
-    # Heltec display); subtract 1 to get the 0-based slot offset.
-    try:
-        return round(902.0 + (int(lora.channel_num) - 1) * 0.25 + 0.125, 3)
-    except Exception:
-        return None
+
+    # 2. Fallback: Parse the slot number
+    slot = int(lora.channel_num)
+
+    # Handle the '0' (Auto) configuration
+    if slot == 0:
+        if primary_channel_name == "LongFast":
+            slot = 20  # Default US915 LongFast slot
+        else:
+            # Custom channel names shift the slot dynamically.
+            # If you use a custom name, you must manually provide the explicit slot.
+            return None 
+
+    # 3. Apply the precise US915 firmware formula
+    # Center frequency = 902.0 + (slot * 0.25) + 0.25
+    frequency = 902.0 + (slot * 0.25) + 0.25
+    return round(frequency, 3)
 
 
 # ------------------------------------------------------------------
