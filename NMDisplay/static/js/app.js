@@ -177,7 +177,7 @@ function setStatus(msg) {
 function _timeStr() {
   if (!_lastPollOk) return "never";
 const d = new Date(_lastPollOk);
-return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+return d.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true});
 }
 
 // Format the BME680 gas resistance for display. The Meshtastic proto reports
