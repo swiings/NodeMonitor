@@ -128,7 +128,7 @@ async function pollAll() {
 
     _lastPollOk = Date.now();
     const pollSec = (_cfg.display || {}).poll_interval_seconds || 30;
-    let statusMsg = `Poll: ${pollSec}s · updated ${_timeStr()}`;
+    let statusMsg = `⏱️${pollSec}s · 🔎${_timeStr()}`;
     const tele = _formatReferenceTelemetry(nodesData.reference_telemetry);
     if (tele) statusMsg += ` · ${tele}`;
     setStatus(statusMsg);
