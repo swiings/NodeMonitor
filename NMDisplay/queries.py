@@ -621,9 +621,11 @@ def get_packets_for_export(conn) -> list[dict]:
     try:
         rows = conn.execute(
             """
-            SELECT id, rx_time, from_node_id, to_node_id, portnum,
-                   hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon, source, sats
-            FROM packets
+            SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+                   p.hop_limit, p.rx_rssi, p.rx_snr, p.rx_lat, p.rx_lon,
+                   pos.source, pos.sats
+            FROM packets p
+            LEFT JOIN positions pos ON pos.packet_id = p.id
             ORDER BY rx_time ASC
             """
         ).fetchall()

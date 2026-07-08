@@ -354,7 +354,7 @@ def api_packet_breakdown():
 _CSV_FIELDS = [
     "node_id_hex", "short_name", "long_name", "hardware_model", "role",
     "first_seen", "last_heard", "seeded",
-    "lat", "lon", "altitude_m",
+    "lat", "lon", "altitude_m", "source", "sats",
     "rssi", "snr", "battery_level", "voltage", "hop_limit",
     "total_packets", "sent_count", "received_count", "dead_end_count",
     "distance_km",

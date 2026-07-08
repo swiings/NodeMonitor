@@ -117,6 +117,24 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(detail["position"]["source"], "LOC_INTERNAL")
         self.assertEqual(detail["position"]["sats"], 7)
 
+    def test_packets_export_exposes_position_source_and_sats(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, hop_limit INTEGER, rx_rssi INTEGER, rx_snr REAL, rx_lat REAL, rx_lon REAL)")
+            conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
+            conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'POSITION_APP', 3, -60, 3.0, 38.1, -76.9)")
+            conn.execute("INSERT INTO positions VALUES (1, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, 13)")
+            conn.commit()
+
+            rows = queries.get_packets_for_export(conn)
+        finally:
+            conn.close()
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source"], "LOC_INTERNAL")
+        self.assertEqual(rows[0]["sats"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()
