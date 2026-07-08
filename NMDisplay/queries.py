@@ -622,7 +622,7 @@ def get_packets_for_export(conn) -> list[dict]:
         rows = conn.execute(
             """
             SELECT id, rx_time, from_node_id, to_node_id, portnum,
-                   hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon
+                   hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon, source, sats
             FROM packets
             ORDER BY rx_time ASC
             """
