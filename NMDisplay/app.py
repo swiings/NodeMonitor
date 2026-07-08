@@ -390,7 +390,7 @@ def api_export_nodes():
 
 _PACKET_CSV_FIELDS = [
     "id", "rx_time", "from_node_id", "to_node_id", "portnum",
-    "hop_limit", "rx_rssi", "rx_snr", "rx_lat", "rx_lon",
+    "hop_limit", "rx_rssi", "rx_snr", "rx_lat", "rx_lon", "source", "sats"
 ]
 
 
