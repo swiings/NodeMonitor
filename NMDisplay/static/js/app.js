@@ -540,6 +540,21 @@ function _precisionLabel(bits) {
   return `${bits} bits  (${radiusStr})`;
 }
 
+function _locationSourceLabel(source) {
+  switch (source) {
+    case "LOC_UNSET":
+      return "Unknown";
+    case "LOC_INTERNAL":
+      return "Hardware GPS";
+    case "LOC_EXTERNAL":
+      return "Phone/Host GPS";
+    case "LOC_MANUAL":
+      return "Manual Position";
+    default:
+      return "Unknown";
+  }
+}
+
 function _showTrafficDetail(p, rowEl) {
   document.querySelectorAll(".nm-traffic-row--selected").forEach(r => r.classList.remove("nm-traffic-row--selected"));
   rowEl.classList.add("nm-traffic-row--selected");
@@ -613,6 +628,8 @@ function _showTrafficDetail(p, rowEl) {
         extra.push(["Lat / Lon", `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`]);
         if (pos.altitude_m   != null) extra.push(["Altitude",  `${(pos.altitude_m * 3.281).toFixed(0)} ft`]);
         if (pos.precision_bits != null) extra.push(["Precision", _precisionLabel(pos.precision_bits)]);
+        extra.push(["Source", _locationSourceLabel(pos.source)]);
+        extra.push(["Sats", pos.sats != null ? String(pos.sats) : "—"]);
       }
 
       if (d.text_message) {
