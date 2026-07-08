@@ -505,9 +505,11 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None
     base = """
         SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
                p.rx_rssi, p.rx_snr, p.hop_limit,
-               n.short_name, n.long_name
+               n.short_name, n.long_name,
+               pos.source, pos.sats
         FROM packets p
         LEFT JOIN nodes n ON n.node_id = p.from_node_id
+        LEFT JOIN positions pos ON pos.packet_id = p.id
     """
     excl = my_node_id if my_node_id is not None else -1
     try:

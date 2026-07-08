@@ -515,6 +515,8 @@ function _exportTrafficCsv() {
       p.rx_rssi != null ? p.rx_rssi : "",
       p.rx_snr  != null ? p.rx_snr  : "",
       p.hop_limit != null ? p.hop_limit : "",
+      p.source != null ? _locationSourceLabel(p.source) : "",
+      p.sats != null ? p.sats : "",
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
   });
   const csv  = [cols.join(","), ...rows].join("\r\n");
