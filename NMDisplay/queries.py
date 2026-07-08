@@ -91,6 +91,8 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 n.lat,
                 n.lon,
                 n.altitude_m,
+                n.source,
+                n.sats,
                 n.rssi,
                 n.snr,
                 n.battery_level,
@@ -583,7 +585,7 @@ def get_packet_detail(conn, packet_id: int) -> dict | None:
     d["telemetry"] = dict(tel) if tel else None
 
     pos = conn.execute(
-        "SELECT lat, lon, altitude_m, precision_bits FROM positions WHERE packet_id = ? LIMIT 1",
+        "SELECT lat, lon, altitude_m, source, sats, precision_bits FROM positions WHERE packet_id = ? LIMIT 1",
         (packet_id,)
     ).fetchone()
     d["position"] = dict(pos) if pos else None

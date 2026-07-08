@@ -327,6 +327,10 @@ def handle_position(
     precision = pos.get("precisionBits")
     source = pos.get("locationSource")
     sats = pos.get("satellites")
+    if sats is None:
+        sats = pos.get("satsInView")
+    if sats is None:
+        sats = pos.get("sats_in_view")
 
     if lat is None or lon is None:
         return

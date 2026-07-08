@@ -122,7 +122,7 @@ class PacketHandlerTests(unittest.TestCase):
                     "longitude": -122.1234567,
                     "altitude": 12.5,
                     "precisionBits": 28,
-                    "satellites": 7,
+                    "satsInView": 7,
                     "locationSource": "LOC_INTERNAL",
                 }
             },
