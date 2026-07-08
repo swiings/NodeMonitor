@@ -502,7 +502,7 @@ function _exportTrafficCsv() {
   if (!_currentTrafficPackets.length) return;
   const cols = ["Time", "From", "From ID", "To ID", "Type", "RSSI (dBm)", "SNR (dB)", "Hop Limit", "Source", "Sats"];
   const rows = _currentTrafficPackets.map(p => {
-    const ts = p.rx_time ? new Date(p.rx_time * 1000).toISOString().replace("T", " ").slice(0, 19) : "";
+    const ts = p.rx_time ? new Date(p.rx_time * 1000).toLocaleString([], { hour12: false }) : "";
     const toId = p.to_node_id != null
       ? (p.to_node_id === -1 || p.to_node_id === 4294967295 ? "broadcast" : `!${(p.to_node_id & 0xFFFFFFFF).toString(16).padStart(8, "0")}`)
       : "";
