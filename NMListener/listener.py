@@ -392,10 +392,8 @@ def _log_packet(packet: dict) -> None:
     extras = ""
     if portnum == "POSITION_APP":
         pos = decoded.get("position", {})
-        lat = pos.get("latitude")
-        lon = pos.get("longitude")
-        if lat is not None and lon is not None:
-            extras = f"  lat={lat:.5f}  lon={lon:.5f}"
+        if pos:
+            extras = f"  position={json.dumps(pos, sort_keys=True, default=str)}"
     elif portnum == "NODEINFO_APP":
         user = decoded.get("user", {})
         name = user.get("shortName") or user.get("longName", "")
