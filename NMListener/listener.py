@@ -393,7 +393,17 @@ def _log_packet(packet: dict) -> None:
     if portnum == "POSITION_APP":
         pos = decoded.get("position", {})
         if pos:
-            extras = f"  position={pos!r}"
+            preview_keys = (
+                "latitude",
+                "longitude",
+                "altitude",
+                "locationSource",
+                "precisionBits",
+                "satsInView",
+                "time",
+            )
+            preview = {key: pos.get(key) for key in preview_keys if pos.get(key) is not None}
+            extras = f"  position={preview!r}"
     elif portnum == "NODEINFO_APP":
         user = decoded.get("user", {})
         name = user.get("shortName") or user.get("longName", "")
