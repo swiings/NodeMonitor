@@ -500,7 +500,7 @@ function _renderTrafficBody(body, packets) {
 
 function _exportTrafficCsv() {
   if (!_currentTrafficPackets.length) return;
-  const cols = ["Time", "From", "From ID", "To ID", "Type", "RSSI (dBm)", "SNR (dB)", "Hop Limit"];
+  const cols = ["Time", "From", "From ID", "To ID", "Type", "RSSI (dBm)", "SNR (dB)", "Hop Limit", "Source", "Sats"];
   const rows = _currentTrafficPackets.map(p => {
     const ts = p.rx_time ? new Date(p.rx_time * 1000).toISOString().replace("T", " ").slice(0, 19) : "";
     const toId = p.to_node_id != null
