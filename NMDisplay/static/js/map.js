@@ -745,6 +745,21 @@ const NMMap = (() => {
     return `${name}`;
   }
 
+  function _locationSourceLabel(source) {
+    switch (source) {
+      case "LOC_UNSET":
+        return "Unknown";
+      case "LOC_INTERNAL":
+        return "Hardware GPS";
+      case "LOC_EXTERNAL":
+        return "Phone/Host GPS";
+      case "LOC_MANUAL":
+        return "Manual Position";
+      default:
+        return "Unknown";
+    }
+  }
+
   // ── Popup ─────────────────────────────────────────────────────
 
   function _popupHtml(node) {
@@ -777,6 +792,8 @@ const NMMap = (() => {
       ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
       ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
       ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
+      ["Source",     _locationSourceLabel(node.source)],
+      ["Sats",       node.sats != null ? String(node.sats) : "—"],
       ...(node.precision_bits != null ? [["Precision", _precisionLabel(node.precision_bits)]] : []),
       ["Street",     node.street || "—"],
       ["City, State", (node.city || node.state)

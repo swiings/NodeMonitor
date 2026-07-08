@@ -325,6 +325,8 @@ def handle_position(
     lon = pos.get("longitude")
     alt = pos.get("altitude")
     precision = pos.get("precisionBits")
+    source = pos.get("locationSource")
+    sats = pos.get("satellites")
 
     if lat is None or lon is None:
         return
@@ -332,8 +334,8 @@ def handle_position(
     lat = float(lat)
     lon = float(lon)
 
-    node_store.upsert(from_id, lat=lat, lon=lon, altitude_m=alt)
-    repo.upsert_node(from_id, lat=lat, lon=lon, altitude_m=alt, last_heard=rx_time)
+    node_store.upsert(from_id, lat=lat, lon=lon, altitude_m=alt, source=source, sats=sats)
+    repo.upsert_node(from_id, lat=lat, lon=lon, altitude_m=alt, source=source, sats=sats, last_heard=rx_time)
 
     packet_id = _last_packet_id(repo)
     if packet_id is None:
@@ -346,6 +348,8 @@ def handle_position(
         lat=lat,
         lon=lon,
         altitude_m=float(alt) if alt is not None else None,
+        source=source,
+        sats=sats,
         precision_bits=precision,
     )
 

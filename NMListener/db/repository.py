@@ -40,6 +40,8 @@ class Repository:
         lat: Optional[float] = None,
         lon: Optional[float] = None,
         altitude_m: Optional[float] = None,
+        source: Optional[str] = None,
+        sats: Optional[int] = None,
         rssi: Optional[int] = None,
         snr: Optional[float] = None,
         battery_level: Optional[int] = None,
@@ -52,9 +54,9 @@ class Repository:
             INSERT INTO nodes
                 (node_id, short_name, long_name, hardware_model,
                  first_seen, last_heard, device_last_heard, seeded, role,
-                 lat, lon, altitude_m, rssi, snr,
+                 lat, lon, altitude_m, source, sats, rssi, snr,
                  battery_level, voltage, hop_limit)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 short_name        = COALESCE(excluded.short_name,        short_name),
                 long_name         = COALESCE(excluded.long_name,         long_name),
@@ -66,6 +68,8 @@ class Repository:
                 lat               = COALESCE(excluded.lat,               lat),
                 lon               = COALESCE(excluded.lon,               lon),
                 altitude_m        = COALESCE(excluded.altitude_m,        altitude_m),
+                source            = COALESCE(excluded.source,            source),
+                sats              = COALESCE(excluded.sats,              sats),
                 rssi              = COALESCE(excluded.rssi,              rssi),
                 snr               = COALESCE(excluded.snr,               snr),
                 battery_level     = COALESCE(excluded.battery_level,     battery_level),
@@ -75,7 +79,7 @@ class Repository:
             (
                 node_id, short_name, long_name, hardware_model,
                 now, now, device_last_heard, seeded, role,
-                lat, lon, altitude_m, rssi, snr,
+                lat, lon, altitude_m, source, sats, rssi, snr,
                 battery_level, voltage, hop_limit,
             ),
         )
@@ -187,15 +191,17 @@ class Repository:
         lat: float,
         lon: float,
         altitude_m: Optional[float] = None,
+        source: Optional[str] = None,
+        sats: Optional[int] = None,
         precision_bits: Optional[int] = None,
     ) -> None:
         self._conn.execute(
             """
             INSERT INTO positions
-                (packet_id, rx_time, node_id, lat, lon, altitude_m, precision_bits)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (packet_id, rx_time, node_id, lat, lon, altitude_m, source, sats, precision_bits)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (packet_id, rx_time, node_id, lat, lon, altitude_m, precision_bits),
+            (packet_id, rx_time, node_id, lat, lon, altitude_m, source, sats, precision_bits),
         )
         self._conn.commit()
 

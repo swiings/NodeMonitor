@@ -15,9 +15,11 @@ class DummyRepo:
         self._conn.execute("CREATE TABLE packets (id INTEGER PRIMARY KEY)")
         self.packets = []
         self.telemetry = []
+        self.positions = []
 
     def upsert_node(self, *args, **kwargs):
-        pass
+        self.nodes = getattr(self, "nodes", [])
+        self.nodes.append({"args": args, "kwargs": kwargs})
 
     def insert_packet(self, *, rx_time, from_node_id, to_node_id, portnum, portnum_int,
                       hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon, payload_raw, payload_dict):
@@ -50,6 +52,20 @@ class DummyRepo:
             "relative_humidity": relative_humidity,
             "barometric_pressure": barometric_pressure,
             "gas_resistance": gas_resistance,
+        })
+
+    def insert_position(self, packet_id, *, rx_time, node_id, lat, lon,
+                        altitude_m=None, source=None, sats=None, precision_bits=None):
+        self.positions.append({
+            "packet_id": packet_id,
+            "rx_time": rx_time,
+            "node_id": node_id,
+            "lat": lat,
+            "lon": lon,
+            "altitude_m": altitude_m,
+            "source": source,
+            "sats": sats,
+            "precision_bits": precision_bits,
         })
 
 
@@ -91,6 +107,35 @@ class PacketHandlerTests(unittest.TestCase):
         self.assertEqual(len(repo.telemetry), 1)
         self.assertEqual(repo.telemetry[0]["channel_util"], 5.5)
         self.assertEqual(repo.telemetry[0]["air_util_tx"], 0.75)
+
+    def test_position_packet_persists_source_and_sats(self):
+        repo = DummyRepo()
+        repo._conn.execute("INSERT INTO packets (id) VALUES (1)")
+        repo._conn.commit()
+        node_store = DummyNodeStore()
+        packet = {
+            "from": 987654321,
+            "rxTime": 1700000001,
+            "decoded": {
+                "position": {
+                    "latitude": 37.1234567,
+                    "longitude": -122.1234567,
+                    "altitude": 12.5,
+                    "precisionBits": 28,
+                    "satellites": 7,
+                    "locationSource": "LOC_INTERNAL",
+                }
+            },
+        }
+
+        packet_handler.handle_position(packet, repo, node_store, None, None)
+
+        self.assertEqual(len(repo.positions), 1)
+        pos = repo.positions[0]
+        self.assertEqual(pos["source"], "LOC_INTERNAL")
+        self.assertEqual(pos["sats"], 7)
+        self.assertAlmostEqual(pos["lat"], 37.1234567)
+        self.assertAlmostEqual(pos["lon"], -122.1234567)
 
 
 if __name__ == "__main__":

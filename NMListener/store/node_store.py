@@ -15,6 +15,8 @@ class NodeRecord:
     lat: Optional[float] = None
     lon: Optional[float] = None
     altitude_m: Optional[float] = None
+    source: Optional[str] = None
+    sats: Optional[int] = None
     rssi: Optional[int] = None
     snr: Optional[float] = None
     battery_level: Optional[int] = None

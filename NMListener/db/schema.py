@@ -20,6 +20,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
             lat                 REAL,
             lon                 REAL,
             altitude_m          REAL,
+            source              TEXT,
+            sats                INTEGER,
             rssi                INTEGER,
             snr                 REAL,
             battery_level       INTEGER,
@@ -95,6 +97,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
             lat             REAL NOT NULL,
             lon             REAL NOT NULL,
             altitude_m      REAL,
+            source          TEXT,
+            sats            INTEGER,
             precision_bits  INTEGER,
             FOREIGN KEY (packet_id) REFERENCES packets(id),
             FOREIGN KEY (node_id)   REFERENCES nodes(node_id)
@@ -135,7 +139,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("nodes", "street",            "TEXT"),
         ("nodes", "city",              "TEXT"),
         ("nodes", "state",             "TEXT"),
+        ("nodes", "source",            "TEXT"),
+        ("nodes", "sats",              "INTEGER"),
         ("telemetry", "gas_resistance", "REAL"),
+        ("positions", "source",        "TEXT"),
+        ("positions", "sats",          "INTEGER"),
     ]
     for table, col, definition in new_columns:
         try:
