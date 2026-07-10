@@ -786,6 +786,7 @@ const NMMap = (() => {
       ["Long",       node.long_name   || "—"],
       ["HW",         node.hardware_model || "—"],
       ["Role",       node.role || "—"],
+      ["Packet Source", node.packet_source || "—"],
       ["Hops away",  hopsAway != null ? hopsAway : "—"],
       ["Distance",   distMi || "—"],
       ["RSSI",       node.rssi != null ? `${node.rssi} dBm` : "—"],

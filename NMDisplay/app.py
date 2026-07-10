@@ -355,7 +355,7 @@ _CSV_FIELDS = [
     "node_id_hex", "short_name", "long_name", "hardware_model", "role",
     "first_seen", "last_heard", "seeded",
     "lat", "lon", "altitude_m", "source", "sats",
-    "rssi", "snr", "battery_level", "voltage", "hop_limit",
+    "rssi", "snr", "battery_level", "voltage", "hop_limit", "Packet Source",
     "total_packets", "sent_count", "received_count", "dead_end_count",
     "distance_km",
 ]
@@ -363,10 +363,15 @@ _CSV_FIELDS = [
 
 def _build_nodes_csv(conn) -> str:
     nodes = queries.get_all_nodes(conn, None, None)
+    rows = []
+    for node in nodes:
+        row = dict(node)
+        row["Packet Source"] = node.get("packet_source")
+        rows.append(row)
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=_CSV_FIELDS, extrasaction="ignore")
     writer.writeheader()
-    writer.writerows(nodes)
+    writer.writerows(rows)
     return buf.getvalue()
 
 

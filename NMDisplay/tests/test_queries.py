@@ -30,9 +30,9 @@ class PacketBreakdownTests(unittest.TestCase):
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, rx_rssi INTEGER, rx_snr REAL, hop_limit INTEGER)")
-            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, packet_source TEXT)")
             conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (987654321, 'B', 'Beta')")
+            conn.execute("INSERT INTO nodes VALUES (987654321, 'B', 'Beta', 'Over the Air')")
             conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'TELEMETRY_APP', -60, 3.0, 3)")
             conn.execute("INSERT INTO packets VALUES (2, 101, 987654321, NULL, 'TELEMETRY_APP', -55, 4.0, 3)")
             conn.commit()
@@ -49,10 +49,10 @@ class PacketBreakdownTests(unittest.TestCase):
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, rx_rssi INTEGER, rx_snr REAL, hop_limit INTEGER)")
-            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, hardware_model TEXT, role TEXT)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, hardware_model TEXT, role TEXT, packet_source TEXT)")
             conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 'ROUTER')")
-            conn.execute("INSERT INTO nodes VALUES (987654321, 'B', 'Beta', 'Heltec V4', 'ROUTER')")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 'ROUTER', 'Over the Air')")
+            conn.execute("INSERT INTO nodes VALUES (987654321, 'B', 'Beta', 'Heltec V4', 'ROUTER', 'MQTT')")
             conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'TELEMETRY_APP', -60, 3.0, 3)")
             conn.execute("INSERT INTO packets VALUES (2, 101, 987654321, NULL, 'TEXT_MESSAGE_APP', -55, 4.0, 3)")
             conn.commit()
@@ -79,14 +79,14 @@ class PacketBreakdownTests(unittest.TestCase):
                     first_seen INTEGER, last_heard INTEGER, device_last_heard INTEGER,
                     seeded INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT,
                     sats INTEGER, rssi INTEGER, snr REAL, battery_level INTEGER,
-                    voltage REAL, hop_limit INTEGER, role TEXT, street TEXT, city TEXT, state TEXT
+                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT, street TEXT, city TEXT, state TEXT
                 )
                 """
             )
             conn.execute("CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, rx_time INTEGER, portnum TEXT)")
             conn.execute("CREATE TABLE message_counts (node_id INTEGER, sent_count INTEGER, received_count INTEGER, last_updated INTEGER)")
             conn.execute("CREATE TABLE positions (id INTEGER PRIMARY KEY AUTOINCREMENT, packet_id INTEGER, rx_time INTEGER, node_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'ROUTER', NULL, NULL, NULL)")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL)")
             conn.commit()
 
             rows = queries.get_all_nodes(conn, None, None)
@@ -96,15 +96,16 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["source"], "LOC_INTERNAL")
         self.assertEqual(rows[0]["sats"], 7)
+        self.assertEqual(rows[0]["packet_source"], "MQTT")
 
     def test_filtered_traffic_exposes_position_source_and_sats(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, rx_rssi INTEGER, rx_snr REAL, hop_limit INTEGER)")
-            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, packet_source TEXT)")
             conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha')")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'MQTT')")
             conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'POSITION_APP', -60, 3.0, 3)")
             conn.execute("INSERT INTO positions VALUES (1, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, 13)")
             conn.commit()
@@ -116,17 +117,18 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['source'], 'LOC_INTERNAL')
         self.assertEqual(rows[0]['sats'], 7)
+        self.assertEqual(rows[0]['packet_source'], 'MQTT')
 
     def test_packet_detail_exposes_position_source_and_sats(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, rx_rssi INTEGER, rx_snr REAL, hop_limit INTEGER, payload_json TEXT)")
-            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, packet_source TEXT)")
             conn.execute("CREATE TABLE telemetry (packet_id INTEGER, battery_level INTEGER, voltage REAL, channel_util REAL, air_util_tx REAL, temperature REAL, relative_humidity REAL, barometric_pressure REAL, gas_resistance REAL)")
             conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
             conn.execute("CREATE TABLE text_messages (packet_id INTEGER, message_text TEXT, to_node_id INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha')")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Over the Air')")
             conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'POSITION_APP', -60, 3.0, 3, '{\"decoded\":true}')")
             conn.execute("INSERT INTO positions VALUES (1, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, 13)")
             conn.commit()
@@ -138,13 +140,16 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertIsNotNone(detail)
         self.assertEqual(detail["position"]["source"], "LOC_INTERNAL")
         self.assertEqual(detail["position"]["sats"], 7)
+        self.assertEqual(detail["packet_source"], "Over the Air")
 
     def test_packets_export_exposes_position_source_and_sats(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, hop_limit INTEGER, rx_rssi INTEGER, rx_snr REAL, rx_lat REAL, rx_lon REAL)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, packet_source TEXT)")
             conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'MQTT')")
             conn.execute("INSERT INTO packets VALUES (1, 100, 123456789, NULL, 'POSITION_APP', 3, -60, 3.0, 38.1, -76.9)")
             conn.execute("INSERT INTO positions VALUES (1, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, 13)")
             conn.commit()
@@ -156,6 +161,39 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["source"], "LOC_INTERNAL")
         self.assertEqual(rows[0]["sats"], 7)
+        self.assertEqual(rows[0]["packet_source"], "MQTT")
+
+    def test_nodes_csv_includes_packet_source_column(self):
+        import app as app_mod
+
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.create_function("haversine", 4, lambda *args: None)
+            conn.execute(
+                """
+                CREATE TABLE nodes (
+                    node_id INTEGER, short_name TEXT, long_name TEXT, hardware_model TEXT,
+                    first_seen INTEGER, last_heard INTEGER, device_last_heard INTEGER,
+                    seeded INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT,
+                    sats INTEGER, rssi INTEGER, snr REAL, battery_level INTEGER,
+                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT, street TEXT, city TEXT, state TEXT
+                )
+                """
+            )
+            conn.execute("CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, rx_time INTEGER, portnum TEXT)")
+            conn.execute("CREATE TABLE message_counts (node_id INTEGER, sent_count INTEGER, received_count INTEGER, last_updated INTEGER)")
+            conn.execute("CREATE TABLE positions (id INTEGER PRIMARY KEY AUTOINCREMENT, packet_id INTEGER, rx_time INTEGER, node_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL)")
+            conn.commit()
+
+            csv_data = app_mod._build_nodes_csv(conn)
+        finally:
+            conn.close()
+
+        header = csv_data.splitlines()[0]
+        self.assertIn("Packet Source", header)
+        self.assertIn("MQTT", csv_data)
 
 
 if __name__ == "__main__":

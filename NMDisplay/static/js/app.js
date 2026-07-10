@@ -589,6 +589,7 @@ function _showTrafficDetail(p, rowEl) {
     ["From",       fromStr],
     ["To",         toStr],
     ["Type",       typeStr],
+    ["Packet Source", p.packet_source || "—"],
     ["RSSI",       p.rx_rssi != null ? `${p.rx_rssi} dBm` : "—"],
     ["SNR",        p.rx_snr  != null ? `${p.rx_snr} dB`   : "—"],
     ["Hop Limit",  hopStr],
@@ -632,6 +633,10 @@ function _showTrafficDetail(p, rowEl) {
         if (pos.precision_bits != null) extra.push(["Precision", _precisionLabel(pos.precision_bits)]);
         extra.push(["Source", _locationSourceLabel(pos.source)]);
         extra.push(["Sats", pos.sats != null ? String(pos.sats) : "—"]);
+      }
+
+      if (d.packet_source && !baseFields.some(([k]) => k === "Packet Source")) {
+        extra.push(["Packet Source", d.packet_source]);
       }
 
       if (d.text_message) {

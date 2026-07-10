@@ -495,6 +495,7 @@ const NMTelemetry = (() => {
       ["Long",        node.long_name         || "—"],
       ["HW",          node.hardware_model    || "—"],
       ["Role",        node.role              || "—"],
+      ["Packet Source", node.packet_source    || "—"],
       ["Distance",    distMi],
       ["RSSI",        node.rssi        != null ? `${node.rssi} dBm`  : "—"],
       ["SNR",         node.snr         != null ? `${node.snr} dB`    : "—"],

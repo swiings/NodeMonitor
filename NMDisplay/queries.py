@@ -98,6 +98,7 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 n.battery_level,
                 n.voltage,
                 n.hop_limit,
+                n.packet_source,
                 n.role,
                 n.street,
                 n.city,
@@ -503,9 +504,10 @@ def get_role_breakdown(conn) -> list[dict]:
 def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None) -> list[dict]:
     """Return packets filtered by portnum / hardware_model / role / node_id."""
     base = """
-        SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
-               p.rx_rssi, p.rx_snr, p.hop_limit,
+         SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+             p.rx_rssi, p.rx_snr, p.hop_limit,
                n.short_name, n.long_name,
+             n.packet_source,
                pos.source, pos.sats
         FROM packets p
         LEFT JOIN nodes n ON n.node_id = p.from_node_id
@@ -556,7 +558,7 @@ def get_packet_detail(conn, packet_id: int) -> dict | None:
     row = conn.execute(
         """SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
                   p.rx_rssi, p.rx_snr, p.hop_limit, p.payload_json,
-                  n.short_name, n.long_name
+                  n.short_name, n.long_name, n.packet_source
            FROM packets p
            LEFT JOIN nodes n ON n.node_id = p.from_node_id
            WHERE p.id = ?""",
@@ -623,10 +625,12 @@ def get_packets_for_export(conn) -> list[dict]:
     try:
         rows = conn.execute(
             """
-            SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
-                   p.hop_limit, p.rx_rssi, p.rx_snr, p.rx_lat, p.rx_lon,
+             SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
+                 p.hop_limit, p.rx_rssi, p.rx_snr, p.rx_lat, p.rx_lon,
+                 n.packet_source,
                    pos.source, pos.sats
             FROM packets p
+             LEFT JOIN nodes n ON n.node_id = p.from_node_id
             LEFT JOIN positions pos ON pos.packet_id = p.id
             ORDER BY rx_time ASC
             """

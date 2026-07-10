@@ -137,6 +137,49 @@ class PacketHandlerTests(unittest.TestCase):
         self.assertAlmostEqual(pos["lat"], 37.1234567)
         self.assertAlmostEqual(pos["lon"], -122.1234567)
 
+    def test_position_packet_persists_packet_source_from_rx_flags(self):
+        repo = DummyRepo()
+        repo._conn.execute("INSERT INTO packets (id) VALUES (1)")
+        repo._conn.commit()
+        node_store = DummyNodeStore()
+        packet = {
+            "from": 987654321,
+            "rxTime": 1700000002,
+            "rx_flags": 0x10,
+            "decoded": {
+                "position": {
+                    "latitude": 37.1234567,
+                    "longitude": -122.1234567,
+                }
+            },
+        }
+
+        packet_handler.handle_position(packet, repo, node_store, None, None)
+
+        self.assertEqual(len(repo.nodes), 1)
+        self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "MQTT")
+
+    def test_position_packet_defaults_packet_source_to_ota(self):
+        repo = DummyRepo()
+        repo._conn.execute("INSERT INTO packets (id) VALUES (1)")
+        repo._conn.commit()
+        node_store = DummyNodeStore()
+        packet = {
+            "from": 987654321,
+            "rxTime": 1700000003,
+            "decoded": {
+                "position": {
+                    "latitude": 37.1234567,
+                    "longitude": -122.1234567,
+                }
+            },
+        }
+
+        packet_handler.handle_position(packet, repo, node_store, None, None)
+
+        self.assertEqual(len(repo.nodes), 1)
+        self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "Over the Air")
+
 
 if __name__ == "__main__":
     unittest.main()

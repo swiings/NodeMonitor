@@ -26,7 +26,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
             snr                 REAL,
             battery_level       INTEGER,
             voltage             REAL,
-            hop_limit           INTEGER
+            hop_limit           INTEGER,
+            packet_source       TEXT
         );
 
         CREATE INDEX IF NOT EXISTS idx_nodes_last_heard ON nodes(last_heard);
@@ -141,6 +142,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("nodes", "state",             "TEXT"),
         ("nodes", "source",            "TEXT"),
         ("nodes", "sats",              "INTEGER"),
+        ("nodes", "packet_source",     "TEXT"),
         ("telemetry", "gas_resistance", "REAL"),
         ("positions", "source",        "TEXT"),
         ("positions", "sats",          "INTEGER"),

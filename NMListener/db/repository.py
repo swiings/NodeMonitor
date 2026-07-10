@@ -47,6 +47,7 @@ class Repository:
         battery_level: Optional[int] = None,
         voltage: Optional[float] = None,
         hop_limit: Optional[int] = None,
+        packet_source: Optional[str] = None,
     ) -> None:
         now = last_heard or int(time.time())
         self._conn.execute(
@@ -55,8 +56,8 @@ class Repository:
                 (node_id, short_name, long_name, hardware_model,
                  first_seen, last_heard, device_last_heard, seeded, role,
                  lat, lon, altitude_m, source, sats, rssi, snr,
-                 battery_level, voltage, hop_limit)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 battery_level, voltage, hop_limit, packet_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 short_name        = COALESCE(excluded.short_name,        short_name),
                 long_name         = COALESCE(excluded.long_name,         long_name),
@@ -74,13 +75,14 @@ class Repository:
                 snr               = COALESCE(excluded.snr,               snr),
                 battery_level     = COALESCE(excluded.battery_level,     battery_level),
                 voltage           = COALESCE(excluded.voltage,           voltage),
-                hop_limit         = COALESCE(excluded.hop_limit,         hop_limit)
+                hop_limit         = COALESCE(excluded.hop_limit,         hop_limit),
+                packet_source     = COALESCE(excluded.packet_source,     packet_source)
             """,
             (
                 node_id, short_name, long_name, hardware_model,
                 now, now, device_last_heard, seeded, role,
                 lat, lon, altitude_m, source, sats, rssi, snr,
-                battery_level, voltage, hop_limit,
+                battery_level, voltage, hop_limit, packet_source,
             ),
         )
         self._conn.commit()
