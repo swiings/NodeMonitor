@@ -192,6 +192,7 @@ def handle_telemetry(
     telemetry = decoded.get("telemetry", {})
     from_id = _to_int(packet.get("from") or packet.get("fromId"))
     rx_time = packet.get("rxTime") or int(time.time())
+    hop_limit = packet.get("hopLimit") if packet.get("hopLimit") is not None else 0
 
     if from_id is None:
         return
@@ -244,7 +245,7 @@ def handle_telemetry(
             to_node_id=None,
             portnum="TELEMETRY_APP",
             portnum_int=None,
-            hop_limit=None,
+            hop_limit=hop_limit,
             rx_rssi=None,
             rx_snr=None,
             rx_lat=None,
