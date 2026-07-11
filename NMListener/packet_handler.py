@@ -91,7 +91,7 @@ def handle_generic(
     rx_time = packet.get("rxTime") or int(time.time())
     rssi = packet.get("rxRssi")
     snr = packet.get("rxSnr")
-    hop_limit = packet.get("hopLimit")
+    hop_limit = packet.get("hopLimit") if packet.get("hopLimit") is not None else 0
     decoded = packet.get("decoded", {})
     portnum = decoded.get("portnum", "UNKNOWN")
     portnum_int = _portnum_int(decoded)
