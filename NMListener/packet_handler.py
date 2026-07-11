@@ -318,9 +318,13 @@ def handle_position(
     pos = decoded.get("position", {})
     from_id = _to_int(packet.get("from") or packet.get("fromId"))
     rx_time = packet.get("rxTime") or int(time.time())
-    rx_flags = packet.get("rx_flags")
-    if rx_flags is None:
-        rx_flags = packet.get("rxFlags")
+    from_mqtt = packet.get('from_mqtt', False)
+    via_mqtt = packet.get('via_mqtt', False)
+    
+    if from_mqtt or via_mqtt :
+        packet_source = "MQTT"
+    else:
+        packet_source = "Over the Air"
 
     if from_id is None:
         return
@@ -341,9 +345,7 @@ def handle_position(
 
     lat = float(lat)
     lon = float(lon)
-    is_mqtt = bool(rx_flags & 0x10) if isinstance(rx_flags, int) else False
-    packet_source = "MQTT" if is_mqtt else "Over the Air"
-
+    
     node_store.upsert(from_id, lat=lat, lon=lon, altitude_m=alt, source=source, sats=sats)
     repo.upsert_node(
         from_id,
