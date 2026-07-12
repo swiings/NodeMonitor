@@ -777,6 +777,10 @@ const NMMap = (() => {
       ? `${(node.altitude_m * 3.281).toFixed(0)} ft`
       : "—";
 
+    const positionStr = (node.lat != null && node.lon != null)
+      ? `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`
+      : "—";
+
     const rows = [
       ["ID",         node.node_id_hex || "—"],
       ["Short",      node.short_name  || "—"],
@@ -789,7 +793,7 @@ const NMMap = (() => {
       ["RSSI (dBm)", node.rssi != null ? `${node.rssi}` : "—"],
       ["SNR (dB)",   node.snr  != null ? `${node.snr}`  : "—"],
       ["Battery (%)", node.battery_level != null ? `${node.battery_level}` : "—"],
-      ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
+      ["Position",   positionStr],
       ["Location Source", _locationSourceLabel(node.source)],
       ["Sats",       node.sats != null ? String(node.sats) : "—"],
       ...(node.precision_bits != null ? [["Precision", _precisionLabel(node.precision_bits)]] : []),
