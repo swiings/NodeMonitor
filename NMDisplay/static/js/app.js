@@ -128,7 +128,7 @@ async function pollAll() {
 
     _lastPollOk = Date.now();
     const pollSec = (_cfg.display || {}).poll_interval_seconds || 30;
-    let statusMsg = `· Update Interval is ${pollSec}s · Last Updated at ${_timeStr()}`;
+    let statusMsg = `· Update Interval is ${pollSec}s · Last Updated at ${_timeStr(nodesData.reference_telemetry)}`;
     const tele = _formatReferenceTelemetry(nodesData.reference_telemetry);
     if (tele) statusMsg += ` · ${tele}`;
     setStatus(statusMsg);
@@ -174,7 +174,11 @@ function setStatus(msg) {
   if (el) el.textContent = msg;
 }
 
-function _timeStr() {
+function _timeStr(referenceTelemetry) {
+  if (referenceTelemetry && referenceTelemetry.rx_time != null) {
+    const dRef = new Date(referenceTelemetry.rx_time * 1000);
+    return dRef.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true});
+  }
   if (!_lastPollOk) return "never";
 const d = new Date(_lastPollOk);
 return d.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true});
