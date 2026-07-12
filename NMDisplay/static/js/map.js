@@ -786,11 +786,11 @@ const NMMap = (() => {
       ["Packet Source", node.packet_source || "—"],
       ["Hops away",  hopsAway != null ? hopsAway : "—"],
       ["Distance",   distMi || "—"],
-      ["RSSI",       node.rssi != null ? `${node.rssi} dBm` : "—"],
-      ["SNR",        node.snr  != null ? `${node.snr} dB`  : "—"],
-      ["Battery",    node.battery_level != null ? `${node.battery_level}%` : "—"],
+      ["RSSI (dBm)", node.rssi != null ? `${node.rssi}` : "—"],
+      ["SNR (dB)",   node.snr  != null ? `${node.snr}`  : "—"],
+      ["Battery (%)", node.battery_level != null ? `${node.battery_level}` : "—"],
       ["Position",   `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`],
-      ["Source",     _locationSourceLabel(node.source)],
+      ["Location Source", _locationSourceLabel(node.source)],
       ["Sats",       node.sats != null ? String(node.sats) : "—"],
       ...(node.precision_bits != null ? [["Precision", _precisionLabel(node.precision_bits)]] : []),
       ["Street",     node.street || "—"],
@@ -940,5 +940,13 @@ const NMMap = (() => {
     _dismissLabel();
   }
 
-  return { init, invalidate, highlightNode, flyToNode, hasMarker, closePopups };
+  return {
+    init,
+    invalidate,
+    highlightNode,
+    flyToNode,
+    hasMarker,
+    closePopups,
+    buildNodePopupHtml: _popupHtml,
+  };
 })();

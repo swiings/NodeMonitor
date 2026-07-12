@@ -500,21 +500,40 @@ function _renderTrafficBody(body, packets) {
 
 function _exportTrafficCsv() {
   if (!_currentTrafficPackets.length) return;
-  const cols = ["Time", "From", "From ID", "To ID", "Type", "RSSI (dBm)", "SNR (dB)", "Hop Limit", "Source", "Sats"];
+  const cols = [
+    "Time",
+    "From",
+    "From ID",
+    "To",
+    "To ID",
+    "Type",
+    "Packet Source",
+    "RSSI (dBm)",
+    "SNR (dB)",
+    "Hop Detail",
+    "Hop Limit",
+    "Hop Start",
+    "Hops Used",
+    "Location Source",
+    "Sats",
+  ];
   const rows = _currentTrafficPackets.map(p => {
     const ts = p.rx_time ? new Date(p.rx_time * 1000).toLocaleString([], { hour12: false }) : "";
-    const toId = p.to_node_id != null
-      ? (p.to_node_id === -1 || p.to_node_id === 4294967295 ? "broadcast" : `!${(p.to_node_id & 0xFFFFFFFF).toString(16).padStart(8, "0")}`)
-      : "";
+    const hopsUsed = _hopsUsedValue(p);
     return [
       ts,
       p.from_display || p.from_node_id_hex || "",
       p.from_node_id_hex || "",
-      toId,
-      p.portnum || "",
+      _toNodeDisplay(p.to_node_id),
+      p.to_node_id != null ? _nodeIdHex(p.to_node_id) : "",
+      _portnumLabel(p.portnum),
+      p.packet_source || "",
       p.rx_rssi != null ? p.rx_rssi : "",
       p.rx_snr  != null ? p.rx_snr  : "",
+      _hopDetailSummary(p),
       p.hop_limit != null ? p.hop_limit : "",
+      p.hop_start != null ? p.hop_start : "",
+      hopsUsed != null ? hopsUsed : "",
       p.source != null ? _locationSourceLabel(p.source) : "",
       p.sats != null ? p.sats : "",
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
@@ -557,44 +576,53 @@ function _locationSourceLabel(source) {
   }
 }
 
+function _portnumLabel(portnum) {
+  return portnum ? portnum.replace(/_APP$/, "").replace(/_/g, " ") : "—";
+}
+
+function _nodeIdHex(id) {
+  return id != null ? `!${(id >>> 0).toString(16).padStart(8, "0")}` : "—";
+}
+
+function _toNodeDisplay(id) {
+  if (id === 4294967295 || id === -1) return "Broadcast (0xFFFFFFFF)";
+  return _nodeIdHex(id);
+}
+
+function _hopsUsedValue(p) {
+  if (p.hop_start == null || p.hop_limit == null || p.hop_start < p.hop_limit) return null;
+  return p.hop_start - p.hop_limit;
+}
+
+function _hopDetailSummary(p) {
+  if (p.hop_limit == null) return "—";
+  const hopsUsed = _hopsUsedValue(p);
+  return `${p.hop_limit} remaining (${hopsUsed != null ? hopsUsed : "?"} used${p.hop_start != null ? `; start ${p.hop_start}` : ""})`;
+}
+
 function _showTrafficDetail(p, rowEl) {
   document.querySelectorAll(".nm-traffic-row--selected").forEach(r => r.classList.remove("nm-traffic-row--selected"));
   rowEl.classList.add("nm-traffic-row--selected");
 
-  const BROADCAST = 4294967295;
-  const _hex = id => id != null ? `!${(id >>> 0).toString(16).padStart(8, "0")}` : "—";
   const _ts  = t  => t  ? new Date(t * 1000).toLocaleString([], { hour12: false }) : "—";
-
-  const toId  = p.to_node_id;
-  const toStr = toId === BROADCAST ? "Broadcast (0xFFFFFFFF)"
-              : toId != null       ? _hex(toId)
-              : "—";
-
-  const hopsUsed = (p.hop_start != null && p.hop_limit != null && p.hop_start >= p.hop_limit)
-    ? (p.hop_start - p.hop_limit)
-    : null;
-  const hopStr = p.hop_limit != null
-    ? `${p.hop_limit} remaining (${hopsUsed != null ? hopsUsed : "?"} used${p.hop_start != null ? `; start ${p.hop_start}` : ""})`
-    : "—";
+  const hopStr = _hopDetailSummary(p);
 
   const fromFull = [p.short_name, p.long_name].filter(Boolean);
   const fromStr  = fromFull.length
-    ? `${_hex(p.from_node_id)}  ${fromFull.join(" / ")}`
-    : _hex(p.from_node_id);
+    ? `${_nodeIdHex(p.from_node_id)}  ${fromFull.join(" / ")}`
+    : _nodeIdHex(p.from_node_id);
 
-  const typeStr = p.portnum
-    ? p.portnum.replace(/_APP$/, "").replace(/_/g, " ")
-    : "—";
+  const typeStr = _portnumLabel(p.portnum);
 
   const baseFields = [
     ["Time",       _ts(p.rx_time)],
     ["From",       fromStr],
-    ["To",         toStr],
+    ["To",         _toNodeDisplay(p.to_node_id)],
     ["Type",       typeStr],
     ["Packet Source", p.packet_source || "—"],
-    ["RSSI",       p.rx_rssi != null ? `${p.rx_rssi} dBm` : "—"],
-    ["SNR",        p.rx_snr  != null ? `${p.rx_snr} dB`   : "—"],
-    ["Hop Limit",  hopStr],
+    ["RSSI (dBm)", p.rx_rssi != null ? `${p.rx_rssi}` : "—"],
+    ["SNR (dB)",   p.rx_snr  != null ? `${p.rx_snr}`  : "—"],
+    ["Hop Detail", hopStr],
   ];
 
   const detail     = document.getElementById("nm-traffic-detail");
@@ -633,7 +661,7 @@ function _showTrafficDetail(p, rowEl) {
         extra.push(["Lat / Lon", `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`]);
         if (pos.altitude_m   != null) extra.push(["Altitude",  `${(pos.altitude_m * 3.281).toFixed(0)} ft`]);
         if (pos.precision_bits != null) extra.push(["Precision", _precisionLabel(pos.precision_bits)]);
-        extra.push(["Source", _locationSourceLabel(pos.source)]);
+        extra.push(["Location Source", _locationSourceLabel(pos.source)]);
         extra.push(["Sats", pos.sats != null ? String(pos.sats) : "—"]);
       }
 

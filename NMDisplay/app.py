@@ -352,22 +352,86 @@ def api_packet_breakdown():
 # ------------------------------------------------------------------
 
 _CSV_FIELDS = [
-    "node_id_hex", "short_name", "long_name", "hardware_model", "role",
-    "first_seen", "last_heard", "seeded",
-    "lat", "lon", "altitude_m", "source", "sats",
-    "rssi", "snr", "battery_level", "voltage", "hop_limit", "Packet Source",
-    "total_packets", "sent_count", "received_count", "dead_end_count",
-    "distance_km",
+    "ID", "Short", "Long", "Hardware", "Role", "Packet Source",
+    "Hops Away", "Distance (mi)",
+    "RSSI (dBm)", "SNR (dB)", "Battery (%)", "Voltage (V)",
+    "Position", "Location Source", "Sats", "Precision",
+    "Street", "City", "State", "Altitude (ft)",
+    "Packets", "Messages Sent", "Messages Received", "Dead End Packets",
+    "Last Heard", "First Heard", "Seeded",
 ]
 
 
 def _build_nodes_csv(conn) -> str:
     nodes = queries.get_all_nodes(conn, None, None)
+
+    def _fmt_ts(ts):
+        if not ts:
+            return ""
+        from datetime import datetime
+        return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+    def _fmt_loc_source(source):
+        return {
+            "LOC_UNSET": "Unknown",
+            "LOC_INTERNAL": "Hardware GPS",
+            "LOC_EXTERNAL": "Phone/Host GPS",
+            "LOC_MANUAL": "Manual Position",
+        }.get(source, "Unknown")
+
+    def _fmt_precision(bits):
+        if bits is None:
+            return ""
+        try:
+            bits = int(bits)
+        except Exception:
+            return str(bits)
+        if bits <= 0:
+            return f"{bits} bits"
+        if bits >= 32:
+            return f"{bits} bits (exact)"
+        radius_mi = (2 ** (32 - bits - 1) / 1e7) * 111.32 * 0.621371
+        if radius_mi < 0.1:
+            return f"{bits} bits (+/- {round(radius_mi * 5280)} ft)"
+        return f"{bits} bits (+/- {radius_mi:.1f} mi)"
+
     rows = []
     for node in nodes:
-        row = dict(node)
-        row["Packet Source"] = node.get("packet_source")
-        rows.append(row)
+        lat = node.get("lat")
+        lon = node.get("lon")
+        alt_m = node.get("altitude_m")
+        distance_km = node.get("distance_km")
+
+        rows.append({
+            "ID": node.get("node_id_hex") or "",
+            "Short": node.get("short_name") or "",
+            "Long": node.get("long_name") or "",
+            "Hardware": node.get("hardware_model") or "",
+            "Role": node.get("role") or "",
+            "Packet Source": node.get("packet_source") or "",
+            "Hops Away": node.get("hops_away") if node.get("hops_away") is not None else "",
+            "Distance (mi)": f"{distance_km * 0.621371:.1f}" if distance_km is not None else "",
+            "RSSI (dBm)": node.get("rssi") if node.get("rssi") is not None else "",
+            "SNR (dB)": node.get("snr") if node.get("snr") is not None else "",
+            "Battery (%)": node.get("battery_level") if node.get("battery_level") is not None else "",
+            "Voltage (V)": f"{node.get('voltage'):.2f}" if node.get("voltage") is not None else "",
+            "Position": f"{lat:.5f}, {lon:.5f}" if lat is not None and lon is not None else "",
+            "Location Source": _fmt_loc_source(node.get("source")),
+            "Sats": node.get("sats") if node.get("sats") is not None else "",
+            "Precision": _fmt_precision(node.get("precision_bits")),
+            "Street": node.get("street") or "",
+            "City": node.get("city") or "",
+            "State": node.get("state") or "",
+            "Altitude (ft)": f"{alt_m * 3.281:.0f}" if alt_m is not None else "",
+            "Packets": node.get("total_packets") if node.get("total_packets") is not None else "",
+            "Messages Sent": node.get("sent_count") if node.get("sent_count") is not None else "",
+            "Messages Received": node.get("received_count") if node.get("received_count") is not None else "",
+            "Dead End Packets": node.get("dead_end_count") if node.get("dead_end_count") is not None else "",
+            "Last Heard": _fmt_ts(node.get("last_heard")),
+            "First Heard": _fmt_ts(node.get("first_seen")),
+            "Seeded": "yes" if node.get("seeded") else "no",
+        })
+
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=_CSV_FIELDS, extrasaction="ignore")
     writer.writeheader()
@@ -394,17 +458,76 @@ def api_export_nodes():
 
 
 _PACKET_CSV_FIELDS = [
-    "id", "rx_time", "from_node_id", "to_node_id", "portnum",
-    "hop_limit", "hop_start", "rx_rssi", "rx_snr", "rx_lat", "rx_lon", "source", "sats"
+    "Packet ID", "Time", "From ID", "To ID", "Type",
+    "Packet Source", "RSSI (dBm)", "SNR (dB)",
+    "Hop Detail", "Hop Limit", "Hop Start", "Hops Used",
+    "RX Lat", "RX Lon", "Location Source", "Sats"
 ]
 
 
 def _build_packets_csv(conn) -> str:
     packets = queries.get_packets_for_export(conn)
+    rows = []
+    for p in packets:
+        hop_limit = p.get("hop_limit")
+        hop_start = p.get("hop_start")
+        hops_used = ""
+        if hop_limit is not None and hop_start is not None and hop_start >= hop_limit:
+            hops_used = hop_start - hop_limit
+
+        hop_detail = "—"
+        if hop_limit is not None:
+            used_str = hops_used if hops_used != "" else "?"
+            start_str = f"; start {hop_start}" if hop_start is not None else ""
+            hop_detail = f"{hop_limit} remaining ({used_str} used{start_str})"
+
+        to_id = p.get("to_node_id") or "—"
+        if str(to_id).lower() == "!ffffffff":
+            to_id = "Broadcast (0xFFFFFFFF)"
+
+        portnum = p.get("portnum")
+        type_label = portnum.replace("_APP", "").replace("_", " ") if portnum else "—"
+
+        source = p.get("source")
+        source_label = {
+            "LOC_UNSET": "Unknown",
+            "LOC_INTERNAL": "Hardware GPS",
+            "LOC_EXTERNAL": "Phone/Host GPS",
+            "LOC_MANUAL": "Manual Position",
+        }.get(source, "Unknown")
+
+        rx_time = p.get("rx_time")
+        time_label = ""
+        if rx_time is not None:
+            try:
+                from datetime import datetime
+                time_label = datetime.fromtimestamp(rx_time).strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                time_label = str(rx_time)
+
+        rows.append({
+            "Packet ID": p.get("id", ""),
+            "Time": time_label,
+            "From ID": p.get("from_node_id") or "—",
+            "To ID": to_id,
+            "Type": type_label,
+            "Packet Source": p.get("packet_source") or "",
+            "RSSI (dBm)": p.get("rx_rssi") if p.get("rx_rssi") is not None else "",
+            "SNR (dB)": p.get("rx_snr") if p.get("rx_snr") is not None else "",
+            "Hop Detail": hop_detail,
+            "Hop Limit": hop_limit if hop_limit is not None else "",
+            "Hop Start": hop_start if hop_start is not None else "",
+            "Hops Used": hops_used,
+            "RX Lat": p.get("rx_lat") if p.get("rx_lat") is not None else "",
+            "RX Lon": p.get("rx_lon") if p.get("rx_lon") is not None else "",
+            "Location Source": source_label,
+            "Sats": p.get("sats") if p.get("sats") is not None else "",
+        })
+
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=_PACKET_CSV_FIELDS, extrasaction="ignore")
     writer.writeheader()
-    writer.writerows(packets)
+    writer.writerows(rows)
     return buf.getvalue()
 
 

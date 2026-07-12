@@ -485,6 +485,10 @@ const NMTelemetry = (() => {
   }
 
   function _buildNodeInfoHtml(node) {
+    if (typeof NMMap?.buildNodePopupHtml === "function") {
+      return NMMap.buildNodePopupHtml(node);
+    }
+
     const ts      = node.last_heard  ? new Date(node.last_heard  * 1000).toLocaleString() : "—";
     const tsFirst = node.first_seen  ? new Date(node.first_seen  * 1000).toLocaleString() : "—";
     const distMi  = node.distance_km != null
