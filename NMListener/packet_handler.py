@@ -96,6 +96,7 @@ def handle_generic(
     decoded = packet.get("decoded", {})
     portnum = decoded.get("portnum", "UNKNOWN")
     portnum_int = _portnum_int(decoded)
+    packet_source = _packet_source_from_packet(packet)
 
     if from_id is None:
         return
@@ -118,7 +119,14 @@ def handle_generic(
     # timeline buckets) so gauges and the map stay current regardless of the
     # save-packet-data flag.
     node_store.upsert(from_id, rssi=rssi, snr=snr, hop_limit=hop_limit)
-    repo.upsert_node(from_id, rssi=rssi, snr=snr, hop_limit=hop_limit, last_heard=rx_time)
+    repo.upsert_node(
+        from_id,
+        rssi=rssi,
+        snr=snr,
+        hop_limit=hop_limit,
+        packet_source=packet_source,
+        last_heard=rx_time,
+    )
 
     # Increment per-minute timeline (in-memory + DB aggregate)
     minute_ts = timeline.record(portnum, rx_time)
@@ -322,17 +330,7 @@ def handle_position(
     pos = decoded.get("position", {})
     from_id = _to_int(packet.get("from") or packet.get("fromId"))
     rx_time = packet.get("rxTime") or int(time.time())
-    from_mqtt = bool(packet.get("from_mqtt", False))
-    via_mqtt = bool(packet.get("via_mqtt", False))
-    rx_flags = packet.get("rx_flags")
-    if rx_flags is None:
-        rx_flags = packet.get("rxFlags")
-    mqtt_flag = isinstance(rx_flags, int) and (rx_flags & 0x10) != 0
-
-    if from_mqtt or via_mqtt or mqtt_flag:
-        packet_source = "MQTT"
-    else:
-        packet_source = "Over the Air"
+    packet_source = _packet_source_from_packet(packet)
 
     if from_id is None:
         return
@@ -438,6 +436,17 @@ def _portnum_int(decoded: dict) -> Optional[int]:
     if isinstance(raw, int):
         return raw
     return None
+
+
+def _packet_source_from_packet(packet: dict) -> str:
+    """Classify packet source using Meshtastic MQTT flags when present."""
+    from_mqtt = bool(packet.get("from_mqtt", False))
+    via_mqtt = bool(packet.get("via_mqtt", False))
+    rx_flags = packet.get("rx_flags")
+    if rx_flags is None:
+        rx_flags = packet.get("rxFlags")
+    mqtt_flag = isinstance(rx_flags, int) and (rx_flags & 0x10) != 0
+    return "MQTT" if (from_mqtt or via_mqtt or mqtt_flag) else "Over the Air"
 
 
 def _last_packet_id(repo: Repository) -> Optional[int]:

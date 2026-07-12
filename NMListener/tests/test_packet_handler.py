@@ -69,10 +69,19 @@ class DummyRepo:
             "precision_bits": precision_bits,
         })
 
+    def increment_timeline(self, minute_ts, portnum):
+        self.timeline = getattr(self, "timeline", [])
+        self.timeline.append({"minute_ts": minute_ts, "portnum": portnum})
+
 
 class DummyNodeStore:
     def upsert(self, *args, **kwargs):
         pass
+
+
+class DummyTimeline:
+    def record(self, _portnum, rx_time):
+        return (rx_time // 60) * 60
 
 
 class PacketHandlerTests(unittest.TestCase):
@@ -180,6 +189,46 @@ class PacketHandlerTests(unittest.TestCase):
 
         self.assertEqual(len(repo.nodes), 1)
         self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "Over the Air")
+
+    def test_generic_telemetry_packet_persists_packet_source_mqtt(self):
+        repo = DummyRepo()
+        node_store = DummyNodeStore()
+        timeline = DummyTimeline()
+
+        packet = {
+            "from": 987654321,
+            "rxTime": 1700000010,
+            "rx_flags": 0x10,
+            "decoded": {
+                "portnum": "TELEMETRY_APP",
+            },
+        }
+
+        packet_handler.handle_generic(packet, None, repo, node_store, timeline, None, None)
+
+        self.assertEqual(len(repo.nodes), 1)
+        self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "MQTT")
+
+    def test_generic_private_channel_packet_persists_packet_source_ota(self):
+        repo = DummyRepo()
+        node_store = DummyNodeStore()
+        timeline = DummyTimeline()
+
+        packet = {
+            "from": 987654321,
+            "to": 4294967295,
+            "rxTime": 1700000011,
+            "decoded": {
+                "portnum": "UNKNOWN",
+            },
+        }
+
+        packet_handler.handle_generic(packet, None, repo, node_store, timeline, None, None)
+
+        self.assertEqual(len(repo.nodes), 1)
+        self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "Over the Air")
+        self.assertEqual(len(repo.packets), 1)
+        self.assertEqual(repo.packets[0]["portnum"], "UNKNOWN_PRIVATE_CH")
 
 
 if __name__ == "__main__":
