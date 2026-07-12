@@ -719,15 +719,9 @@ const NMMap = (() => {
     const m = _markers.get(nodeId);
     if (!m) return;
     _map.setView(m.getLatLng(), 15);
-    _showLabel(nodeId);
-    _map.once("moveend", () => {
-      const visible = _cluster.getVisibleParent(m);
-      if (visible === m) {
-        m.openPopup();
-      } else {
-        _cluster.zoomToShowLayer(m, () => m.openPopup());
-      }
-    });
+    // Programmatic navigation should only reveal the tooltip.
+    // Popup remains user-driven via marker click.
+    _cluster.zoomToShowLayer(m, () => _showLabel(nodeId));
   }
 
   function hasMarker(nodeId) {
