@@ -570,9 +570,11 @@ function _showTrafficDetail(p, rowEl) {
               : toId != null       ? _hex(toId)
               : "—";
 
-  const hopsUsed = p.hop_limit != null ? (3 - p.hop_limit) : null;
-  const hopStr   = p.hop_limit != null
-    ? `${p.hop_limit} remaining (${hopsUsed >= 0 ? hopsUsed : "?"} used)`
+  const hopsUsed = (p.hop_start != null && p.hop_limit != null && p.hop_start >= p.hop_limit)
+    ? (p.hop_start - p.hop_limit)
+    : null;
+  const hopStr = p.hop_limit != null
+    ? `${p.hop_limit} remaining (${hopsUsed != null ? hopsUsed : "?"} used${p.hop_start != null ? `; start ${p.hop_start}` : ""})`
     : "—";
 
   const fromFull = [p.short_name, p.long_name].filter(Boolean);

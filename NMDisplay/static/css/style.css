@@ -391,6 +391,7 @@ body.layout-split #nm-charts-container {
   border-collapse: collapse;
   padding: 4px 8px;
   font-size: 12px;
+  table-layout: fixed;
 }
 .nm-hop-table tr { border-bottom: 1px solid var(--divider); }
 .nm-hop-table tr:last-child { border-bottom: none; }
@@ -416,6 +417,44 @@ body.layout-split #nm-charts-container {
   text-align: right;
   padding: 3px 8px 3px 4px;
   color: var(--text);
+}
+
+.nm-hop-dual-head th {
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nm-hop-mid-head,
+.nm-hop-mid-divider {
+  width: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  padding: 3px 0;
+}
+
+.nm-hop-axis-label {
+  width: 24px;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  padding: 3px 0;
+}
+
+.nm-hop-count--left {
+  text-align: left;
+  padding: 3px 4px 3px 8px;
+}
+
+.nm-hop-bar-cell--left {
+  text-align: right;
+}
+
+.nm-hop-bar--left {
+  margin-left: auto;
 }
 
 .nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

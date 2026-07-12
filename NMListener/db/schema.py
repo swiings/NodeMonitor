@@ -41,6 +41,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
             portnum         TEXT NOT NULL,
             portnum_int     INTEGER,
             hop_limit       INTEGER,
+            hop_start       INTEGER,
             rx_rssi         INTEGER,
             rx_snr          REAL,
             rx_lat          REAL,
@@ -133,6 +134,12 @@ def create_tables(conn: sqlite3.Connection) -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """Add columns introduced after initial schema creation."""
+    # Backward-compatible schema migration for existing session DBs.
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(packets)").fetchall()}
+    if "hop_start" not in cols:
+        conn.execute("ALTER TABLE packets ADD COLUMN hop_start INTEGER")
+        conn.commit()
+
     new_columns = [
         ("nodes", "seeded",            "INTEGER NOT NULL DEFAULT 0"),
         ("nodes", "device_last_heard", "INTEGER"),

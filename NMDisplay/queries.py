@@ -97,7 +97,13 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 n.snr,
                 n.battery_level,
                 n.voltage,
-                n.hop_limit,
+                COALESCE(lp.last_hop_limit, n.hop_limit) AS hop_limit,
+                lp.last_hop_start AS hop_start,
+                CASE
+                    WHEN lp.last_hop_start IS NOT NULL AND lp.last_hop_start >= COALESCE(lp.last_hop_limit, 0)
+                    THEN lp.last_hop_start - COALESCE(lp.last_hop_limit, 0)
+                    ELSE NULL
+                END AS hops_away,
                 n.packet_source,
                 n.role,
                 n.street,
@@ -124,14 +130,18 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 GROUP BY from_node_id
             ) de ON de.from_node_id = n.node_id
             LEFT JOIN (
-                SELECT p.from_node_id, p.portnum AS last_portnum
+                SELECT p.from_node_id,
+                       p.portnum AS last_portnum,
+                       p.hop_limit AS last_hop_limit,
+                       p.hop_start AS last_hop_start
                 FROM packets p
-                INNER JOIN (
-                    SELECT from_node_id, MAX(rx_time) AS max_rx
-                    FROM packets
-                    GROUP BY from_node_id
-                ) mx ON p.from_node_id = mx.from_node_id AND p.rx_time = mx.max_rx
-                GROUP BY p.from_node_id
+                WHERE p.id = (
+                    SELECT p2.id
+                    FROM packets p2
+                    WHERE p2.from_node_id = p.from_node_id
+                    ORDER BY p2.rx_time DESC, p2.id DESC
+                    LIMIT 1
+                )
             ) lp ON lp.from_node_id = n.node_id
             LEFT JOIN (
                 SELECT node_id, precision_bits
@@ -223,10 +233,25 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     active = conn.execute(
         "SELECT COUNT(*) FROM nodes WHERE last_heard > ?", (now - 3900,)
     ).fetchone()[0]
-    # Direct: nodes from which we received a packet with no relay hops (hop_limit >= 3)
-    direct = conn.execute(
-        "SELECT COUNT(DISTINCT from_node_id) FROM packets WHERE hop_limit >= 3"
+    # Direct: hops-away = 0, computed from packet-level hop_start - hop_limit.
+    # If the session has no hop_start data yet, fall back to legacy hop_limit-only heuristic.
+    has_hop_start = conn.execute(
+        "SELECT COUNT(*) FROM packets WHERE hop_start IS NOT NULL"
     ).fetchone()[0]
+    if has_hop_start:
+        direct = conn.execute(
+            """
+            SELECT COUNT(DISTINCT from_node_id)
+            FROM packets
+            WHERE hop_start IS NOT NULL
+              AND hop_start >= COALESCE(hop_limit, 0)
+              AND (hop_start - COALESCE(hop_limit, 0)) = 0
+            """
+        ).fetchone()[0]
+    else:
+        direct = conn.execute(
+            "SELECT COUNT(DISTINCT from_node_id) FROM packets WHERE hop_limit >= 3"
+        ).fetchone()[0]
 
     # Packets per minute: average of last 5 complete minute buckets
     since_5min = ((now - 300) // 60) * 60
@@ -261,28 +286,16 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     farthest = None
     if my_lat is not None and my_lon is not None:
         excl = my_node_id if my_node_id is not None else -1
-        max_hop_row = conn.execute(
-            "SELECT MAX(hop_limit) FROM packets WHERE hop_limit IS NOT NULL AND from_node_id != ?",
-            (excl,)
-        ).fetchone()
-        max_hop = max_hop_row[0] if max_hop_row and max_hop_row[0] is not None else 3
-        rows = conn.execute(
-            """
-            SELECT node_id, short_name, role, hop_limit,
-                   haversine(lat, lon, :lat, :lon) AS dist_km
-            FROM nodes
-            WHERE lat IS NOT NULL AND lon IS NOT NULL
-              AND node_id != :my_id
-            ORDER BY dist_km ASC
-            """,
-            {"lat": my_lat, "lon": my_lon, "my_id": excl},
-        ).fetchall()
+        rows = [
+            r for r in get_all_nodes(conn, my_lat, my_lon)
+            if r.get("node_id") != excl and r.get("distance_km") is not None
+        ]
+        rows.sort(key=lambda r: r["distance_km"])
         if rows:
             def _fmt(row):
                 name = row["short_name"] or f"!{row['node_id'] & 0xFFFFFFFF:08x}"
-                mi = round((row["dist_km"] or 0) * 0.621371, 1)
-                hl = row["hop_limit"]
-                hops_away = (max_hop - hl) if hl is not None else None
+                mi = round((row["distance_km"] or 0) * 0.621371, 1)
+                hops_away = row.get("hops_away")
                 return {"node_id": row["node_id"], "short_name": name, "distance_mi": mi, "role": row["role"], "hops_away": hops_away}
             closest  = _fmt(rows[0])
             farthest = _fmt(rows[-1])
@@ -303,8 +316,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         else:
             client_count += row["cnt"]
 
-    # Hop distribution: bucket hop_limit into 0, 1, 2, 3, 4+
-    # Exclude my own node — its TCP packets carry hop_limit=3 but aren't RF mesh packets
+    # Hop-left distribution from packet hop_limit.
+    # Exclude my own node — its TCP packets carry defaults that aren't RF mesh traversals.
     excl_hop = my_node_id if my_node_id is not None else -1
     hop_rows = conn.execute(
         "SELECT hop_limit, COUNT(*) AS cnt FROM packets WHERE hop_limit IS NOT NULL AND from_node_id != ? GROUP BY hop_limit",
@@ -318,9 +331,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "1":  hop_raw.get(1, 0),
         "0":  hop_raw.get(0, 0),
     }
-    # Packets with NULL hop_limit — protobuf3 omits 0-value fields, so many
-    # 0-hops-remaining packets arrive without a hop_limit field and are stored
-    # as NULL. Count them separately and surface as "?" in the hop distribution.
+    # Legacy sessions may contain NULL hop_limit (protobuf omitted zero in older flow).
+    # Keep counting them and expose as "?" for compatibility.
     null_hop_row = conn.execute(
         "SELECT COUNT(*) AS cnt FROM packets WHERE hop_limit IS NULL AND from_node_id != ?",
         (excl_hop,)
@@ -331,6 +343,21 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     hop_dist_raw = {str(k): v for k, v in sorted(hop_raw.items(), reverse=True)}
     if null_hop_count:
         hop_dist_raw["?"] = null_hop_count
+
+    # Hops-used distribution using packet-level hop_start - hop_limit when valid.
+    used_rows = conn.execute(
+        """
+        SELECT (hop_start - COALESCE(hop_limit, 0)) AS hops_used, COUNT(*) AS cnt
+        FROM packets
+        WHERE from_node_id != ?
+          AND hop_start IS NOT NULL
+          AND hop_start >= COALESCE(hop_limit, 0)
+        GROUP BY hops_used
+        ORDER BY hops_used DESC
+        """,
+        (excl_hop,)
+    ).fetchall()
+    hop_used_raw = {str(row["hops_used"]): row["cnt"] for row in used_rows}
 
     return {
         "direct_count":       direct,
@@ -346,6 +373,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "session_start_ts":   first_pkt_ts,
         "hop_dist":           hop_dist,
         "hop_dist_raw":       hop_dist_raw,
+        "hop_used_raw":       hop_used_raw,
         "router_count":       router_count,
         "client_count":       client_count,
     }
@@ -505,7 +533,7 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None
     """Return packets filtered by portnum / hardware_model / role / node_id."""
     base = """
          SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
-             p.rx_rssi, p.rx_snr, p.hop_limit,
+                         p.rx_rssi, p.rx_snr, p.hop_limit, p.hop_start,
                n.short_name, n.long_name,
              n.packet_source,
                pos.source, pos.sats
@@ -557,7 +585,7 @@ def get_packet_detail(conn, packet_id: int) -> dict | None:
     import json as _json
     row = conn.execute(
         """SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
-                  p.rx_rssi, p.rx_snr, p.hop_limit, p.payload_json,
+                p.rx_rssi, p.rx_snr, p.hop_limit, p.hop_start, p.payload_json,
                   n.short_name, n.long_name, n.packet_source
            FROM packets p
            LEFT JOIN nodes n ON n.node_id = p.from_node_id
@@ -626,7 +654,7 @@ def get_packets_for_export(conn) -> list[dict]:
         rows = conn.execute(
             """
              SELECT p.id, p.rx_time, p.from_node_id, p.to_node_id, p.portnum,
-                 p.hop_limit, p.rx_rssi, p.rx_snr, p.rx_lat, p.rx_lon,
+                                 p.hop_limit, p.hop_start, p.rx_rssi, p.rx_snr, p.rx_lat, p.rx_lon,
                  n.packet_source,
                    pos.source, pos.sats
             FROM packets p

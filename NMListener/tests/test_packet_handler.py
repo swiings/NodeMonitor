@@ -22,7 +22,7 @@ class DummyRepo:
         self.nodes.append({"args": args, "kwargs": kwargs})
 
     def insert_packet(self, *, rx_time, from_node_id, to_node_id, portnum, portnum_int,
-                      hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon, payload_raw, payload_dict):
+                      hop_limit, hop_start, rx_rssi, rx_snr, rx_lat, rx_lon, payload_raw, payload_dict):
         cur = self._conn.execute("INSERT INTO packets DEFAULT VALUES")
         self._conn.commit()
         packet_id = cur.lastrowid
@@ -32,6 +32,7 @@ class DummyRepo:
             "from_node_id": from_node_id,
             "to_node_id": to_node_id,
             "portnum": portnum,
+            "hop_start": hop_start,
             "payload_dict": payload_dict,
         })
         return packet_id

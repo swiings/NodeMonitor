@@ -105,6 +105,7 @@ class Repository:
         portnum: str,
         portnum_int: Optional[int],
         hop_limit: Optional[int],
+        hop_start: Optional[int],
         rx_rssi: Optional[int],
         rx_snr: Optional[float],
         rx_lat: Optional[float],
@@ -117,13 +118,13 @@ class Repository:
             """
             INSERT INTO packets
                 (rx_time, from_node_id, to_node_id, portnum, portnum_int,
-                 hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon,
+                 hop_limit, hop_start, rx_rssi, rx_snr, rx_lat, rx_lon,
                  payload_raw, payload_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 rx_time, from_node_id, to_node_id, portnum, portnum_int,
-                hop_limit, rx_rssi, rx_snr, rx_lat, rx_lon,
+                hop_limit, hop_start, rx_rssi, rx_snr, rx_lat, rx_lon,
                 payload_raw, payload_json,
             ),
         )

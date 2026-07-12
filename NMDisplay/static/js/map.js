@@ -36,9 +36,9 @@ const NMMap = (() => {
   let _myNodeBtn = null;        // reference to "go to my node" button element
 
   // Hop filter state
-  // _maxHopsFilter: max hops-traversed to show; Infinity = show all (ALL position)
+  // _maxHopsFilter: max hops-away to show; Infinity = show all (ALL position)
   let _maxHopsFilter = Infinity;
-  let _dataMaxHopLimit = 0;     // highest hop_limit seen in current node set
+  let _dataMaxHopLimit = 0;     // kept name for compatibility; stores highest hops_away seen
   let _filterIndicator = null;  // Leaflet control showing active hop filter
 
   // Age filter state — max age in minutes; Infinity = show all
@@ -340,17 +340,17 @@ const NMMap = (() => {
     if (!slider) return;
     slider.addEventListener("input", () => {
       const v = parseInt(slider.value);
-      const maxTraversed = _dataMaxHopLimit;  // same as slider.max - 1
-      _maxHopsFilter = (v > maxTraversed) ? Infinity : v;
-      _updateSliderLabel(v, maxTraversed);
+      const maxHopsAway = _dataMaxHopLimit;  // same as slider.max - 1
+      _maxHopsFilter = (v > maxHopsAway) ? Infinity : v;
+      _updateSliderLabel(v, maxHopsAway);
       _applyFilters();
     });
   }
 
-  function _updateSliderLabel(v, maxTraversed) {
+  function _updateSliderLabel(v, maxHopsAway) {
     const label = document.getElementById("nm-hop-label");
     if (!label) return;
-    if (v > maxTraversed) {
+    if (v > maxHopsAway) {
       label.textContent = "ALL";
     } else if (v === 0) {
       label.textContent = "Direct";
@@ -360,29 +360,27 @@ const NMMap = (() => {
   }
 
   function _updateHopSliderRange(nodes) {
-    // Compute the highest hop_limit in the data to determine "direct"
-    // hops_traversed = _dataMaxHopLimit - node.hop_limit
-    const hopLimits = nodes
-      .map(n => n.hop_limit)
-      .filter(v => v != null);
-    if (hopLimits.length === 0) return;
+    const hopsAwayVals = nodes
+      .map(n => n.hops_away)
+      .filter(v => v != null && Number.isFinite(v));
+    if (hopsAwayVals.length === 0) return;
 
-    const maxHopLimit = Math.max(...hopLimits);
-    if (maxHopLimit === _dataMaxHopLimit) return;  // no change
-    _dataMaxHopLimit = maxHopLimit;
+    const maxHopsAway = Math.max(...hopsAwayVals);
+    if (maxHopsAway === _dataMaxHopLimit) return;  // no change
+    _dataMaxHopLimit = maxHopsAway;
 
     const slider = document.getElementById("nm-hop-slider");
     if (!slider) return;
 
-    const maxTraversed = _dataMaxHopLimit;  // e.g., if maxHopLimit=3, max traversed = 3
-    const sliderMax = maxTraversed + 1;     // +1 for the ALL position
+    const maxHopsAwayNow = _dataMaxHopLimit;
+    const sliderMax = maxHopsAwayNow + 1;   // +1 for the ALL position
 
     slider.max = sliderMax;
 
     const dl = document.getElementById("nm-hop-ticks");
     if (dl) {
       const marks = [];
-      for (let i = 0; i <= maxTraversed; i++) marks.push(i);
+      for (let i = 0; i <= maxHopsAwayNow; i++) marks.push(i);
       marks.push(sliderMax);  // ALL position
       dl.innerHTML = marks.map(v => `<option value="${v}"></option>`).join("");
     }
@@ -390,7 +388,7 @@ const NMMap = (() => {
     // If slider is at ALL (max), keep it there
     if (parseInt(slider.value) >= parseInt(slider.max) - 1) {
       slider.value = sliderMax;
-      _updateSliderLabel(sliderMax, maxTraversed);
+      _updateSliderLabel(sliderMax, maxHopsAwayNow);
       _maxHopsFilter = Infinity;
     }
   }
@@ -454,9 +452,8 @@ const NMMap = (() => {
     const nowSec = Math.floor(Date.now() / 1000);
     const visible = _allGpsNodes.filter(n => {
       if (_maxHopsFilter !== Infinity) {
-        const hopLimit = n.hop_limit != null ? n.hop_limit : 0;
-        const traversed = _dataMaxHopLimit - hopLimit;
-        if (traversed > _maxHopsFilter) return false;
+        const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
+        if (hopsAway == null || hopsAway > _maxHopsFilter) return false;
       }
       if (_maxAgeFilter !== Infinity) {
         if (n.last_heard == null) return false;
@@ -770,8 +767,8 @@ const NMMap = (() => {
       ? new Date(node.first_seen * 1000).toLocaleString()
       : "—";
 
-    const hopsAway = (node.hop_limit != null && _dataMaxHopLimit > 0)
-      ? (_dataMaxHopLimit - node.hop_limit)
+    const hopsAway = (node.hops_away != null && Number.isFinite(node.hops_away))
+      ? node.hops_away
       : null;
     const distMi = node.distance_km != null
       ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
@@ -826,8 +823,8 @@ const NMMap = (() => {
   function _fitAllNodes() {
     const visible = _allGpsNodes.filter(n => {
       if (_maxHopsFilter === Infinity) return true;
-      const traversed = _dataMaxHopLimit - (n.hop_limit ?? 0);
-      return traversed <= _maxHopsFilter;
+      const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
+      return hopsAway != null && hopsAway <= _maxHopsFilter;
     });
     if (visible.length === 0) return;
     const bounds = L.latLngBounds(visible.map(n => [n.lat, n.lon]));
@@ -857,8 +854,8 @@ const NMMap = (() => {
 
     const pts = _allGpsNodes.filter(n => {
       if (_maxHopsFilter === Infinity) return true;
-      const traversed = _dataMaxHopLimit - (n.hop_limit ?? 0);
-      return traversed <= _maxHopsFilter;
+      const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
+      return hopsAway != null && hopsAway <= _maxHopsFilter;
     });
 
     if (pts.length < 3) {

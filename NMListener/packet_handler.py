@@ -92,6 +92,7 @@ def handle_generic(
     rssi = packet.get("rxRssi")
     snr = packet.get("rxSnr")
     hop_limit = packet.get("hopLimit") if packet.get("hopLimit") is not None else 0
+    hop_start = packet.get("hopStart") if packet.get("hopStart") is not None else None
     decoded = packet.get("decoded", {})
     portnum = decoded.get("portnum", "UNKNOWN")
     portnum_int = _portnum_int(decoded)
@@ -132,6 +133,7 @@ def handle_generic(
             portnum=portnum,
             portnum_int=portnum_int,
             hop_limit=hop_limit,
+            hop_start=hop_start,
             rx_rssi=rssi,
             rx_snr=snr,
             rx_lat=rx_lat,
@@ -193,6 +195,7 @@ def handle_telemetry(
     from_id = _to_int(packet.get("from") or packet.get("fromId"))
     rx_time = packet.get("rxTime") or int(time.time())
     hop_limit = packet.get("hopLimit") if packet.get("hopLimit") is not None else 0
+    hop_start = packet.get("hopStart") if packet.get("hopStart") is not None else None
 
     if from_id is None:
         return
@@ -246,6 +249,7 @@ def handle_telemetry(
             portnum="TELEMETRY_APP",
             portnum_int=None,
             hop_limit=hop_limit,
+            hop_start=hop_start,
             rx_rssi=None,
             rx_snr=None,
             rx_lat=None,
@@ -318,10 +322,14 @@ def handle_position(
     pos = decoded.get("position", {})
     from_id = _to_int(packet.get("from") or packet.get("fromId"))
     rx_time = packet.get("rxTime") or int(time.time())
-    from_mqtt = packet.get('from_mqtt', False)
-    via_mqtt = packet.get('via_mqtt', False)
-    
-    if from_mqtt or via_mqtt :
+    from_mqtt = bool(packet.get("from_mqtt", False))
+    via_mqtt = bool(packet.get("via_mqtt", False))
+    rx_flags = packet.get("rx_flags")
+    if rx_flags is None:
+        rx_flags = packet.get("rxFlags")
+    mqtt_flag = isinstance(rx_flags, int) and (rx_flags & 0x10) != 0
+
+    if from_mqtt or via_mqtt or mqtt_flag:
         packet_source = "MQTT"
     else:
         packet_source = "Over the Air"

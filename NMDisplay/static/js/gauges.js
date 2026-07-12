@@ -172,7 +172,7 @@ const NMGauges = (() => {
     _set("g-client-count", data.client_count ?? "—");
 
     if (data.hop_dist_raw) {
-      _updateHopDistRaw(data.hop_dist_raw);
+      _updateHopDistRaw(data.hop_dist_raw, data.hop_used_raw || null);
     }
     if (data.hardware_breakdown) {
       _updateHardwareBreakdown(data.hardware_breakdown);
@@ -192,50 +192,100 @@ const NMGauges = (() => {
     "0":  "#710b00",   // dark red-slate — fewest hops, most traversed
   };
 
-  // Dynamic hop-left list from raw per-value data (replaces static bucketed table)
-  function _updateHopDistRaw(distRaw) {
+  function _toHopInt(value) {
+    if (value == null) return null;
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Dynamic hop list from raw per-value data. Shows mirrored distributions:
+  // left side = Hops Used/Hops Away, right side = Hops Left.
+  function _updateHopDistRaw(distRaw, usedRaw) {
     const table = document.getElementById("nm-hop-dist-table");
     if (!table) return;
 
-    // Separate the "?" (null hop_limit) entry from numeric entries
-    const nullCount = distRaw["?"] || 0;
-    const numericEntries = Object.entries(distRaw)
-      .filter(([k]) => k !== "?")
-      .map(([k, v]) => ({ hopLimit: parseInt(k), count: v }))
-      .filter(e => e.count > 0)
-      .sort((a, b) => b.hopLimit - a.hopLimit);
+    const normalized = new Map();
 
-    if (numericEntries.length === 0 && !nullCount) {
+    for (const [k, rawCount] of Object.entries(distRaw || {})) {
+      const count = Number(rawCount) || 0;
+      if (count <= 0) continue;
+      if (k === "?") continue;
+      const hopLeft = _toHopInt(k);
+      if (hopLeft == null) continue;
+      normalized.set(hopLeft, (normalized.get(hopLeft) || 0) + count);
+    }
+
+    // Backward compatibility: older sessions may have omitted hop_limit (stored as "?")
+    // which semantically means 0 hops left.
+    const nullCount = Number(distRaw?.["?"]) || 0;
+    if (nullCount > 0) {
+      normalized.set(0, (normalized.get(0) || 0) + nullCount);
+    }
+
+    if (normalized.size === 0) {
       table.innerHTML = "";
       return;
     }
 
-    const allCounts = [...numericEntries.map(e => e.count), nullCount].filter(Boolean);
+    const maxHopLeft = Math.max(...normalized.keys());
+
+    const hopsLeftCounts = {};
+    for (let h = 0; h <= maxHopLeft; h++) {
+      hopsLeftCounts[h] = normalized.get(h) || 0;
+    }
+
+    const hopsUsedCounts = {};
+    if (usedRaw && Object.keys(usedRaw).length > 0) {
+      for (const [k, rawCount] of Object.entries(usedRaw)) {
+        const hopUsed = _toHopInt(k);
+        const count = Number(rawCount) || 0;
+        if (hopUsed == null || count <= 0) continue;
+        hopsUsedCounts[hopUsed] = (hopsUsedCounts[hopUsed] || 0) + count;
+      }
+    } else {
+      // Fallback for older API responses where only hop-left distribution exists.
+      for (const [hopLeft, count] of normalized.entries()) {
+        const hopUsed = maxHopLeft - hopLeft;
+        hopsUsedCounts[hopUsed] = (hopsUsedCounts[hopUsed] || 0) + count;
+      }
+    }
+
+    const maxHopUsed = Math.max(0, ...Object.keys(hopsUsedCounts).map(k => _toHopInt(k) ?? 0));
+    const maxHopValue = Math.max(maxHopLeft, maxHopUsed);
+
+    const allCounts = [];
+    for (let i = 0; i <= maxHopValue; i++) {
+      allCounts.push(hopsLeftCounts[i] || 0);
+      allCounts.push(hopsUsedCounts[i] || 0);
+    }
     const max = Math.max(1, ...allCounts);
 
-    const numericRows = numericEntries.map(e => {
-      const pct   = Math.round((e.count / max) * 100);
-      const color = e.hopLimit >= 4 ? _HOP_COLORS["4+"]
-                  : _HOP_COLORS[String(e.hopLimit)] || _HOP_COLORS["0"];
-      return `<tr>
-        <td class="nm-hop-label">${e.hopLimit}</td>
-        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${color}"></div></td>
-        <td class="nm-hop-count">${e.count}</td>
-      </tr>`;
-    }).join("");
+    const header = `<tr class="nm-hop-dual-head">
+      <th class="nm-hop-used-head" colspan="3">Hops Used</th>
+      <th class="nm-hop-mid-head">-</th>
+      <th class="nm-hop-left-head" colspan="3">Hops Left</th>
+    </tr>`;
 
-    // "?" row: packets with no hop_limit field (protobuf omits 0-value fields,
-    // so many 0-hops-remaining packets land here)
-    const nullRow = nullCount ? (() => {
-      const pct = Math.round((nullCount / max) * 100);
-      return `<tr title="hop_limit not reported — includes packets where hop_limit=0 was omitted by protobuf">
-        <td class="nm-hop-label" style="color:var(--text-dim)">0</td>
-        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${pct}%;background:${_HOP_COLORS["0"]};"></div></td>
-        <td class="nm-hop-count" style="color:var(--text-dim)">${nullCount}</td>
-      </tr>`;
-    })() : "";
+    const rows = [];
+    for (let hop = maxHopValue; hop >= 0; hop--) {
+      const usedCount = hopsUsedCounts[hop] || 0;
+      const leftCount = hopsLeftCounts[hop] || 0;
+      const usedPct = Math.round((usedCount / max) * 100);
+      const leftPct = Math.round((leftCount / max) * 100);
+      const color = hop >= 4 ? _HOP_COLORS["4+"] : (_HOP_COLORS[String(hop)] || _HOP_COLORS["0"]);
 
-    table.innerHTML = numericRows + nullRow;
+      rows.push(`<tr>
+        <td class="nm-hop-count nm-hop-count--left">${usedCount}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${usedPct}%;background:${color}"></div></td>
+        <td class="nm-hop-axis-label nm-hop-axis-label--left">${hop}</td>
+        <td class="nm-hop-mid-divider">|</td>
+        <td class="nm-hop-axis-label nm-hop-axis-label--right">${hop}</td>
+        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${leftPct}%;background:${color}"></div></td>
+        <td class="nm-hop-count">${leftCount}</td>
+      </tr>`);
+    }
+
+    table.innerHTML = header + rows.join("");
   }
 
   function _set(id, value) {
