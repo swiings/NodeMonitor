@@ -278,7 +278,7 @@ const NMGauges = (() => {
         <td class="nm-hop-count nm-hop-count--left">${usedCount}</td>
         <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${usedPct}%;background:${color}"></div></td>
         <td class="nm-hop-mid-divider">${hop}</td>
-        <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${leftPct}%;background:${color}"></div></td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-bar" style="width:${leftPct}%;background:${color}"></div></td>
         <td class="nm-hop-count">${leftCount}</td>
       </tr>`);
     }

@@ -391,6 +391,11 @@ body.layout-split #nm-charts-container {
   border-collapse: collapse;
   padding: 4px 8px;
   font-size: 12px;
+}
+
+/* Only the mirrored Hops chart needs fixed columns. Other breakdown tables
+   should keep auto layout so labels size naturally. */
+#nm-hop-dist-table {
   table-layout: fixed;
 }
 .nm-hop-table tr { border-bottom: 1px solid var(--divider); }
@@ -430,7 +435,7 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-mid-head,
 .nm-hop-mid-divider {
-  width: 42px;
+  width: 18px;
   text-align: center;
   color: var(--text-dim);
   padding: 3px 0;
@@ -452,6 +457,11 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-bar-cell--left {
   text-align: right;
+  padding: 3px 1px 3px 4px;
+}
+
+.nm-hop-bar-cell--right {
+  padding: 3px 4px 3px 1px;
 }
 
 .nm-hop-bar--left {
