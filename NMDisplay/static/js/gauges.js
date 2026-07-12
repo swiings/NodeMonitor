@@ -261,9 +261,9 @@ const NMGauges = (() => {
     const max = Math.max(1, ...allCounts);
 
     const header = `<tr class="nm-hop-dual-head">
-      <th class="nm-hop-used-head" colspan="3">Hops Used</th>
+      <th class="nm-hop-used-head" colspan="2">Hops Used</th>
       <th class="nm-hop-mid-head">-</th>
-      <th class="nm-hop-left-head" colspan="3">Hops Left</th>
+      <th class="nm-hop-left-head" colspan="2">Hops Left</th>
     </tr>`;
 
     const rows = [];
@@ -277,9 +277,7 @@ const NMGauges = (() => {
       rows.push(`<tr>
         <td class="nm-hop-count nm-hop-count--left">${usedCount}</td>
         <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${usedPct}%;background:${color}"></div></td>
-        <td class="nm-hop-axis-label nm-hop-axis-label--left">${hop}</td>
-        <td class="nm-hop-mid-divider">|</td>
-        <td class="nm-hop-axis-label nm-hop-axis-label--right">${hop}</td>
+        <td class="nm-hop-mid-divider">| ${hop} |</td>
         <td class="nm-hop-bar-cell"><div class="nm-hop-bar" style="width:${leftPct}%;background:${color}"></div></td>
         <td class="nm-hop-count">${leftCount}</td>
       </tr>`);

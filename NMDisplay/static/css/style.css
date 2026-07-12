@@ -430,10 +430,11 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-mid-head,
 .nm-hop-mid-divider {
-  width: 12px;
+  width: 42px;
   text-align: center;
   color: var(--text-dim);
   padding: 3px 0;
+  white-space: nowrap;
 }
 
 .nm-hop-axis-label {
