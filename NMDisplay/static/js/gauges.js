@@ -262,7 +262,7 @@ const NMGauges = (() => {
 
     const header = `<tr class="nm-hop-dual-head">
       <th class="nm-hop-used-head" colspan="2">Hops Used</th>
-      <th class="nm-hop-mid-head">-</th>
+      <th class="nm-hop-mid-head"></th>
       <th class="nm-hop-left-head" colspan="2">Hops Left</th>
     </tr>`;
 
