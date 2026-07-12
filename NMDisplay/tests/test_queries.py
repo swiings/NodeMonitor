@@ -10,6 +10,42 @@ import queries
 
 
 class PacketBreakdownTests(unittest.TestCase):
+    def test_gauges_session_packets_excludes_reference_node_packets(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            now = 1_700_000_000
+
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, last_heard INTEGER, hop_limit INTEGER, role TEXT)")
+            conn.execute(
+                "CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, hop_start INTEGER, rx_time INTEGER, rx_rssi INTEGER, rx_snr REAL, portnum TEXT)"
+            )
+            conn.execute("CREATE TABLE packet_timeline (minute_ts INTEGER, count INTEGER, portnum TEXT)")
+
+            conn.execute("INSERT INTO nodes VALUES (123456789, ?, 3, 'ROUTER')", (now,))
+            conn.execute("INSERT INTO nodes VALUES (987654321, ?, 3, 'CLIENT')", (now,))
+
+            # Reference node packets (should be excluded from session_packets gauge).
+            conn.execute("INSERT INTO packets VALUES (123456789, 3, 3, ?, -60, 5.0, 'TELEMETRY_APP')", (now - 10,))
+            conn.execute("INSERT INTO packets VALUES (123456789, 3, 3, ?, -60, 5.0, 'POSITION_APP')", (now - 9,))
+
+            # Peer packet (should be counted).
+            conn.execute("INSERT INTO packets VALUES (987654321, 2, 3, ?, -70, 4.0, 'TEXT_MESSAGE_APP')", (now - 8,))
+
+            conn.execute("INSERT INTO packet_timeline VALUES (?, 3, 'TEXT_MESSAGE_APP')", (now - 60,))
+            conn.commit()
+
+            real_time = queries.time.time
+            queries.time.time = lambda: now
+            try:
+                gauges = queries.get_gauges(conn, my_node_id=123456789, my_lat=None, my_lon=None)
+            finally:
+                queries.time.time = real_time
+        finally:
+            conn.close()
+
+        self.assertEqual(gauges["session_packets"], 1)
+
     def test_self_telemetry_is_excluded_from_breakdown(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row

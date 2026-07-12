@@ -300,8 +300,13 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
             closest  = _fmt(rows[0])
             farthest = _fmt(rows[-1])
 
-    # Session totals
-    session_packets = conn.execute("SELECT COUNT(*) FROM packets").fetchone()[0] or 0
+    # Session totals shown in the gauge should match chart packet scope
+    # (exclude packets originating from the local reference node).
+    excl_pkts = my_node_id if my_node_id is not None else -1
+    session_packets = conn.execute(
+        "SELECT COUNT(*) FROM packets WHERE from_node_id != ?",
+        (excl_pkts,),
+    ).fetchone()[0] or 0
     first_pkt_ts    = conn.execute("SELECT MIN(rx_time) FROM packets").fetchone()[0]
 
     # Role counts: router-class vs client-class
