@@ -128,7 +128,7 @@ async function pollAll() {
 
     _lastPollOk = Date.now();
     const pollSec = (_cfg.display || {}).poll_interval_seconds || 30;
-    let statusMsg = `· Update Interval is ${pollSec}s · Last Updated at ${_timeStr(nodesData.reference_telemetry)}`;
+    let statusMsg = `· Page Refresh Rate is ${pollSec}s · Last Updated at ${_timeStr(nodesData.reference_telemetry)}`;
     const tele = _formatReferenceTelemetry(nodesData.reference_telemetry);
     if (tele) statusMsg += ` · ${tele}`;
     setStatus(statusMsg);
