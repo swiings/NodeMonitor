@@ -409,6 +409,11 @@ body.layout-split #nm-charts-container {
   cursor: pointer;
 }
 
+/* Keep the HOP COUNTS card clean: no bottom resize bar/handle. */
+#nm-hop-dist .nm-list-resize-handle {
+  display: none;
+}
+
 .nm-hop-flip {
   position: relative;
   min-height: 100%;
@@ -539,7 +544,7 @@ body.layout-split #nm-charts-container {
 }
 
 .nm-hop-grid-xaxis-label {
-  color: var(--text);
+  color: var(--accent);
   font-size: 12px;
   font-weight: bold;
   letter-spacing: 0.04em;
