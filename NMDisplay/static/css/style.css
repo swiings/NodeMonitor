@@ -492,7 +492,7 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-mid-head,
 .nm-hop-mid-divider {
-  width: 18px;
+  width: 14px;
   text-align: center;
   color: var(--text-dim);
   padding: 3px 0;
@@ -523,6 +523,24 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-bar--left {
   margin-left: auto;
+}
+
+/* HOP COUNTS card uses tighter spacing so variable bars can span farther. */
+#nm-hop-dist .nm-hop-count {
+  width: 26px;
+  padding: 2px 4px;
+}
+
+#nm-hop-dist .nm-hop-count--left {
+  padding: 2px 2px 2px 6px;
+}
+
+#nm-hop-dist .nm-hop-bar-cell--left {
+  padding: 2px 0 2px 2px;
+}
+
+#nm-hop-dist .nm-hop-bar-cell--right {
+  padding: 2px 2px 2px 0;
 }
 
 .nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
