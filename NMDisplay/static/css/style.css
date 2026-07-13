@@ -538,25 +538,24 @@ body.layout-split #nm-charts-container {
   background: radial-gradient(circle at 35% 35%, #b7bcc4 0%, #8b919c 38%, #4f5661 70%, #2a3039 100%);
 }
 
-.nm-hop-grid-xlabels td {
-  border-top: 1px solid var(--border);
-}
-
 .nm-hop-grid-xaxis-label {
-  color: var(--text-dim);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-align: left;
-  padding: 5px 2px 3px 4px;
-  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 4px 2px 3px;
+  line-height: 1.05;
+  white-space: normal;
 }
 
 .nm-hop-grid-xlabel {
-  color: var(--text-dim);
-  font-size: 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
   text-align: center;
-  padding: 5px 1px 3px;
+  padding: 4px 1px 3px;
 }
 
 .nm-hop-size-legend-row td {

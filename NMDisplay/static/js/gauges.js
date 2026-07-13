@@ -400,7 +400,7 @@ const NMGauges = (() => {
       return `<tr><td class="nm-hop-grid-row-label">${r.label}</td>${cells.join("")}</tr>`;
     });
 
-    const xLabels = `<tr class="nm-hop-grid-xlabels"><td class="nm-hop-grid-xaxis-label">Hops Left</td>${Array.from({ length: 8 }, (_, i) => `<td class="nm-hop-grid-xlabel">${i}</td>`).join("")}</tr>`;
+    const xLabels = `<tr class="nm-hop-grid-xlabels"><td class="nm-hop-grid-xaxis-label">Hops<br>Left</td>${Array.from({ length: 8 }, (_, i) => `<td class="nm-hop-grid-xlabel">${i}</td>`).join("")}</tr>`;
 
     let refs = [Math.round(safeMax * 0.25), Math.round(safeMax * 0.6), safeMax]
       .filter(v => v > 0);
