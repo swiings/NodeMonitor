@@ -12,6 +12,7 @@
 const NMGauges = (() => {
   let _closestNodeId  = null;
   let _farthestNodeId = null;
+  let _hopView = "joint"; // default view: hop_start x hops_left
 
   // ── Generic chart-card resize ─────────────────────────────────
   const CHART_ROW_HEIGHT = 22;
@@ -88,6 +89,7 @@ const NMGauges = (() => {
     _chartState["nm-pkt-breakdown"].renderFn  = _renderPktBreakdown;
     _chartState["nm-hw-breakdown"].renderFn   = _renderHwBreakdown;
     _chartState["nm-role-breakdown"].renderFn = _renderRoleBreakdown;
+    _initHopFlip();
     document.addEventListener("nm:gauges-updated",    (e) => _update(e.detail));
     document.addEventListener("nm:breakdown-updated", (e) => _updateBreakdown(e.detail.breakdown || []));
 
@@ -110,6 +112,20 @@ const NMGauges = (() => {
         }}));
       });
     }
+  }
+
+  function _initHopFlip() {
+    const card = document.getElementById("nm-hop-dist");
+    if (!card) return;
+
+    // Keep default on page load as the new joint view.
+    card.classList.remove("nm-hop-view-dual");
+
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".nm-list-resize-handle")) return;
+      _hopView = _hopView === "joint" ? "dual" : "joint";
+      card.classList.toggle("nm-hop-view-dual", _hopView === "dual");
+    });
   }
 
   // Role → emoji (mirrors map.js mapping)
@@ -172,7 +188,7 @@ const NMGauges = (() => {
     _set("g-client-count", data.client_count ?? "—");
 
     if (data.hop_dist_raw) {
-      _updateHopDistRaw(data.hop_dist_raw, data.hop_used_raw || null);
+      _updateHopCharts(data.hop_dist_raw, data.hop_used_raw || null, data.hop_start_left_joint || {});
     }
     if (data.hardware_breakdown) {
       _updateHardwareBreakdown(data.hardware_breakdown);
@@ -182,15 +198,26 @@ const NMGauges = (() => {
     }
   }
 
-  // Hops-left colors: warm earth/bronze gradient (close=lighter copper, far=dark slate).
-  // Distinct from the activity bar palette (which uses violet/cobalt/forest/gold/crimson).
-  const _HOP_COLORS = {
-    "4+": "#6b9e7a",   // muted sage — most hops remaining, closest to sender
-    "3":  "#7a7a3a",   // olive
-    "2":  "#8a6020",   // dark bronze
-    "1":  "#7a3818",   // deep rust
-    "0":  "#710b00",   // dark red-slate — fewest hops, most traversed
+  // Fixed, absolute color ramp by hops-left value.
+  // 0 is always red and higher values progress toward green.
+  const _HOP_LEFT_COLORS = {
+    "0": "#710b00",
+    "1": "#7a3818",
+    "2": "#8a6020",
+    "3": "#7a7a3a",
+    "4": "#6b9e7a",
+    "5": "#53ab73",
+    "6": "#3abc67",
+    "7": "#2dc95f",
   };
+
+  function _hopColorByLeft(value) {
+    const n = _toHopInt(value);
+    if (n == null) return _HOP_LEFT_COLORS["0"];
+    if (n <= 0) return _HOP_LEFT_COLORS["0"];
+    if (n >= 7) return _HOP_LEFT_COLORS["7"];
+    return _HOP_LEFT_COLORS[String(n)] || _HOP_LEFT_COLORS["0"];
+  }
 
   function _toHopInt(value) {
     if (value == null) return null;
@@ -198,11 +225,18 @@ const NMGauges = (() => {
     return Number.isFinite(n) ? n : null;
   }
 
-  // Dynamic hop list from raw per-value data. Shows mirrored distributions:
-  // left side = Hops Used/Hops Away, right side = Hops Left.
-  function _updateHopDistRaw(distRaw, usedRaw) {
-    const table = document.getElementById("nm-hop-dist-table");
-    if (!table) return;
+  function _updateHopCharts(distRaw, usedRaw, jointRaw) {
+    const tableDual = document.getElementById("nm-hop-dist-table-dual");
+    const tableJoint = document.getElementById("nm-hop-dist-table-joint");
+    if (!tableDual || !tableJoint) return;
+
+    _renderHopDualHistogram(tableDual, distRaw, usedRaw);
+    _renderHopStartJoint(tableJoint, jointRaw);
+  }
+
+  // Legacy mirrored histogram:
+  // left side = hops used, right side = hops left.
+  function _renderHopDualHistogram(table, distRaw, usedRaw) {
 
     const normalized = new Map();
 
@@ -272,7 +306,7 @@ const NMGauges = (() => {
       const leftCount = hopsLeftCounts[hop] || 0;
       const usedPct = Math.round((usedCount / max) * 100);
       const leftPct = Math.round((leftCount / max) * 100);
-      const color = hop >= 4 ? _HOP_COLORS["4+"] : (_HOP_COLORS[String(hop)] || _HOP_COLORS["0"]);
+      const color = _hopColorByLeft(hop);
 
       rows.push(`<tr>
         <td class="nm-hop-count nm-hop-count--left">${usedCount}</td>
@@ -282,6 +316,54 @@ const NMGauges = (() => {
         <td class="nm-hop-count">${leftCount}</td>
       </tr>`);
     }
+
+    table.innerHTML = header + rows.join("");
+  }
+
+  // New joint view:
+  // rows are hop_start (0..7), right side is segmented hops-left distribution.
+  // Segment colors are absolute by hops-left value and never re-mapped per row.
+  function _renderHopStartJoint(table, jointRaw) {
+    const rowsByStart = [];
+    for (let hopStart = 7; hopStart >= 0; hopStart--) {
+      const row = jointRaw?.[String(hopStart)] || {};
+      const byLeft = {};
+      let rowTotal = 0;
+      for (let hopLeft = 0; hopLeft <= hopStart; hopLeft++) {
+        const count = Number(row[String(hopLeft)] || 0);
+        byLeft[hopLeft] = count;
+        rowTotal += count;
+      }
+      rowsByStart.push({ hopStart, byLeft, rowTotal });
+    }
+
+    const maxRowTotal = Math.max(1, ...rowsByStart.map(r => r.rowTotal));
+
+    const header = `<tr class="nm-hop-dual-head">
+      <th class="nm-hop-used-head" colspan="2">Hop Start Total</th>
+      <th class="nm-hop-mid-head">Start</th>
+      <th class="nm-hop-left-head" colspan="2">Hops Left Mix</th>
+    </tr>`;
+
+    const rows = rowsByStart.map((r) => {
+      const totalPct = Math.round((r.rowTotal / maxRowTotal) * 100);
+
+      const segs = [];
+      for (let hopLeft = 0; hopLeft <= r.hopStart; hopLeft++) {
+        const count = r.byLeft[hopLeft] || 0;
+        if (count <= 0) continue;
+        const segPct = (count / maxRowTotal) * 100;
+        segs.push(`<div class="nm-hop-seg" style="width:${segPct}%;background:${_hopColorByLeft(hopLeft)}" title="left ${hopLeft}: ${count}"></div>`);
+      }
+
+      return `<tr>
+        <td class="nm-hop-count nm-hop-count--left">${r.rowTotal}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${totalPct}%;background:var(--accent);opacity:0.65"></div></td>
+        <td class="nm-hop-mid-divider">${r.hopStart}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-seg-stack">${segs.join("")}</div></td>
+        <td class="nm-hop-count">${r.rowTotal}</td>
+      </tr>`;
+    });
 
     table.innerHTML = header + rows.join("");
   }

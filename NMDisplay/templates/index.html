@@ -174,9 +174,18 @@
         <div id="nm-hop-dist" class="nm-list-card nm-list-card--static" data-card-id="hops_left">
           <div class="nm-list-title nm-list-title--draggable">HOP COUNTS</div>
           <div class="nm-list-body">
-            <table class="nm-hop-table" id="nm-hop-dist-table">
-              <!-- Populated dynamically by gauges.js -->
-            </table>
+            <div class="nm-hop-flip" id="nm-hop-flip">
+              <div class="nm-hop-pane nm-hop-pane--joint" id="nm-hop-pane-joint">
+                <table class="nm-hop-table" id="nm-hop-dist-table-joint">
+                  <!-- Populated dynamically by gauges.js -->
+                </table>
+              </div>
+              <div class="nm-hop-pane nm-hop-pane--dual" id="nm-hop-pane-dual">
+                <table class="nm-hop-table" id="nm-hop-dist-table-dual">
+                  <!-- Populated dynamically by gauges.js -->
+                </table>
+              </div>
+            </div>
           </div>
         </div>
         <div id="nm-pkt-breakdown" class="nm-list-card nm-list-card--static" data-card-id="pkt_breakdown">

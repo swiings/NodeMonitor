@@ -364,6 +364,27 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     ).fetchall()
     hop_used_raw = {str(row["hops_used"]): row["cnt"] for row in used_rows}
 
+    # Joint distribution for the alternate HOP COUNTS view:
+    # rows keyed by hop_start, columns keyed by hop_left (hop_limit).
+    joint_rows = conn.execute(
+        """
+        SELECT hop_start, COALESCE(hop_limit, 0) AS hop_left, COUNT(*) AS cnt
+        FROM packets
+        WHERE from_node_id != ?
+          AND hop_start IS NOT NULL
+          AND hop_start >= COALESCE(hop_limit, 0)
+        GROUP BY hop_start, hop_left
+        """,
+        (excl_hop,),
+    ).fetchall()
+    hop_start_left_joint: dict[str, dict[str, int]] = {}
+    for row in joint_rows:
+        hs = str(row["hop_start"])
+        hl = str(row["hop_left"])
+        if hs not in hop_start_left_joint:
+            hop_start_left_joint[hs] = {}
+        hop_start_left_joint[hs][hl] = row["cnt"]
+
     return {
         "direct_count":       direct,
         "active_count":       active,
@@ -379,6 +400,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         "hop_dist":           hop_dist,
         "hop_dist_raw":       hop_dist_raw,
         "hop_used_raw":       hop_used_raw,
+        "hop_start_left_joint": hop_start_left_joint,
         "router_count":       router_count,
         "client_count":       client_count,
     }

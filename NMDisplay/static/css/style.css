@@ -395,8 +395,65 @@ body.layout-split #nm-charts-container {
 
 /* Only the mirrored Hops chart needs fixed columns. Other breakdown tables
    should keep auto layout so labels size naturally. */
-#nm-hop-dist-table {
+#nm-hop-dist-table-dual,
+#nm-hop-dist-table-joint {
   table-layout: fixed;
+}
+
+#nm-hop-dist {
+  perspective: 1200px;
+}
+
+#nm-hop-dist .nm-list-body {
+  position: relative;
+  cursor: pointer;
+}
+
+.nm-hop-flip {
+  position: relative;
+  min-height: 100%;
+}
+
+.nm-hop-pane {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform 520ms ease-in-out, opacity 520ms ease-in-out;
+}
+
+.nm-hop-pane--joint {
+  transform: rotateY(0deg);
+  opacity: 1;
+}
+
+.nm-hop-pane--dual {
+  transform: rotateY(180deg);
+  opacity: 0;
+}
+
+#nm-hop-dist.nm-hop-view-dual .nm-hop-pane--joint {
+  transform: rotateY(-180deg);
+  opacity: 0;
+}
+
+#nm-hop-dist.nm-hop-view-dual .nm-hop-pane--dual {
+  transform: rotateY(0deg);
+  opacity: 1;
+}
+
+.nm-hop-seg-stack {
+  display: flex;
+  align-items: center;
+  height: 8px;
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 2px;
+}
+
+.nm-hop-seg {
+  height: 100%;
+  min-width: 2px;
 }
 .nm-hop-table tr { border-bottom: 1px solid var(--divider); }
 .nm-hop-table tr:last-child { border-bottom: none; }
