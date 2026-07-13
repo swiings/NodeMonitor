@@ -1491,6 +1491,12 @@ body.layout-split #nm-charts-container {
   opacity: 0.45;
 }
 
+/* HOP COUNTS keeps drag-resize behavior, but without a visible bottom strip. */
+#nm-hop-dist .nm-list-resize-handle {
+  border-top: none;
+  background: transparent;
+}
+
 /* ── MarkerCluster overrides ─────────────────────────────────── */
 .marker-cluster-small       { background-color: rgba(181,226,140,0.85); }
 .marker-cluster-small div   { background-color: rgba(110,204, 57,0.9);  }
