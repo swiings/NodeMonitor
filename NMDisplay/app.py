@@ -98,6 +98,14 @@ def _ensure_ssl_cert() -> tuple[str, str]:
 app = Flask(__name__)
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse an environment bool like 1/true/yes/on."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _effective_my_node_id():
     """
     Return the reference node's integer ID.
@@ -869,7 +877,11 @@ def run_server() -> None:
 
     os.makedirs(TILE_CACHE_DIR, exist_ok=True)
     sess_mod.get_active()
-    geocode_mod.start(GOOGLE_MAPS_API_KEY)
+    geocode_enabled = _env_bool("NM_ENABLE_GEOCODE", True)
+    if geocode_enabled:
+        geocode_mod.start(GOOGLE_MAPS_API_KEY)
+    else:
+        print("[geocode] disabled by NM_ENABLE_GEOCODE")
     cert, key = _ensure_ssl_cert()
     lan_ip = _get_lan_ip()
     print("\nNMDisplay — Meshtastic Node Monitor")
