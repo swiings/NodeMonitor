@@ -314,10 +314,10 @@ const NMGauges = (() => {
     const max = Math.max(1, ...allCounts);
 
     const colgroup = `<colgroup>
-      <col style="width:10%">
-      <col style="width:37%">
+      <col style="width:8%">
+      <col style="width:24%">
       <col style="width:6%">
-      <col style="width:37%">
+      <col style="width:52%">
       <col style="width:10%">
     </colgroup>`;
 
