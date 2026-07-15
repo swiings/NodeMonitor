@@ -14,6 +14,7 @@ let _pollTimer  = null;
 let _logTimer   = null;
 let _lastPollOk = null;
 let _logVisible = false;
+let _pollInFlight = false;
 let _browserPos = { lat: null, lon: null };   // updated by geolocation watchPosition
 
 // ── Boot ────────────────────────────────────────────────────────
@@ -97,6 +98,9 @@ function startPollLoop(intervalSec) {
 }
 
 async function pollAll() {
+  if (_pollInFlight) return;
+  _pollInFlight = true;
+
   // Close any open node info popups so stale data doesn't linger
   // NMMap.closePopups();
   // const nodeInfoPopup = document.getElementById("nm-node-info-popup");
@@ -134,6 +138,8 @@ async function pollAll() {
     setStatus(statusMsg);
   } catch (err) {
     setStatus(`Poll error — ${err.message}`);
+  } finally {
+    _pollInFlight = false;
   }
 }
 
