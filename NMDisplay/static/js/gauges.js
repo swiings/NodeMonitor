@@ -218,6 +218,26 @@ const NMGauges = (() => {
     return _HOP_LEFT_COLORS[String(n)] || _HOP_LEFT_COLORS["0"];
   }
 
+  // Joint chart palette maps hops-left values to categorical colors
+  // from the Packet Breakdown visual family (fixed absolute mapping).
+  const _HOP_LEFT_JOINT_COLORS = {
+    "0": "var(--green)",
+    "1": "var(--purple)",
+    "2": "#20a3c0",
+    "3": "var(--accent)",
+    "4": "#bddf34",
+    "5": "#e8a363",
+    "6": "#b389fd",
+    "7": "#6dbad5",
+  };
+
+  function _hopJointColorByLeft(value) {
+    const n = _toHopInt(value);
+    if (n == null || n <= 0) return _HOP_LEFT_JOINT_COLORS["0"];
+    if (n >= 7) return _HOP_LEFT_JOINT_COLORS["7"];
+    return _HOP_LEFT_JOINT_COLORS[String(n)] || _HOP_LEFT_JOINT_COLORS["0"];
+  }
+
   function _toHopInt(value) {
     if (value == null) return null;
     const n = parseInt(value, 10);
@@ -327,8 +347,9 @@ const NMGauges = (() => {
     table.innerHTML = colgroup + header + rows.join("");
   }
 
-  // Joint flip-side view:
-  // fixed bubble grid with hop_start rows and hops_left columns.
+  // New joint view:
+  // rows are fixed buckets: 7..3 and <3, right side is segmented hops-left distribution.
+  // Segment colors are absolute by hops-left value and never re-mapped per row.
   function _renderHopStartJoint(table, jointRaw) {
     const _buildBucket = (label, starts) => {
       const byLeft = {};
@@ -354,67 +375,38 @@ const NMGauges = (() => {
       _buildBucket("<3", [2, 1, 0]),
     ];
 
-    const allCounts = [];
-    for (const row of rowsByStart) {
-      for (let hopLeft = 0; hopLeft <= 7; hopLeft++) {
-        allCounts.push(row.byLeft[hopLeft] || 0);
-      }
-    }
-    const maxCount = Math.max(0, ...allCounts);
-    const safeMax = Math.max(1, maxCount);
-    const maxRadius = 9;
-
-    const _bubbleRadius = (count) => {
-      if (!count || count <= 0) return 2.5;
-      const r = maxRadius * Math.sqrt(count / safeMax);
-      return Math.max(3.5, r);
-    };
-
     const colgroup = `<colgroup>
-      <col style="width:18%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
-      <col style="width:10.25%">
+      <col style="width:16%">
+      <col style="width:84%">
     </colgroup>`;
 
     const header = `<tr class="nm-hop-dual-head">
       <th class="nm-hop-used-head">Hop Start</th>
-      <th class="nm-hop-left-head" colspan="8">Hops Left</th>
+      <th class="nm-hop-left-head">Hops Left Mix</th>
     </tr>`;
 
     const rows = rowsByStart.map((r) => {
-      const cells = [];
+      const segs = [];
       for (let hopLeft = 0; hopLeft <= 7; hopLeft++) {
         const count = r.byLeft[hopLeft] || 0;
-        const radius = _bubbleRadius(count);
-        const d = radius * 2;
-        cells.push(
-          `<td class="nm-hop-grid-cell" title="start ${r.label}, left ${hopLeft}: ${count}"><div class="nm-hop-bubble-wrap"><div class="nm-hop-bubble" style="width:${d}px;height:${d}px"></div></div></td>`
-        );
+        if (count <= 0) continue;
+        const segPct = r.rowTotal > 0 ? (count / r.rowTotal) * 100 : 0;
+        segs.push(`<div class="nm-hop-seg" style="width:${segPct}%;background:${_hopJointColorByLeft(hopLeft)}" title="left ${hopLeft}: ${count}"></div>`);
       }
-      return `<tr><td class="nm-hop-grid-row-label">${r.label}</td>${cells.join("")}</tr>`;
+
+      return `<tr>
+        <td class="nm-hop-start-label">${r.label}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-seg-stack nm-hop-seg-stack--joint">${segs.join("")}</div></td>
+      </tr>`;
     });
 
-    const xLabels = `<tr class="nm-hop-grid-xlabels"><td class="nm-hop-grid-xaxis-label">Hops Left</td>${Array.from({ length: 8 }, (_, i) => `<td class="nm-hop-grid-xlabel">${i}</td>`).join("")}</tr>`;
+    const legendItems = Array.from({ length: 8 }, (_, hopLeft) => (
+      `<span class="nm-hop-legend-item"><span class="nm-hop-legend-swatch" style="background:${_hopJointColorByLeft(hopLeft)}"></span><span class="nm-hop-legend-text">${hopLeft}</span></span>`
+    )).join("");
 
-    let refs = [Math.round(safeMax * 0.25), Math.round(safeMax * 0.6), safeMax]
-      .filter(v => v > 0);
-    refs = [...new Set(refs)].sort((a, b) => a - b);
-    if (refs.length === 0) refs = [1];
+    const legend = `<tr class="nm-hop-legend-row"><td colspan="2"><div class="nm-hop-legend">${legendItems}</div></td></tr>`;
 
-    const legendItems = refs.map((count) => {
-      const d = _bubbleRadius(count) * 2;
-      return `<span class="nm-hop-size-legend-item"><span class="nm-hop-size-legend-bubble" style="width:${d}px;height:${d}px"></span><span class="nm-hop-size-legend-text">${count}</span></span>`;
-    }).join("");
-
-    const legend = `<tr class="nm-hop-size-legend-row"><td colspan="9"><div class="nm-hop-size-legend"><span class="nm-hop-size-legend-title">Size</span>${legendItems}</div></td></tr>`;
-
-    table.innerHTML = colgroup + header + rows.join("") + xLabels + legend;
+    table.innerHTML = colgroup + header + rows.join("") + legend;
   }
 
   function _set(id, value) {
