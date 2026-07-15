@@ -325,7 +325,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     # Exclude my own node — its TCP packets carry defaults that aren't RF mesh traversals.
     excl_hop = my_node_id if my_node_id is not None else -1
     hop_rows = conn.execute(
-        "SELECT hop_limit, COUNT(*) AS cnt FROM packets WHERE hop_limit IS NOT NULL AND from_node_id != ? GROUP BY hop_limit",
+        "SELECT hop_limit, COUNT(*) AS cnt FROM packets WHERE hop_limit IS NOT NULL AND hop_limit BETWEEN 0 AND 7 AND from_node_id != ? GROUP BY hop_limit",
         (excl_hop,)
     ).fetchall()
     hop_raw = {row["hop_limit"]: row["cnt"] for row in hop_rows}
@@ -356,6 +356,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         FROM packets
         WHERE from_node_id != ?
           AND hop_start IS NOT NULL
+                    AND hop_start BETWEEN 0 AND 7
+                    AND COALESCE(hop_limit, 0) BETWEEN 0 AND 7
           AND hop_start >= COALESCE(hop_limit, 0)
         GROUP BY hops_used
         ORDER BY hops_used DESC
@@ -372,6 +374,8 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
         FROM packets
         WHERE from_node_id != ?
           AND hop_start IS NOT NULL
+                    AND hop_start BETWEEN 0 AND 7
+                    AND COALESCE(hop_limit, 0) BETWEEN 0 AND 7
           AND hop_start >= COALESCE(hop_limit, 0)
         GROUP BY hop_start, hop_left
         """,
