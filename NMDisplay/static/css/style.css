@@ -407,20 +407,16 @@ body.layout-split #nm-charts-container {
 #nm-hop-dist .nm-list-body {
   position: relative;
   cursor: pointer;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 .nm-hop-flip {
   position: relative;
   min-height: 100%;
-  overflow: hidden;
 }
 
 .nm-hop-pane {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   backface-visibility: hidden;
   transform-style: preserve-3d;
   transition: transform 520ms ease-in-out, opacity 520ms ease-in-out;
