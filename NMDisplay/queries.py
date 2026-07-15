@@ -223,7 +223,7 @@ def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
     return result
 
 
-def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
+def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict:
     """Compute the five gauge values."""
     now = int(time.time())
 
@@ -286,8 +286,9 @@ def get_gauges(conn, my_node_id, my_lat, my_lon) -> dict:
     farthest = None
     if my_lat is not None and my_lon is not None:
         excl = my_node_id if my_node_id is not None else -1
+        source_nodes = precomputed_nodes if precomputed_nodes is not None else get_all_nodes(conn, my_lat, my_lon)
         rows = [
-            r for r in get_all_nodes(conn, my_lat, my_lon)
+            r for r in source_nodes
             if r.get("node_id") != excl and r.get("distance_km") is not None
         ]
         rows.sort(key=lambda r: r["distance_km"])

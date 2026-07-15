@@ -14,6 +14,7 @@ import ipaddress
 import os
 import re
 import socket
+import threading
 import time
 
 import requests as req_lib
@@ -97,6 +98,14 @@ def _ensure_ssl_cert() -> tuple[str, str]:
 
 app = Flask(__name__)
 
+_NODES_CACHE_TTL_S = 2.0
+_nodes_cache_lock = threading.Lock()
+_nodes_cache = {
+    "key": None,
+    "ts": 0.0,
+    "nodes": None,
+}
+
 
 def _env_bool(name: str, default: bool) -> bool:
     """Parse an environment bool like 1/true/yes/on."""
@@ -116,6 +125,42 @@ def _effective_my_node_id():
     if runtime.get("my_node_id") is not None:
         return runtime["my_node_id"]
     return cfg_mod.load().get("my_node_id")
+
+
+def _request_reference_position(conn, my_node_id):
+    """Resolve reference position, honoring browser GPS override if provided."""
+    my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
+    blat = request.args.get("blat", type=float)
+    blon = request.args.get("blon", type=float)
+    if blat is not None and blon is not None:
+        my_lat, my_lon = blat, blon
+    return my_lat, my_lon
+
+
+def _get_nodes_snapshot(conn, my_node_id):
+    """Return (my_lat, my_lon, nodes), caching heavy node aggregation briefly."""
+    my_lat, my_lon = _request_reference_position(conn, my_node_id)
+    lat_key = round(my_lat, 5) if my_lat is not None else None
+    lon_key = round(my_lon, 5) if my_lon is not None else None
+    cache_key = (sess_mod.get_db_path(), my_node_id, lat_key, lon_key)
+    now = time.time()
+
+    with _nodes_cache_lock:
+        if (
+            _nodes_cache["key"] == cache_key
+            and (now - _nodes_cache["ts"]) <= _NODES_CACHE_TTL_S
+            and _nodes_cache["nodes"] is not None
+        ):
+            return my_lat, my_lon, _nodes_cache["nodes"]
+
+    nodes = queries.get_all_nodes(conn, my_lat, my_lon)
+
+    with _nodes_cache_lock:
+        _nodes_cache["key"] = cache_key
+        _nodes_cache["ts"] = now
+        _nodes_cache["nodes"] = nodes
+
+    return my_lat, my_lon, nodes
 
 # TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
 TILE_CACHE_DIR = "tile_cache"
@@ -225,20 +270,17 @@ def api_nodes():
     my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
-        my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
-        # Browser GPS overrides node GPS for distance calc if provided
-        blat = request.args.get("blat", type=float)
-        blon = request.args.get("blon", type=float)
-        if blat is not None and blon is not None:
-            my_lat, my_lon = blat, blon
-        nodes = queries.get_all_nodes(conn, my_lat, my_lon)
+        _, _, nodes = _get_nodes_snapshot(conn, my_node_id)
     finally:
         conn.close()
     my_masked = my_node_id & 0xFFFFFFFF if my_node_id is not None else None
+    response_nodes = []
     for n in nodes:
-        n["is_my_node"] = (n["node_id"] & 0xFFFFFFFF) == my_masked if my_masked is not None else False
+        row = dict(n)
+        row["is_my_node"] = (row["node_id"] & 0xFFFFFFFF) == my_masked if my_masked is not None else False
+        response_nodes.append(row)
     return jsonify({
-        "nodes": nodes,
+        "nodes": response_nodes,
         "my_node_id": my_node_id,
         "reference_telemetry": listener_proc.get_reference_telemetry(),
         "server_time": int(time.time()),
@@ -252,12 +294,7 @@ def api_telemetry_lists():
     cfg["my_node_id"] = my_node_id  # ensure telemetry list builder uses runtime value
     conn = queries.get_conn()
     try:
-        my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
-        blat = request.args.get("blat", type=float)
-        blon = request.args.get("blon", type=float)
-        if blat is not None and blon is not None:
-            my_lat, my_lon = blat, blon
-        nodes = queries.get_all_nodes(conn, my_lat, my_lon)
+        _, _, nodes = _get_nodes_snapshot(conn, my_node_id)
     finally:
         conn.close()
     lists = queries.build_telemetry_lists(nodes, cfg)
@@ -293,12 +330,8 @@ def api_gauges():
     my_node_id = _effective_my_node_id()
     conn = queries.get_conn()
     try:
-        my_lat, my_lon = queries.get_my_node_position(conn, my_node_id)
-        blat = request.args.get("blat", type=float)
-        blon = request.args.get("blon", type=float)
-        if blat is not None and blon is not None:
-            my_lat, my_lon = blat, blon
-        data = queries.get_gauges(conn, my_node_id, my_lat, my_lon)
+        my_lat, my_lon, nodes = _get_nodes_snapshot(conn, my_node_id)
+        data = queries.get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=nodes)
         data["hardware_breakdown"] = queries.get_hardware_breakdown(conn)
         data["role_breakdown"]     = queries.get_role_breakdown(conn)
         # Reference node's own receiver noise floor (dBm), shown in the SIGNAL card
