@@ -294,14 +294,6 @@ const NMGauges = (() => {
     }
     const max = Math.max(1, ...allCounts);
 
-    const colgroup = `<colgroup>
-      <col style="width:8%">
-      <col style="width:24%">
-      <col style="width:6%">
-      <col style="width:52%">
-      <col style="width:10%">
-    </colgroup>`;
-
     const header = `<tr class="nm-hop-dual-head">
       <th class="nm-hop-used-head" colspan="2">Hops Used</th>
       <th class="nm-hop-mid-head"></th>
@@ -325,7 +317,7 @@ const NMGauges = (() => {
       </tr>`);
     }
 
-    table.innerHTML = colgroup + header + rows.join("");
+    table.innerHTML = header + rows.join("");
   }
 
   // New joint view:
@@ -347,17 +339,10 @@ const NMGauges = (() => {
 
     const maxRowTotal = Math.max(1, ...rowsByStart.map(r => r.rowTotal));
 
-    const colgroup = `<colgroup>
-      <col style="width:8%">
-      <col style="width:24%">
-      <col style="width:6%">
-      <col style="width:62%">
-    </colgroup>`;
-
     const header = `<tr class="nm-hop-dual-head">
       <th class="nm-hop-used-head" colspan="2">Hop Start Total</th>
       <th class="nm-hop-mid-head">Start</th>
-      <th class="nm-hop-left-head">Hops Left Mix</th>
+      <th class="nm-hop-left-head" colspan="2">Hops Left Mix</th>
     </tr>`;
 
     const rows = rowsByStart.map((r) => {
@@ -367,7 +352,7 @@ const NMGauges = (() => {
       for (let hopLeft = 0; hopLeft <= r.hopStart; hopLeft++) {
         const count = r.byLeft[hopLeft] || 0;
         if (count <= 0) continue;
-        const segPct = r.rowTotal > 0 ? (count / r.rowTotal) * 100 : 0;
+        const segPct = (count / maxRowTotal) * 100;
         segs.push(`<div class="nm-hop-seg" style="width:${segPct}%;background:${_hopColorByLeft(hopLeft)}" title="left ${hopLeft}: ${count}"></div>`);
       }
 
@@ -376,10 +361,11 @@ const NMGauges = (() => {
         <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${totalPct}%;background:var(--accent);opacity:0.65"></div></td>
         <td class="nm-hop-mid-divider">${r.hopStart}</td>
         <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-seg-stack">${segs.join("")}</div></td>
+        <td class="nm-hop-count">${r.rowTotal}</td>
       </tr>`;
     });
 
-    table.innerHTML = colgroup + header + rows.join("");
+    table.innerHTML = header + rows.join("");
   }
 
   function _set(id, value) {
