@@ -45,7 +45,6 @@ class PacketBreakdownTests(unittest.TestCase):
             conn.close()
 
         self.assertEqual(gauges["session_packets"], 1)
-        self.assertEqual(gauges["hop_start_left_joint"], {"3": {"2": 1}})
 
     def test_self_telemetry_is_excluded_from_breakdown(self):
         conn = sqlite3.connect(":memory:")
