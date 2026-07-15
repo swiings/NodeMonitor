@@ -13,7 +13,6 @@ const NMGauges = (() => {
   let _closestNodeId  = null;
   let _farthestNodeId = null;
   let _hopView = "joint"; // default view: hop_start x hops_left
-  let _hopData = { distRaw: {}, usedRaw: {}, jointRaw: {} };
 
   // ── Generic chart-card resize ─────────────────────────────────
   const CHART_ROW_HEIGHT = 22;
@@ -126,7 +125,6 @@ const NMGauges = (() => {
       if (e.target.closest(".nm-list-resize-handle")) return;
       _hopView = _hopView === "joint" ? "dual" : "joint";
       card.classList.toggle("nm-hop-view-dual", _hopView === "dual");
-      _renderActiveHopChart();
     });
   }
 
@@ -227,24 +225,12 @@ const NMGauges = (() => {
   }
 
   function _updateHopCharts(distRaw, usedRaw, jointRaw) {
-    _hopData = {
-      distRaw: distRaw || {},
-      usedRaw: usedRaw || {},
-      jointRaw: jointRaw || {},
-    };
-    _renderActiveHopChart();
-  }
-
-  function _renderActiveHopChart() {
     const tableDual = document.getElementById("nm-hop-dist-table-dual");
     const tableJoint = document.getElementById("nm-hop-dist-table-joint");
     if (!tableDual || !tableJoint) return;
 
-    if (_hopView === "joint") {
-      _renderHopStartJoint(tableJoint, _hopData.jointRaw);
-      return;
-    }
-    _renderHopDualHistogram(tableDual, _hopData.distRaw, _hopData.usedRaw);
+    _renderHopDualHistogram(tableDual, distRaw, usedRaw);
+    _renderHopStartJoint(tableJoint, jointRaw);
   }
 
   // Legacy mirrored histogram:
