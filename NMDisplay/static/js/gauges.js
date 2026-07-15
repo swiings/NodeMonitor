@@ -198,7 +198,8 @@ const NMGauges = (() => {
     }
   }
 
-  // Legacy dual chart color ramp (red -> green) remains unchanged.
+  // Fixed, absolute color ramp by hops-left value.
+  // 0 is always red and higher values progress toward green.
   const _HOP_LEFT_COLORS = {
     "0": "#710b00",
     "1": "#7a3818",
@@ -216,26 +217,6 @@ const NMGauges = (() => {
     if (n <= 0) return _HOP_LEFT_COLORS["0"];
     if (n >= 7) return _HOP_LEFT_COLORS["7"];
     return _HOP_LEFT_COLORS[String(n)] || _HOP_LEFT_COLORS["0"];
-  }
-
-  // Joint chart palette maps hops-left values to categorical colors
-  // from the Packet Breakdown visual family (fixed absolute mapping).
-  const _HOP_LEFT_JOINT_COLORS = {
-    "0": "var(--green)",
-    "1": "var(--purple)",
-    "2": "#20a3c0",
-    "3": "var(--accent)",
-    "4": "#bddf34",
-    "5": "#e8a363",
-    "6": "#b389fd",
-    "7": "#6dbad5",
-  };
-
-  function _hopJointColorByLeft(value) {
-    const n = _toHopInt(value);
-    if (n == null || n <= 0) return _HOP_LEFT_JOINT_COLORS["0"];
-    if (n >= 7) return _HOP_LEFT_JOINT_COLORS["7"];
-    return _HOP_LEFT_JOINT_COLORS[String(n)] || _HOP_LEFT_JOINT_COLORS["0"];
   }
 
   function _toHopInt(value) {
@@ -348,65 +329,57 @@ const NMGauges = (() => {
   }
 
   // New joint view:
-  // rows are fixed buckets: 7..3 and <3, right side is segmented hops-left distribution.
+  // rows are hop_start (0..7), right side is segmented hops-left distribution.
   // Segment colors are absolute by hops-left value and never re-mapped per row.
   function _renderHopStartJoint(table, jointRaw) {
-    const _buildBucket = (label, starts) => {
+    const rowsByStart = [];
+    for (let hopStart = 7; hopStart >= 0; hopStart--) {
+      const row = jointRaw?.[String(hopStart)] || {};
       const byLeft = {};
       let rowTotal = 0;
-      for (let hopLeft = 0; hopLeft <= 7; hopLeft++) byLeft[hopLeft] = 0;
-      for (const hopStart of starts) {
-        const row = jointRaw?.[String(hopStart)] || {};
-        for (let hopLeft = 0; hopLeft <= hopStart; hopLeft++) {
-          const count = Number(row[String(hopLeft)] || 0);
-          byLeft[hopLeft] += count;
-          rowTotal += count;
-        }
+      for (let hopLeft = 0; hopLeft <= hopStart; hopLeft++) {
+        const count = Number(row[String(hopLeft)] || 0);
+        byLeft[hopLeft] = count;
+        rowTotal += count;
       }
-      return { label, byLeft, rowTotal };
-    };
+      rowsByStart.push({ hopStart, byLeft, rowTotal });
+    }
 
-    const rowsByStart = [
-      _buildBucket("7", [7]),
-      _buildBucket("6", [6]),
-      _buildBucket("5", [5]),
-      _buildBucket("4", [4]),
-      _buildBucket("3", [3]),
-      _buildBucket("<3", [2, 1, 0]),
-    ];
+    const maxRowTotal = Math.max(1, ...rowsByStart.map(r => r.rowTotal));
 
     const colgroup = `<colgroup>
-      <col style="width:16%">
-      <col style="width:84%">
+      <col style="width:8%">
+      <col style="width:24%">
+      <col style="width:6%">
+      <col style="width:62%">
     </colgroup>`;
 
     const header = `<tr class="nm-hop-dual-head">
-      <th class="nm-hop-used-head">Hop Start</th>
+      <th class="nm-hop-used-head" colspan="2">Hop Start Total</th>
+      <th class="nm-hop-mid-head">Start</th>
       <th class="nm-hop-left-head">Hops Left Mix</th>
     </tr>`;
 
     const rows = rowsByStart.map((r) => {
+      const totalPct = Math.round((r.rowTotal / maxRowTotal) * 100);
+
       const segs = [];
-      for (let hopLeft = 0; hopLeft <= 7; hopLeft++) {
+      for (let hopLeft = 0; hopLeft <= r.hopStart; hopLeft++) {
         const count = r.byLeft[hopLeft] || 0;
         if (count <= 0) continue;
         const segPct = r.rowTotal > 0 ? (count / r.rowTotal) * 100 : 0;
-        segs.push(`<div class="nm-hop-seg" style="width:${segPct}%;background:${_hopJointColorByLeft(hopLeft)}" title="left ${hopLeft}: ${count}"></div>`);
+        segs.push(`<div class="nm-hop-seg" style="width:${segPct}%;background:${_hopColorByLeft(hopLeft)}" title="left ${hopLeft}: ${count}"></div>`);
       }
 
       return `<tr>
-        <td class="nm-hop-start-label">${r.label}</td>
-        <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-seg-stack nm-hop-seg-stack--joint">${segs.join("")}</div></td>
+        <td class="nm-hop-count nm-hop-count--left">${r.rowTotal}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--left"><div class="nm-hop-bar nm-hop-bar--left" style="width:${totalPct}%;background:var(--accent);opacity:0.65"></div></td>
+        <td class="nm-hop-mid-divider">${r.hopStart}</td>
+        <td class="nm-hop-bar-cell nm-hop-bar-cell--right"><div class="nm-hop-seg-stack">${segs.join("")}</div></td>
       </tr>`;
     });
 
-    const legendItems = Array.from({ length: 8 }, (_, hopLeft) => (
-      `<span class="nm-hop-legend-item"><span class="nm-hop-legend-swatch" style="background:${_hopJointColorByLeft(hopLeft)}"></span><span class="nm-hop-legend-text">${hopLeft}</span></span>`
-    )).join("");
-
-    const legend = `<tr class="nm-hop-legend-row"><td colspan="2"><div class="nm-hop-legend">${legendItems}</div></td></tr>`;
-
-    table.innerHTML = colgroup + header + rows.join("") + legend;
+    table.innerHTML = colgroup + header + rows.join("");
   }
 
   function _set(id, value) {
