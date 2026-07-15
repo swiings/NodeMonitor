@@ -260,7 +260,7 @@ const NMGauges = (() => {
       return;
     }
 
-    const maxHopLeft = 7;
+    const maxHopLeft = Math.max(...normalized.keys());
 
     const hopsLeftCounts = {};
     for (let h = 0; h <= maxHopLeft; h++) {
@@ -283,8 +283,8 @@ const NMGauges = (() => {
       }
     }
 
-    const maxHopUsed = 7;
-    const maxHopValue = 7;
+    const maxHopUsed = Math.max(0, ...Object.keys(hopsUsedCounts).map(k => _toHopInt(k) ?? 0));
+    const maxHopValue = Math.max(maxHopLeft, maxHopUsed);
 
     const allCounts = [];
     for (let i = 0; i <= maxHopValue; i++) {
@@ -389,15 +389,8 @@ const NMGauges = (() => {
 
     const rows = rowsByStart.map((r) => {
       const cells = [];
-      const maxAllowedHopLeft = r.label === "<3" ? 2 : Number(r.label);
       for (let hopLeft = 0; hopLeft <= 7; hopLeft++) {
-        const allowed = hopLeft <= maxAllowedHopLeft;
-        const count = allowed ? (r.byLeft[hopLeft] || 0) : 0;
-        if (!allowed || count <= 0) {
-          cells.push(`<td class="nm-hop-grid-cell nm-hop-grid-cell--empty" title="start ${r.label}, left ${hopLeft}: 0"></td>`);
-          continue;
-        }
-
+        const count = r.byLeft[hopLeft] || 0;
         const radius = _bubbleRadius(count);
         const d = radius * 2;
         cells.push(
