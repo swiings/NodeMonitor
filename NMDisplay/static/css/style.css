@@ -516,25 +516,32 @@ body.layout-split #nm-charts-container {
 .nm-hop-usage-plot {
   position: relative;
   height: 100%;
-  padding: 6px 12px 22px;
+  padding: 0;
 }
 
 .nm-hop-usage-centerline {
   position: absolute;
-  left: 18px;
-  right: 18px;
+  left: 0;
+  right: 0;
   top: 50%;
   border-top: 1px solid var(--text-dim);
   opacity: 0.75;
 }
 
 .nm-hop-usage-bars {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 6px;
+  bottom: 22px;
+}
+
+.nm-hop-usage-bars-row {
   position: relative;
   height: 100%;
   display: flex;
   align-items: stretch;
   gap: 3px;
-  padding: 0 12px;
 }
 
 .nm-hop-usage-bucket {

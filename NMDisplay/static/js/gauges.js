@@ -351,8 +351,10 @@ const NMGauges = (() => {
     }
 
     chart.innerHTML = `<div class="nm-hop-usage-plot">
-      <div class="nm-hop-usage-centerline"></div>
-      <div class="nm-hop-usage-bars">${bars}</div>
+      <div class="nm-hop-usage-bars">
+        <div class="nm-hop-usage-centerline"></div>
+        <div class="nm-hop-usage-bars-row">${bars}</div>
+      </div>
       <div class="nm-hop-usage-axis">${axisTicks.join("")}</div>
     </div>`;
   }
