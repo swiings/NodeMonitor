@@ -82,9 +82,11 @@ const NMGauges = (() => {
 
   function init() {
     _initChartResize("nm-hop-dist",       "nm-chart-limit-hops");
+    _initChartResize("nm-hop-usage",      "nm-chart-limit-hop-usage");
     _initChartResize("nm-pkt-breakdown",  "nm-chart-limit-pkts");
     _initChartResize("nm-hw-breakdown",   "nm-chart-limit-hw");
     _initChartResize("nm-role-breakdown", "nm-chart-limit-roles");
+    _chartState["nm-hop-usage"].renderFn      = _renderHopUsage;
     _chartState["nm-pkt-breakdown"].renderFn  = _renderPktBreakdown;
     _chartState["nm-hw-breakdown"].renderFn   = _renderHwBreakdown;
     _chartState["nm-role-breakdown"].renderFn = _renderRoleBreakdown;
@@ -173,6 +175,9 @@ const NMGauges = (() => {
 
     if (data.hop_dist_raw) {
       _updateHopDistRaw(data.hop_dist_raw, data.hop_used_raw || null);
+    }
+    if (data.hop_usage_pct_buckets) {
+      _updateHopUsage(data.hop_usage_pct_buckets);
     }
     if (data.hardware_breakdown) {
       _updateHardwareBreakdown(data.hardware_breakdown);
@@ -289,6 +294,48 @@ const NMGauges = (() => {
   function _set(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
+  }
+
+  function _updateHopUsage(bucketMap) {
+    const state = _chartState["nm-hop-usage"];
+    if (!state) return;
+
+    const rows = [];
+    for (let bucket = 0; bucket <= 100; bucket += 10) {
+      const count = Number(bucketMap?.[String(bucket)] ?? 0) || 0;
+      rows.push({ bucket, count });
+    }
+    state.allRows = rows;
+    _renderHopUsage();
+  }
+
+  function _renderHopUsage() {
+    const chart = document.getElementById("nm-hop-usage-chart");
+    if (!chart) return;
+
+    const rows = _slicedRows("nm-hop-usage");
+    if (!rows.length) {
+      chart.innerHTML = `<div class="nm-hop-usage-empty">No data</div>`;
+      return;
+    }
+
+    const maxCount = Math.max(1, ...rows.map(r => r.count));
+    const bars = rows.map(r => {
+      const heightPct = Math.round((r.count / maxCount) * 45);
+      const start = r.bucket;
+      const end = Math.min(100, r.bucket + 9);
+      const title = `${start}%-${end}%: ${r.count} pkts`;
+      return `<div class="nm-hop-usage-bucket" title="${title}">
+        <div class="nm-hop-usage-bar-top" style="height:${heightPct}%"></div>
+        <div class="nm-hop-usage-bar-bottom" style="height:${heightPct}%"></div>
+        <div class="nm-hop-usage-tick">${r.bucket}%</div>
+      </div>`;
+    }).join("");
+
+    chart.innerHTML = `<div class="nm-hop-usage-plot">
+      <div class="nm-hop-usage-centerline"></div>
+      <div class="nm-hop-usage-bars">${bars}</div>
+    </div>`;
   }
 
   // Compact number: 1234 → "1.2K", 1234567 → "1.2M"

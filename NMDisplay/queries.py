@@ -370,6 +370,35 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
     ).fetchall()
     hop_used_raw = {str(row["hops_used"]): row["cnt"] for row in used_rows}
 
+    # Hop usage percentage buckets in 10% increments.
+    # usage% = ((hop_start - hop_limit) / hop_start) * 100
+    # Example: start=3,left=1 => 66%, bucketed to 60.
+    usage_pair_rows = conn.execute(
+        """
+        SELECT hop_start, COALESCE(hop_limit, 0) AS hop_left, COUNT(*) AS cnt
+        FROM packets
+        WHERE from_node_id != ?
+          AND hop_start IS NOT NULL
+          AND hop_start > 0
+          AND hop_start >= COALESCE(hop_limit, 0)
+        GROUP BY hop_start, hop_left
+        """,
+        (excl_hop,),
+    ).fetchall()
+    hop_usage_pct_buckets = {str(i): 0 for i in range(0, 101, 10)}
+    for row in usage_pair_rows:
+        hop_start = row["hop_start"]
+        hop_left = row["hop_left"]
+        cnt = row["cnt"] or 0
+        if not hop_start:
+            continue
+        pct = ((hop_start - hop_left) / hop_start) * 100.0
+        pct = max(0.0, min(100.0, pct))
+        bucket = int(pct // 10) * 10
+        if bucket > 100:
+            bucket = 100
+        hop_usage_pct_buckets[str(bucket)] += cnt
+
     return {
         "direct_count":       direct,
         "active_count":       active,
@@ -385,6 +414,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
         "hop_dist":           hop_dist,
         "hop_dist_raw":       hop_dist_raw,
         "hop_used_raw":       hop_used_raw,
+        "hop_usage_pct_buckets": hop_usage_pct_buckets,
         "router_count":       router_count,
         "client_count":       client_count,
     }

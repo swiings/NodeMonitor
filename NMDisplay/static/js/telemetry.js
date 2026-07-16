@@ -119,10 +119,22 @@ const NMTelemetry = (() => {
     if (!chartsEl) return;
     try {
       const saved = JSON.parse(localStorage.getItem("nm-charts-order") || "null");
-      if (!saved) return;
+      if (!Array.isArray(saved)) return;
       const cards = new Map();
       chartsEl.querySelectorAll("[data-card-id]").forEach(c => cards.set(c.dataset.cardId, c));
+      const known = ["hops_left", "hop_usage", "pkt_breakdown", "hw_breakdown", "role_breakdown"];
+      const order = [];
       for (const id of saved) {
+        if (known.includes(id) && !order.includes(id)) order.push(id);
+      }
+      if (!order.includes("hop_usage")) {
+        const hopIdx = order.indexOf("hops_left");
+        if (hopIdx >= 0) order.splice(hopIdx + 1, 0, "hop_usage");
+      }
+      for (const id of known) {
+        if (!order.includes(id)) order.push(id);
+      }
+      for (const id of order) {
         const card = cards.get(id);
         if (card) chartsEl.appendChild(card);
       }

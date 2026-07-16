@@ -507,6 +507,79 @@ body.layout-split #nm-charts-container {
   margin-left: auto;
 }
 
+.nm-hop-usage-chart {
+  height: 100%;
+  min-height: 120px;
+  position: relative;
+}
+
+.nm-hop-usage-plot {
+  position: relative;
+  height: 100%;
+  padding: 6px 12px 18px;
+}
+
+.nm-hop-usage-centerline {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 50%;
+  border-top: 1px solid var(--text-dim);
+  opacity: 0.75;
+}
+
+.nm-hop-usage-bars {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  padding: 0 12px;
+}
+
+.nm-hop-usage-bucket {
+  position: relative;
+  flex: 1;
+}
+
+.nm-hop-usage-bar-top,
+.nm-hop-usage-bar-bottom {
+  position: absolute;
+  left: 50%;
+  width: min(16px, 100%);
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--accent) 82%, #ffffff 18%);
+  border-radius: 2px;
+  min-height: 1px;
+}
+
+.nm-hop-usage-bar-top {
+  bottom: 50%;
+}
+
+.nm-hop-usage-bar-bottom {
+  top: 50%;
+}
+
+.nm-hop-usage-tick {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.nm-hop-usage-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
 .nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nm-node-meta { color: var(--text); font-size: 11px; text-align: right; white-space: nowrap; }
 
