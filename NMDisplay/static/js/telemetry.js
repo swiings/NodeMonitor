@@ -573,6 +573,20 @@ const NMTelemetry = (() => {
       });
     }
 
+    const trackBtn = popup.querySelector(".nm-track-btn");
+    if (trackBtn) {
+      trackBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const nodeId = node.node_id;
+        try {
+          if (typeof NMMap.createAndShowTrack === "function") {
+            await NMMap.createAndShowTrack(nodeId);
+            popup.remove();
+          }
+        } catch (_) {}
+      });
+    }
+
     const deleteBtn = popup.querySelector(".nm-node-delete-btn");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async (e) => {

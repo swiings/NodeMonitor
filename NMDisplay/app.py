@@ -388,6 +388,47 @@ def api_packet_breakdown():
     return jsonify({"breakdown": rows})
 
 
+@app.route("/api/tracks/from_node/<int:node_id>", methods=["POST"])
+def api_create_track_from_node(node_id):
+    conn = queries.get_rw_conn()
+    try:
+        color = (request.json or {}).get("color") if request.is_json else None
+        if not isinstance(color, str) or not color.strip():
+            color = "#ff9f1a"
+        track = queries.create_track_from_node(conn, node_id, color=color.strip())
+    finally:
+        conn.close()
+    if not track:
+        return jsonify({"error": "not enough position points for track"}), 400
+    return jsonify({"track": track})
+
+
+@app.route("/api/tracks")
+def api_list_tracks():
+    mode = (request.args.get("mode") or "all").strip().lower()
+    if mode not in ("all", "selected"):
+        return jsonify({"error": "invalid mode", "tracks": []}), 400
+    conn = queries.get_conn()
+    try:
+        tracks = queries.list_tracks(conn, mode=mode)
+    finally:
+        conn.close()
+    return jsonify({"tracks": tracks, "mode": mode})
+
+
+@app.route("/api/tracks/load_from_packets", methods=["POST"])
+def api_load_tracks_from_packets():
+    conn = queries.get_rw_conn()
+    try:
+        color = (request.json or {}).get("color") if request.is_json else None
+        if not isinstance(color, str) or not color.strip():
+            color = "#ff9f1a"
+        result = queries.create_tracks_from_packets(conn, color=color.strip())
+    finally:
+        conn.close()
+    return jsonify(result)
+
+
 # ------------------------------------------------------------------
 # Export API
 # ------------------------------------------------------------------

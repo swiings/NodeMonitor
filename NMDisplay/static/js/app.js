@@ -840,6 +840,7 @@ function initSettingsModal() {
   _initSaveDataToggle();
   _initRequeuButton();
   _initRequestPositionButton();
+  _initLoadTracksButton();
   initActivateModal();
 }
 
@@ -897,6 +898,31 @@ function _initRequestPositionButton() {
       btn.disabled = false;
       if (status) status.textContent = "";
     }, 12000);
+  });
+}
+
+function _initLoadTracksButton() {
+  const btn = document.getElementById("cfg-load-tracks");
+  const status = document.getElementById("cfg-load-tracks-status");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    if (status) status.textContent = "Loading…";
+    try {
+      const resp = await fetch("/api/tracks/load_from_packets", { method: "POST" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        if (status) status.textContent = data.error || "Error";
+      } else {
+        if (status) status.textContent = `Loaded ${data.created || 0} track(s)`;
+      }
+    } catch (_) {
+      if (status) status.textContent = "Error";
+    }
+    setTimeout(() => {
+      btn.disabled = false;
+      if (status) status.textContent = "";
+    }, 4000);
   });
 }
 

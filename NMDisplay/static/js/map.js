@@ -34,6 +34,10 @@ const NMMap = (() => {
   let _myNodeId = null;
   let _allGpsNodes = [];        // full node list with GPS, stored for re-filtering
   let _myNodeBtn = null;        // reference to "go to my node" button element
+  let _trackLayer = null;
+  let _trackVisible = true;
+  let _trackMode = "selected";
+  let _tracksCtlEl = null;
 
   // Hop filter state
   // _maxHopsFilter: max hops-away to show; Infinity = show all (ALL position)
@@ -123,6 +127,47 @@ const NMMap = (() => {
       { position: "topright" }
     ).addTo(_map);
     // ── End layer control block ────────────────────────────────────────────────
+
+    _trackLayer = L.layerGroup().addTo(_map);
+
+    const TracksControl = L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const wrap = L.DomUtil.create("div", "nm-track-control");
+        wrap.innerHTML = `
+          <button class="nm-track-menu-btn" title="Track options">TRK</button>
+          <div class="nm-track-menu hidden">
+            <button data-action="hide">Hide Tracks</button>
+            <button data-action="all">Show All Tracks</button>
+            <button data-action="selected">Show Selected</button>
+          </div>`;
+        const btn = wrap.querySelector(".nm-track-menu-btn");
+        const menu = wrap.querySelector(".nm-track-menu");
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          menu.classList.toggle("hidden");
+        });
+        wrap.querySelectorAll(".nm-track-menu button[data-action]").forEach((b) => {
+          L.DomEvent.on(b, "click", async (e) => {
+            L.DomEvent.stopPropagation(e);
+            const action = b.dataset.action;
+            menu.classList.add("hidden");
+            if (action === "hide") {
+              _trackVisible = false;
+              _clearTracks();
+              return;
+            }
+            _trackVisible = true;
+            _trackMode = action === "all" ? "all" : "selected";
+            await _showTracksByMode(_trackMode);
+          });
+        });
+        _tracksCtlEl = wrap;
+        return wrap;
+      },
+    });
+    new TracksControl().addTo(_map);
 
     L.control.scale({ position: "bottomright", imperial: true, metric: false, maxWidth: 200 }).addTo(_map);
 
@@ -312,24 +357,35 @@ const NMMap = (() => {
         });
       }
 
-      const deleteBtn = popupEl.querySelector(".nm-node-delete-btn");
-      if (!deleteBtn) return;
-      deleteBtn.addEventListener("click", async (ev) => {
-        L.DomEvent.stopPropagation(ev);
-        const nodeId = parseInt(deleteBtn.dataset.nodeId, 10);
-        const marker = e.popup._source;
-        const node   = marker?._nmNode;
-        const label  = node?.short_name || node?.node_id_hex || nodeId;
-        if (!confirm(`Delete node ${label} from this session?`)) return;
-        const resp = await fetch(`/api/nodes/${nodeId}`, { method: "DELETE" });
-        if (resp.ok) {
+      const trackBtn = popupEl.querySelector(".nm-track-btn");
+      if (trackBtn) {
+        trackBtn.addEventListener("click", async (ev) => {
+          L.DomEvent.stopPropagation(ev);
+          const nodeId = parseInt(trackBtn.dataset.nodeId, 10);
+          await _createAndShowTrack(nodeId);
           e.popup.remove();
-          document.dispatchEvent(new CustomEvent("nm:request-poll"));
-        } else {
-          const data = await resp.json().catch(() => ({}));
-          alert(data.error || "Delete failed");
-        }
-      });
+        });
+      }
+
+      const deleteBtn = popupEl.querySelector(".nm-node-delete-btn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", async (ev) => {
+          L.DomEvent.stopPropagation(ev);
+          const nodeId = parseInt(deleteBtn.dataset.nodeId, 10);
+          const marker = e.popup._source;
+          const node   = marker?._nmNode;
+          const label  = node?.short_name || node?.node_id_hex || nodeId;
+          if (!confirm(`Delete node ${label} from this session?`)) return;
+          const resp = await fetch(`/api/nodes/${nodeId}`, { method: "DELETE" });
+          if (resp.ok) {
+            e.popup.remove();
+            document.dispatchEvent(new CustomEvent("nm:request-poll"));
+          } else {
+            const data = await resp.json().catch(() => ({}));
+            alert(data.error || "Delete failed");
+          }
+        });
+      }
     });
   }
 
@@ -805,11 +861,130 @@ const NMMap = (() => {
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
     ).join("");
+    const trackBtn = node.is_moving
+      ? `<button class="nm-text-btn nm-track-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Show Track</button>`
+      : "";
     return `<table style="font-size:10px;font-family:monospace;line-height:1.4">${trs}</table>`
       + `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">`
       + `<button class="nm-text-btn nm-traffic-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">See Traffic</button>`
+      + trackBtn
       + `<button class="nm-btn-danger nm-node-delete-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Delete Node</button>`
       + `</div>`;
+  }
+
+  async function _createAndShowTrack(nodeId) {
+    try {
+      const resp = await fetch(`/api/tracks/from_node/${nodeId}`, { method: "POST" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.track) {
+        alert(data.error || "Unable to build track");
+        return;
+      }
+      _trackVisible = true;
+      _trackMode = "selected";
+      _renderTracks([data.track], true);
+    } catch (err) {
+      alert(err?.message || "Unable to build track");
+    }
+  }
+
+  async function _showTracksByMode(mode) {
+    try {
+      const resp = await fetch(`/api/tracks?mode=${encodeURIComponent(mode)}`);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        alert(data.error || "Unable to load tracks");
+        return;
+      }
+      _renderTracks(data.tracks || [], false);
+    } catch (err) {
+      alert(err?.message || "Unable to load tracks");
+    }
+  }
+
+  function _clearTracks() {
+    if (_trackLayer) _trackLayer.clearLayers();
+  }
+
+  function _renderTracks(tracks, fitToBounds) {
+    if (!_trackLayer) return;
+    _trackLayer.clearLayers();
+    if (!_trackVisible) return;
+
+    const all = [];
+    for (const t of tracks) {
+      const pts = Array.isArray(t.points)
+        ? t.points.filter(p => p && p.lat != null && p.lon != null).map(p => [p.lat, p.lon])
+        : [];
+      if (pts.length < 2) continue;
+      all.push(...pts);
+      const color = t.color || "#ff9f1a";
+      const pl = L.polyline(pts, {
+        color,
+        weight: t.is_selected ? 4 : 3,
+        opacity: t.is_selected ? 0.92 : 0.72,
+        lineCap: "round",
+        lineJoin: "round",
+      });
+      pl.bindTooltip(`Track #${t.id} · ${t.point_count || pts.length} points`, { direction: "top" });
+      _trackLayer.addLayer(pl);
+
+      const startPt = pts[0];
+      const endPt = pts[pts.length - 1];
+      const startTs = Array.isArray(t.points) && t.points[0] ? t.points[0].rx_time : null;
+      const endTs = Array.isArray(t.points) && t.points[t.points.length - 1] ? t.points[t.points.length - 1].rx_time : null;
+
+      const startDot = L.circleMarker(startPt, {
+        radius: 4,
+        color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95,
+        opacity: 0.95,
+      });
+      startDot.bindTooltip(`Start ${_fmtTrackTime(startTs)}`, {
+        permanent: true,
+        direction: "left",
+        className: "nm-track-time-label",
+        offset: [-6, 0],
+      });
+      _trackLayer.addLayer(startDot);
+
+      const endDot = L.circleMarker(endPt, {
+        radius: 5,
+        color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95,
+        opacity: 0.95,
+      });
+      endDot.bindTooltip(`End ${_fmtTrackTime(endTs)}`, {
+        permanent: true,
+        direction: "right",
+        className: "nm-track-time-label",
+        offset: [6, 0],
+      });
+      _trackLayer.addLayer(endDot);
+    }
+
+    if (fitToBounds && all.length > 1) {
+      const b = L.latLngBounds(all);
+      _map.fitBounds(b, { padding: [35, 35], maxZoom: 16 });
+    }
+  }
+
+  function _fmtTrackTime(ts) {
+    if (!ts) return "—";
+    const d = new Date(ts * 1000);
+    return d.toLocaleString([], {
+      year: "2-digit",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
   }
 
   // ── Bounds ────────────────────────────────────────────────────
@@ -947,6 +1122,7 @@ const NMMap = (() => {
     flyToNode,
     hasMarker,
     closePopups,
+    createAndShowTrack: _createAndShowTrack,
     buildNodePopupHtml: _popupHtml,
   };
 })();

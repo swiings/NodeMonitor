@@ -116,6 +116,24 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_positions_node_id ON positions(node_id);
         CREATE INDEX IF NOT EXISTS idx_positions_rx_time ON positions(rx_time);
 
+        -- Saved map tracks (derived from node position history)
+        CREATE TABLE IF NOT EXISTS tracks (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id         INTEGER NOT NULL,
+            created_ts      INTEGER NOT NULL,
+            start_ts        INTEGER,
+            end_ts          INTEGER,
+            point_count     INTEGER NOT NULL DEFAULT 0,
+            color           TEXT,
+            is_selected     INTEGER NOT NULL DEFAULT 1,
+            path_json       TEXT NOT NULL,
+            FOREIGN KEY (node_id) REFERENCES nodes(node_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tracks_created_ts ON tracks(created_ts DESC);
+        CREATE INDEX IF NOT EXISTS idx_tracks_node_id ON tracks(node_id);
+        CREATE INDEX IF NOT EXISTS idx_tracks_selected ON tracks(is_selected);
+
         -- Pre-aggregated per-minute packet counts for histogram display
         CREATE TABLE IF NOT EXISTS packet_timeline (
             minute_ts   INTEGER NOT NULL,

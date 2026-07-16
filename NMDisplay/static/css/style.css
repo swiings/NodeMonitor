@@ -759,6 +759,66 @@ body.layout-split #nm-charts-container {
 }
 .nm-my-node-btn:hover { background: var(--bg3); }
 
+.nm-track-control {
+  margin-top: 78px;
+  position: relative;
+}
+
+.nm-track-menu-btn {
+  display: block;
+  width: 42px;
+  height: 30px;
+  background: var(--bg2);
+  border: 2px solid rgba(0,0,0,0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 24px;
+  text-align: center;
+  color: var(--text);
+  padding: 0;
+  letter-spacing: 0.08em;
+  font-weight: bold;
+}
+
+.nm-track-menu-btn:hover {
+  background: var(--bg3);
+}
+
+.nm-track-menu {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  width: 126px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.nm-track-menu.hidden {
+  display: none;
+}
+
+.nm-track-menu button {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nm-track-menu button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── Marker pin wrapper & packet-arrival pulse ───────────────── */
 /* The wrapper is a child of .leaflet-marker-icon so that transform
    animations don't conflict with Leaflet's own translate() positioning. */
@@ -802,6 +862,18 @@ body.layout-split #nm-charts-container {
   white-space: nowrap;
   padding: 2px 5px !important;
   border-radius: 3px !important;
+}
+
+.nm-track-time-label {
+  background: rgba(16, 22, 30, 0.92) !important;
+  border: 1px solid rgba(126, 200, 255, 0.65) !important;
+  color: #d8ecff !important;
+  font-family: "Courier New", monospace !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
 }
 
 /* ── Settings modal ──────────────────────────────────────────── */

@@ -2,6 +2,7 @@ import math
 import os
 import sqlite3
 import time
+import json
 
 import bundle_paths
 import sessions as _sessions
@@ -16,6 +17,16 @@ def get_conn() -> sqlite3.Connection:
     is brand-new (new session, NMListener hasn't connected yet)."""
     db_path = _sessions.get_db_path()
     return get_conn_for_path(db_path)
+
+
+def get_rw_conn() -> sqlite3.Connection:
+    """Open a writable connection to the active session DB."""
+    db_path = _sessions.get_db_path()
+    _ensure_schema(db_path)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    _register_haversine(conn)
+    return conn
 
 
 def get_conn_for_path(db_path: str) -> sqlite3.Connection:
@@ -740,3 +751,165 @@ def get_packets_for_export(conn) -> list[dict]:
         d["to_node_id"]   = f"!{d['to_node_id']   & 0xFFFFFFFF:08x}" if d["to_node_id"]   else "—"
         result.append(d)
     return result
+
+
+def create_track_from_node(conn, node_id: int, *, color: str = "#ff9f1a") -> dict | None:
+    """Persist a new track row from all known positions for a node."""
+    rows = conn.execute(
+        """
+        SELECT rx_time, lat, lon, altitude_m
+        FROM positions
+        WHERE node_id = ?
+        ORDER BY rx_time ASC, id ASC
+        """,
+        (node_id,),
+    ).fetchall()
+    if len(rows) < 2:
+        return None
+
+    points = [
+        {
+            "rx_time": int(r["rx_time"]),
+            "lat": float(r["lat"]),
+            "lon": float(r["lon"]),
+            "altitude_m": float(r["altitude_m"]) if r["altitude_m"] is not None else None,
+        }
+        for r in rows
+        if r["lat"] is not None and r["lon"] is not None
+    ]
+    if len(points) < 2:
+        return None
+
+    now = int(time.time())
+    conn.execute("UPDATE tracks SET is_selected = 0")
+    cur = conn.execute(
+        """
+        INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+        """,
+        (
+            node_id,
+            now,
+            points[0]["rx_time"],
+            points[-1]["rx_time"],
+            len(points),
+            color,
+            json.dumps(points),
+        ),
+    )
+    conn.commit()
+    track_id = cur.lastrowid
+    return {
+        "id": track_id,
+        "node_id": node_id,
+        "created_ts": now,
+        "start_ts": points[0]["rx_time"],
+        "end_ts": points[-1]["rx_time"],
+        "point_count": len(points),
+        "color": color,
+        "is_selected": True,
+        "points": points,
+    }
+
+
+def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
+    where = ""
+    params: tuple = ()
+    if mode == "selected":
+        where = "WHERE is_selected = 1"
+    rows = conn.execute(
+        f"""
+        SELECT id, node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json
+        FROM tracks
+        {where}
+        ORDER BY created_ts DESC
+        LIMIT ?
+        """,
+        params + (limit,),
+    ).fetchall()
+
+    out = []
+    for row in rows:
+        try:
+            pts = json.loads(row["path_json"])
+            if not isinstance(pts, list):
+                pts = []
+        except Exception:
+            pts = []
+        out.append(
+            {
+                "id": row["id"],
+                "node_id": row["node_id"],
+                "created_ts": row["created_ts"],
+                "start_ts": row["start_ts"],
+                "end_ts": row["end_ts"],
+                "point_count": row["point_count"],
+                "color": row["color"] or "#ff9f1a",
+                "is_selected": bool(row["is_selected"]),
+                "points": pts,
+            }
+        )
+    return out
+
+
+def create_tracks_from_packets(conn, *, color: str = "#ff9f1a") -> dict:
+    """Build selected tracks for every node with >=2 position points."""
+    nodes = conn.execute(
+        """
+        SELECT node_id, COUNT(*) AS cnt
+        FROM positions
+        GROUP BY node_id
+        HAVING COUNT(*) >= 2
+        ORDER BY cnt DESC
+        """
+    ).fetchall()
+
+    if not nodes:
+        return {"created": 0, "node_count": 0}
+
+    now = int(time.time())
+    conn.execute("UPDATE tracks SET is_selected = 0")
+    created = 0
+    for row in nodes:
+        node_id = row["node_id"]
+        pts_rows = conn.execute(
+            """
+            SELECT rx_time, lat, lon, altitude_m
+            FROM positions
+            WHERE node_id = ?
+            ORDER BY rx_time ASC, id ASC
+            """,
+            (node_id,),
+        ).fetchall()
+        points = [
+            {
+                "rx_time": int(p["rx_time"]),
+                "lat": float(p["lat"]),
+                "lon": float(p["lon"]),
+                "altitude_m": float(p["altitude_m"]) if p["altitude_m"] is not None else None,
+            }
+            for p in pts_rows
+            if p["lat"] is not None and p["lon"] is not None
+        ]
+        if len(points) < 2:
+            continue
+
+        conn.execute(
+            """
+            INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            """,
+            (
+                node_id,
+                now,
+                points[0]["rx_time"],
+                points[-1]["rx_time"],
+                len(points),
+                color,
+                json.dumps(points),
+            ),
+        )
+        created += 1
+
+    conn.commit()
+    return {"created": created, "node_count": len(nodes)}
