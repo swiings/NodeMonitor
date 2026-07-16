@@ -226,7 +226,7 @@ const NMTelemetry = (() => {
 
     const title = document.createElement("div");
     title.className = "nm-list-title nm-list-title--draggable";
-    title.textContent = "BIG SIG / LIL SIG";
+    title.textContent = "BIG SIG (CLICK TO FLIP)";
     card.appendChild(title);
 
     const limit = _displayLimits.big_sig ?? _displayLimits.lil_sig ?? bigSig.limit ?? lilSig.limit ?? 5;
@@ -256,6 +256,12 @@ const NMTelemetry = (() => {
     flipper.appendChild(front);
     flipper.appendChild(back);
     body.appendChild(flipper);
+
+    title.addEventListener("click", () => {
+      const flipped = body.classList.toggle("is-flipped");
+      title.textContent = flipped ? "LIL SIG (CLICK TO FLIP)" : "BIG SIG (CLICK TO FLIP)";
+    });
+
     card.appendChild(body);
 
     const handle = document.createElement("div");

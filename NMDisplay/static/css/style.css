@@ -372,7 +372,11 @@ body.layout-split #nm-charts-container {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  animation: nm-sig-flip 8s ease-in-out infinite;
+  transition: transform 0.45s ease-in-out;
+}
+
+.nm-list-body--sig-flip.is-flipped .nm-sig-flip-inner {
+  transform: rotateX(180deg);
 }
 
 .nm-sig-flip-face {
@@ -399,21 +403,9 @@ body.layout-split #nm-charts-container {
   padding: 2px 8px;
 }
 
-@keyframes nm-sig-flip {
-  0%, 42% {
-    transform: rotateX(0deg);
-  }
-  50%, 92% {
-    transform: rotateX(180deg);
-  }
-  100% {
-    transform: rotateX(360deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .nm-sig-flip-inner {
-    animation: none;
+    transition: none;
   }
   .nm-sig-flip-face--back {
     display: none;
