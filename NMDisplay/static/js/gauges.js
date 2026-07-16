@@ -321,13 +321,16 @@ const NMGauges = (() => {
 
     const maxCount = Math.max(1, ...rows.map(r => r.count));
     const bars = rows.map(r => {
-      const heightPct = Math.round((r.count / maxCount) * 45);
+      const ratio = r.count > 0 ? Math.sqrt(r.count / maxCount) : 0;
+      const heightPct = ratio > 0 ? Math.max(2, Math.round(ratio * 88)) : 0;
       const start = r.bucket;
       const end = Math.min(100, r.bucket + 9);
       const title = `${start}%-${end}%: ${r.count} pkts`;
+      const barHtml = heightPct > 0
+        ? `<div class="nm-hop-usage-bar" style="height:${heightPct}%"></div>`
+        : "";
       return `<div class="nm-hop-usage-bucket" title="${title}">
-        <div class="nm-hop-usage-bar-top" style="height:${heightPct}%"></div>
-        <div class="nm-hop-usage-bar-bottom" style="height:${heightPct}%"></div>
+        ${barHtml}
       </div>`;
     }).join("");
 

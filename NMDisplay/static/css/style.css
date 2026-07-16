@@ -542,23 +542,15 @@ body.layout-split #nm-charts-container {
   flex: 1;
 }
 
-.nm-hop-usage-bar-top,
-.nm-hop-usage-bar-bottom {
+.nm-hop-usage-bar {
   position: absolute;
   left: 50%;
+  top: 50%;
   width: min(16px, 100%);
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   background: color-mix(in srgb, var(--accent) 82%, #ffffff 18%);
   border-radius: 2px;
-  min-height: 1px;
-}
-
-.nm-hop-usage-bar-top {
-  bottom: 50%;
-}
-
-.nm-hop-usage-bar-bottom {
-  top: 50%;
+  min-height: 2px;
 }
 
 .nm-hop-usage-axis {
