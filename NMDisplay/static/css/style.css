@@ -361,6 +361,65 @@ body.layout-split #nm-charts-container {
   overflow-y: auto;
 }
 
+.nm-list-body--sig-flip {
+  position: relative;
+  overflow: hidden;
+  perspective: 900px;
+}
+
+.nm-sig-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: nm-sig-flip 8s ease-in-out infinite;
+}
+
+.nm-sig-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  overflow-y: auto;
+  background: var(--bg3);
+}
+
+.nm-sig-flip-face--back {
+  transform: rotateX(180deg);
+}
+
+.nm-sig-flip-face-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: var(--bg2);
+  border-bottom: 1px solid var(--divider);
+  padding: 2px 8px;
+}
+
+@keyframes nm-sig-flip {
+  0%, 42% {
+    transform: rotateX(0deg);
+  }
+  50%, 92% {
+    transform: rotateX(180deg);
+  }
+  100% {
+    transform: rotateX(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-sig-flip-inner {
+    animation: none;
+  }
+  .nm-sig-flip-face--back {
+    display: none;
+  }
+}
+
 .nm-list-title {
   font-size: 10px;
   font-weight: bold;

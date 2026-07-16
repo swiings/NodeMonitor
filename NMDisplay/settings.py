@@ -17,6 +17,7 @@ DEFAULTS = {
             "last_heard": 5,
             "nearby":     5,
             "big_sig":    5,
+            "lil_sig":    5,
             "most_pkts":  5,
             "msgs_sent":  5,
             "msgs_rcvd":  5,
@@ -44,7 +45,7 @@ DEFAULTS = {
     }
 }
 
-VALID_LISTS = {"last_heard", "nearby", "big_sig", "most_pkts", "msgs_sent", "msgs_rcvd", "dead_end"}
+VALID_LISTS = {"last_heard", "nearby", "big_sig", "lil_sig", "most_pkts", "msgs_sent", "msgs_rcvd", "dead_end"}
 
 
 def load() -> dict:

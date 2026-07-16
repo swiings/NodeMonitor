@@ -94,7 +94,16 @@ const NMTelemetry = (() => {
   }
 
   function _getSavedOrder() {
-    try { return JSON.parse(localStorage.getItem("nm-card-order") || "null"); }
+    try {
+      const saved = JSON.parse(localStorage.getItem("nm-card-order") || "null");
+      if (!Array.isArray(saved)) return null;
+      const normalized = [];
+      for (const id of saved) {
+        const mapped = id === "lil_sig" ? "big_sig" : id;
+        if (!normalized.includes(mapped)) normalized.push(mapped);
+      }
+      return normalized;
+    }
     catch (_) { return null; }
   }
 
@@ -159,8 +168,20 @@ const NMTelemetry = (() => {
     // Remove only dynamic cards; static cards (hops left, pkt breakdown) stay
     _container.querySelectorAll(".nm-list-card--dynamic").forEach(c => c.remove());
 
+    const byId = new Map(lists.map(list => [list.id, list]));
+
     for (const list of lists) {
-      const card = _buildCard(list);
+      if (list.id === "lil_sig" && byId.has("big_sig")) {
+        continue;
+      }
+
+      let card = null;
+      if (list.id === "big_sig" && byId.has("lil_sig")) {
+        card = _buildSigFlipCard(list, byId.get("lil_sig"));
+      } else {
+        card = _buildCard(list);
+      }
+
       card.dataset.cardId = list.id;
       card.classList.add("nm-list-card--dynamic");
       _container.appendChild(card);
@@ -185,17 +206,7 @@ const NMTelemetry = (() => {
     const body = document.createElement("div");
     body.className = "nm-list-body";
     body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
-
-    const visibleNodes = _visibleNodes(list.nodes, list.id);
-    if (visibleNodes.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "nm-list-empty";
-      empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
-      empty.textContent = (list.id === "msgs_sent" || list.id === "msgs_rcvd") ? "None" : "No data";
-      body.appendChild(empty);
-    } else {
-      for (const node of visibleNodes) body.appendChild(_buildRow(node, list.id));
-    }
+    _populateListBody(body, list);
 
     card.appendChild(body);
 
@@ -207,6 +218,65 @@ const NMTelemetry = (() => {
     _attachResizeDrag(handle, list);
 
     return card;
+  }
+
+  function _buildSigFlipCard(bigSig, lilSig) {
+    const card = document.createElement("div");
+    card.className = "nm-list-card nm-list-card--sig-flip";
+
+    const title = document.createElement("div");
+    title.className = "nm-list-title nm-list-title--draggable";
+    title.textContent = "BIG SIG / LIL SIG";
+    card.appendChild(title);
+
+    const limit = _displayLimits.big_sig ?? _displayLimits.lil_sig ?? bigSig.limit ?? lilSig.limit ?? 5;
+    const body = document.createElement("div");
+    body.className = "nm-list-body nm-list-body--sig-flip";
+    body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
+
+    const flipper = document.createElement("div");
+    flipper.className = "nm-sig-flip-inner";
+
+    const front = document.createElement("div");
+    front.className = "nm-sig-flip-face nm-sig-flip-face--front";
+    const frontLabel = document.createElement("div");
+    frontLabel.className = "nm-sig-flip-face-label";
+    frontLabel.textContent = "BIG SIG";
+    front.appendChild(frontLabel);
+    _populateListBody(front, bigSig);
+
+    const back = document.createElement("div");
+    back.className = "nm-sig-flip-face nm-sig-flip-face--back";
+    const backLabel = document.createElement("div");
+    backLabel.className = "nm-sig-flip-face-label";
+    backLabel.textContent = "LIL SIG";
+    back.appendChild(backLabel);
+    _populateListBody(back, lilSig);
+
+    flipper.appendChild(front);
+    flipper.appendChild(back);
+    body.appendChild(flipper);
+    card.appendChild(body);
+
+    const handle = document.createElement("div");
+    handle.className = "nm-list-resize-handle";
+    card.appendChild(handle);
+    _attachSigResizeDrag(handle, bigSig, lilSig);
+
+    return card;
+  }
+
+  function _populateListBody(body, list) {
+    const visibleNodes = _visibleNodes(list.nodes, list.id);
+    if (visibleNodes.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "nm-list-empty";
+      empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
+      empty.textContent = (list.id === "msgs_sent" || list.id === "msgs_rcvd") ? "None" : "No data";
+      body.appendChild(empty);
+      return;
+    }
+    for (const node of visibleNodes) body.appendChild(_buildRow(node, list.id));
   }
 
   // ── Resize drag (bottom handle) ───────────────────────────────
@@ -258,24 +328,60 @@ const NMTelemetry = (() => {
     }, { passive: false });
   }
 
+  function _attachSigResizeDrag(handle, bigSig, lilSig) {
+    const startDrag = (startY) => {
+      const startLimit = _displayLimits.big_sig ?? _displayLimits.lil_sig ?? bigSig.limit ?? lilSig.limit ?? 5;
+
+      const onMove = (currentY) => {
+        const dy = currentY - startY;
+        const delta = Math.round(dy / ROW_HEIGHT);
+        const newLim = Math.max(1, Math.min(20, startLimit + delta));
+        if (_displayLimits.big_sig !== newLim || _displayLimits.lil_sig !== newLim) {
+          _displayLimits.big_sig = newLim;
+          _displayLimits.lil_sig = newLim;
+          _saveDisplayLimits();
+          const card = handle.closest(".nm-list-card");
+          const body = card?.querySelector(".nm-list-body");
+          if (body) body.style.height = `${newLim * ROW_HEIGHT}px`;
+        }
+      };
+
+      return onMove;
+    };
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.clientY);
+      const move = (e2) => onMove(e2.clientY);
+      const up = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const onMove = startDrag(e.touches[0].clientY);
+      const move = (e2) => onMove(e2.touches[0].clientY);
+      const up = () => {
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", up);
+      };
+      document.addEventListener("touchmove", move, { passive: false });
+      document.addEventListener("touchend", up);
+    }, { passive: false });
+  }
+
   function _updateCardRows(card, list, limit) {
     const body = card.querySelector(".nm-list-body");
     if (!body) return;
     body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
     body.innerHTML = "";
-
-    const visibleNodes = _visibleNodes(list.nodes, list.id);
-    if (visibleNodes.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "nm-list-empty";
-      empty.style.cssText = "padding:4px 8px;color:var(--text-dim);font-size:11px";
-      empty.textContent = (list.id === "msgs_sent" || list.id === "msgs_rcvd") ? "None" : "No data";
-      body.appendChild(empty);
-    } else {
-      const frag = document.createDocumentFragment();
-      for (const node of visibleNodes) frag.appendChild(_buildRow(node, list.id));
-      body.appendChild(frag);
-    }
+    _populateListBody(body, list);
   }
 
   // ── Card reorder drag (title bar) ─────────────────────────────
@@ -551,6 +657,7 @@ const NMTelemetry = (() => {
           ? `${(node.distance_km * 0.621371).toFixed(1)} mi`
           : "no GPS";
       case "big_sig":
+      case "lil_sig":
         if (node.rssi == null) return "—";
         return node.snr != null ? `${node.rssi}/${node.snr}` : `${node.rssi} dBm`;
       case "most_pkts":

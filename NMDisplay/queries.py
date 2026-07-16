@@ -168,6 +168,7 @@ _SORT = {
     "last_heard": (lambda n: n["last_heard"] or 0,                             True),
     "nearby":     (lambda n: (n["distance_km"] is None, n["distance_km"] or 0), False),
     "big_sig":    (lambda n: (n["rssi"] is None, -(n["rssi"] or 0)),            False),
+    "lil_sig":    (lambda n: (n["rssi"] is None, n["rssi"] or 0),               False),
     "most_pkts":  (lambda n: n["total_packets"],                                True),
     "msgs_sent":  (lambda n: n["sent_count"],                                   True),
     "msgs_rcvd":  (lambda n: n["received_count"],                               True),
@@ -178,6 +179,7 @@ LIST_TITLES = {
     "last_heard": "LAST HEARD",
     "nearby":     "NEARBY",
     "big_sig":    "BIG SIG",
+    "lil_sig":    "LIL SIG",
     "most_pkts":  "MOST PKTS",
     "msgs_sent":  "MSGS SENT",
     "msgs_rcvd":  "MSGS RCVD",
@@ -185,7 +187,7 @@ LIST_TITLES = {
 }
 
 
-_EXCLUDE_MY_NODE = {"last_heard", "nearby", "big_sig", "most_pkts", "dead_end"}
+_EXCLUDE_MY_NODE = {"last_heard", "nearby", "big_sig", "lil_sig", "most_pkts", "dead_end"}
 
 
 def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
@@ -196,7 +198,10 @@ def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
     kept in message lists where it's meaningful.
     """
     tl_cfg = cfg.get("telemetry_lists", {})
-    enabled = tl_cfg.get("enabled_lists", [])
+    enabled = list(tl_cfg.get("enabled_lists", []))
+    if "big_sig" in enabled and "lil_sig" not in enabled:
+        idx = enabled.index("big_sig") + 1
+        enabled.insert(idx, "lil_sig")
     limits = tl_cfg.get("limits", {})
     my_node_id = cfg.get("my_node_id")
     result = []
