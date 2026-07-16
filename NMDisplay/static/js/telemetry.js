@@ -239,18 +239,10 @@ const NMTelemetry = (() => {
 
     const front = document.createElement("div");
     front.className = "nm-sig-flip-face nm-sig-flip-face--front";
-    const frontLabel = document.createElement("div");
-    frontLabel.className = "nm-sig-flip-face-label";
-    frontLabel.textContent = "BIG SIG";
-    front.appendChild(frontLabel);
     _populateListBody(front, bigSig);
 
     const back = document.createElement("div");
     back.className = "nm-sig-flip-face nm-sig-flip-face--back";
-    const backLabel = document.createElement("div");
-    backLabel.className = "nm-sig-flip-face-label";
-    backLabel.textContent = "LIL SIG";
-    back.appendChild(backLabel);
     _populateListBody(back, lilSig);
 
     flipper.appendChild(front);
