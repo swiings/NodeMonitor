@@ -208,6 +208,58 @@ class Repository:
         )
         self._conn.commit()
 
+    def get_recent_positions_for_node(
+        self,
+        node_id: int,
+        *,
+        since_ts: int,
+        limit: int = 120,
+    ) -> list[dict]:
+        cur = self._conn.execute(
+            """
+            SELECT rx_time, lat, lon, altitude_m, sats, precision_bits
+            FROM positions
+            WHERE node_id = ? AND rx_time >= ?
+            ORDER BY rx_time DESC
+            LIMIT ?
+            """,
+            (node_id, since_ts, limit),
+        )
+        rows = cur.fetchall()
+        out = []
+        for row in reversed(rows):
+            out.append(
+                {
+                    "rx_time": row[0],
+                    "lat": row[1],
+                    "lon": row[2],
+                    "altitude_m": row[3],
+                    "sats": row[4],
+                    "precision_bits": row[5],
+                }
+            )
+        return out
+
+    def update_motion_state(
+        self,
+        node_id: int,
+        *,
+        motion_eval_ts: int,
+        motion_score: float,
+        last_motion_ts: Optional[int] = None,
+    ) -> None:
+        self._conn.execute(
+            """
+            UPDATE nodes
+            SET motion_eval_ts = ?,
+                motion_score = ?,
+                last_motion_ts = COALESCE(?, last_motion_ts)
+            WHERE node_id = ?
+            """,
+            (motion_eval_ts, motion_score, last_motion_ts, node_id),
+        )
+        self._conn.commit()
+
     # ------------------------------------------------------------------
     # Timeline
     # ------------------------------------------------------------------

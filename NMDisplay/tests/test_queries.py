@@ -153,14 +153,16 @@ class PacketBreakdownTests(unittest.TestCase):
                     first_seen INTEGER, last_heard INTEGER, device_last_heard INTEGER,
                     seeded INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT,
                     sats INTEGER, rssi INTEGER, snr REAL, battery_level INTEGER,
-                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT, street TEXT, city TEXT, state TEXT
+                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT,
+                    street TEXT, city TEXT, state TEXT,
+                    last_motion_ts INTEGER, motion_eval_ts INTEGER, motion_score REAL
                 )
                 """
             )
             conn.execute("CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, hop_start INTEGER, rx_time INTEGER, portnum TEXT, id INTEGER)")
             conn.execute("CREATE TABLE message_counts (node_id INTEGER, sent_count INTEGER, received_count INTEGER, last_updated INTEGER)")
             conn.execute("CREATE TABLE positions (id INTEGER PRIMARY KEY AUTOINCREMENT, packet_id INTEGER, rx_time INTEGER, node_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL)")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL, NULL, NULL, NULL)")
             conn.commit()
 
             rows = queries.get_all_nodes(conn, None, None)
@@ -171,6 +173,44 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(rows[0]["source"], "LOC_INTERNAL")
         self.assertEqual(rows[0]["sats"], 7)
         self.assertEqual(rows[0]["packet_source"], "MQTT")
+
+    def test_get_all_nodes_projects_vehicle_role_from_recent_motion(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.create_function("haversine", 4, lambda *args: None)
+            conn.execute(
+                """
+                CREATE TABLE nodes (
+                    node_id INTEGER, short_name TEXT, long_name TEXT, hardware_model TEXT,
+                    first_seen INTEGER, last_heard INTEGER, device_last_heard INTEGER,
+                    seeded INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT,
+                    sats INTEGER, rssi INTEGER, snr REAL, battery_level INTEGER,
+                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT,
+                    street TEXT, city TEXT, state TEXT,
+                    last_motion_ts INTEGER, motion_eval_ts INTEGER, motion_score REAL
+                )
+                """
+            )
+            conn.execute("CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, hop_start INTEGER, rx_time INTEGER, portnum TEXT, id INTEGER)")
+            conn.execute("CREATE TABLE message_counts (node_id INTEGER, sent_count INTEGER, received_count INTEGER, last_updated INTEGER)")
+            conn.execute("CREATE TABLE positions (id INTEGER PRIMARY KEY AUTOINCREMENT, packet_id INTEGER, rx_time INTEGER, node_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
+
+            now = int(queries.time.time())
+            conn.execute(
+                "INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, ?, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL, ?, ?, ?)",
+                (now, now - 120, now, 5.0),
+            )
+            conn.commit()
+
+            rows = queries.get_all_nodes(conn, None, None)
+        finally:
+            conn.close()
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["base_role"], "ROUTER")
+        self.assertEqual(rows[0]["role"], "VEHICLE")
+        self.assertTrue(rows[0]["is_moving"])
 
     def test_filtered_traffic_exposes_position_source_and_sats(self):
         conn = sqlite3.connect(":memory:")
@@ -251,14 +291,16 @@ class PacketBreakdownTests(unittest.TestCase):
                     first_seen INTEGER, last_heard INTEGER, device_last_heard INTEGER,
                     seeded INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT,
                     sats INTEGER, rssi INTEGER, snr REAL, battery_level INTEGER,
-                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT, street TEXT, city TEXT, state TEXT
+                    voltage REAL, hop_limit INTEGER, packet_source TEXT, role TEXT,
+                    street TEXT, city TEXT, state TEXT,
+                    last_motion_ts INTEGER, motion_eval_ts INTEGER, motion_score REAL
                 )
                 """
             )
             conn.execute("CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, hop_start INTEGER, rx_time INTEGER, portnum TEXT, id INTEGER)")
             conn.execute("CREATE TABLE message_counts (node_id INTEGER, sent_count INTEGER, received_count INTEGER, last_updated INTEGER)")
             conn.execute("CREATE TABLE positions (id INTEGER PRIMARY KEY AUTOINCREMENT, packet_id INTEGER, rx_time INTEGER, node_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
-            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL)")
+            conn.execute("INSERT INTO nodes VALUES (123456789, 'A', 'Alpha', 'Heltec V4', 1, 2, NULL, 0, 38.1, -76.9, 10.0, 'LOC_INTERNAL', 7, NULL, NULL, NULL, NULL, NULL, 'MQTT', 'ROUTER', NULL, NULL, NULL, NULL, NULL, NULL)")
             conn.commit()
 
             csv_data = app_mod._build_nodes_csv(conn)

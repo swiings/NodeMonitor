@@ -58,6 +58,7 @@ const NMTelemetry = (() => {
 
   function _emojiForRole(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "CLIENT")] || String(role ?? "CLIENT")).toUpperCase();
+    if (r === "VEHICLE") return "🚙";
     if (r === "CLIENT_BASE" ) return "🏡";
     if (r === "CLIENT" ) return "📱";
     if (r === "CLIENT_MUTE" ) return "😶";

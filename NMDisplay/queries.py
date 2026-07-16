@@ -7,6 +7,9 @@ import bundle_paths
 import sessions as _sessions
 
 
+_VEHICLE_TIMEOUT_S = 3600
+
+
 def get_conn() -> sqlite3.Connection:
     """Open a fresh read-only connection to the active session's DB.
     WAL mode is already set by NMListener. Creates the schema if the DB
@@ -106,6 +109,9 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
                 END AS hops_away,
                 n.packet_source,
                 n.role,
+                n.last_motion_ts,
+                n.motion_eval_ts,
+                n.motion_score,
                 n.street,
                 n.city,
                 n.state,
@@ -155,10 +161,22 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
     except sqlite3.OperationalError:
         return []
 
-    return [_enrich_node(dict(row)) for row in rows]
+    now_ts = int(time.time())
+    return [_enrich_node(dict(row), now_ts=now_ts) for row in rows]
 
 
-def _enrich_node(node: dict) -> dict:
+def _enrich_node(node: dict, now_ts: int | None = None) -> dict:
+    now = now_ts if now_ts is not None else int(time.time())
+    base_role = node.get("role")
+    last_motion_ts = node.get("last_motion_ts")
+    moving_recently = (
+        last_motion_ts is not None
+        and (now - int(last_motion_ts)) < _VEHICLE_TIMEOUT_S
+    )
+    node["base_role"] = base_role
+    node["is_moving"] = moving_recently
+    if moving_recently:
+        node["role"] = "VEHICLE"
     node["node_id_hex"] = f"!{node['node_id'] & 0xFFFFFFFF:08x}"
     return node
 
@@ -556,14 +574,22 @@ def get_hardware_breakdown(conn) -> list[dict]:
 
 def get_role_breakdown(conn) -> list[dict]:
     """Return node counts grouped by role, sorted by count descending."""
+    now = int(time.time())
     try:
         rows = conn.execute(
             """
-            SELECT COALESCE(role, 'Unknown') AS role, COUNT(*) AS cnt
+            SELECT
+                CASE
+                    WHEN last_motion_ts IS NOT NULL AND (? - last_motion_ts) < ? THEN 'VEHICLE'
+                    ELSE COALESCE(role, 'Unknown')
+                END AS role,
+                COUNT(*) AS cnt
             FROM nodes
             GROUP BY role
             ORDER BY cnt DESC
             """
+            ,
+            (now, _VEHICLE_TIMEOUT_S),
         ).fetchall()
     except sqlite3.OperationalError:
         return []

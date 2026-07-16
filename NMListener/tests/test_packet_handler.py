@@ -73,6 +73,35 @@ class DummyRepo:
         self.timeline = getattr(self, "timeline", [])
         self.timeline.append({"minute_ts": minute_ts, "portnum": portnum})
 
+    def get_recent_positions_for_node(self, node_id, *, since_ts, limit=120):
+        rows = [
+            p for p in self.positions
+            if p["node_id"] == node_id and p["rx_time"] >= since_ts
+        ]
+        rows.sort(key=lambda p: p["rx_time"])
+        return [
+            {
+                "rx_time": p["rx_time"],
+                "lat": p["lat"],
+                "lon": p["lon"],
+                "altitude_m": p.get("altitude_m"),
+                "sats": p.get("sats"),
+                "precision_bits": p.get("precision_bits"),
+            }
+            for p in rows[-limit:]
+        ]
+
+    def update_motion_state(self, node_id, *, motion_eval_ts, motion_score, last_motion_ts=None):
+        self.motion = getattr(self, "motion", [])
+        self.motion.append(
+            {
+                "node_id": node_id,
+                "motion_eval_ts": motion_eval_ts,
+                "motion_score": motion_score,
+                "last_motion_ts": last_motion_ts,
+            }
+        )
+
 
 class DummyNodeStore:
     def upsert(self, *args, **kwargs):
@@ -189,6 +218,21 @@ class PacketHandlerTests(unittest.TestCase):
 
         self.assertEqual(len(repo.nodes), 1)
         self.assertEqual(repo.nodes[0]["kwargs"]["packet_source"], "Over the Air")
+
+    def test_motion_classifier_ignores_altitude_only_jitter(self):
+        now = 1_700_000_000
+        samples = [
+            {"rx_time": now - 300, "lat": 38.100000, "lon": -76.900000, "altitude_m": 10.0, "sats": 8, "precision_bits": 12},
+            {"rx_time": now - 240, "lat": 38.100000, "lon": -76.900000, "altitude_m": 40.0, "sats": 8, "precision_bits": 12},
+            {"rx_time": now - 180, "lat": 38.100000, "lon": -76.900000, "altitude_m": 75.0, "sats": 8, "precision_bits": 12},
+            {"rx_time": now - 120, "lat": 38.100000, "lon": -76.900000, "altitude_m": 5.0, "sats": 8, "precision_bits": 12},
+            {"rx_time": now - 60,  "lat": 38.100000, "lon": -76.900000, "altitude_m": 60.0, "sats": 8, "precision_bits": 12},
+        ]
+
+        moving, score = packet_handler._is_moving_from_positions(samples, now)
+
+        self.assertFalse(moving)
+        self.assertLess(score, 4)
 
     def test_generic_telemetry_packet_persists_packet_source_mqtt(self):
         repo = DummyRepo()

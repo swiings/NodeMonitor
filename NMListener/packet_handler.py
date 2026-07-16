@@ -7,6 +7,7 @@ the portnum-specific handler.
 """
 
 import json
+import math
 import os
 import time
 from typing import Optional
@@ -380,6 +381,19 @@ def handle_position(
         precision_bits=precision,
     )
 
+    positions = repo.get_recent_positions_for_node(
+        from_id,
+        since_ts=rx_time - config.MOTION_LOOKBACK_S,
+        limit=config.MOTION_MAX_SAMPLES,
+    )
+    moving, score = _is_moving_from_positions(positions, rx_time)
+    repo.update_motion_state(
+        from_id,
+        motion_eval_ts=rx_time,
+        motion_score=score,
+        last_motion_ts=rx_time if moving else None,
+    )
+
 
 # ------------------------------------------------------------------
 # Helpers
@@ -454,3 +468,100 @@ def _last_packet_id(repo: Repository) -> Optional[int]:
     cur = repo._conn.execute("SELECT MAX(id) FROM packets")
     row = cur.fetchone()
     return row[0] if row else None
+
+
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """2D surface distance in meters using Haversine. Altitude intentionally ignored."""
+    r = 6371000.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2.0) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2.0) ** 2
+    return r * 2.0 * math.asin(math.sqrt(a))
+
+
+def _is_confident_fix(sample: dict) -> bool:
+    sats = sample.get("sats")
+    precision_bits = sample.get("precision_bits")
+    if sats is not None and sats < config.MOTION_MIN_SATS:
+        return False
+    if precision_bits is not None and precision_bits < config.MOTION_MIN_PRECISION_BITS:
+        return False
+    return True
+
+
+def _median(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    vals = sorted(values)
+    n = len(vals)
+    mid = n // 2
+    if n % 2 == 1:
+        return float(vals[mid])
+    return (vals[mid - 1] + vals[mid]) / 2.0
+
+
+def _is_moving_from_positions(samples: list[dict], now_ts: int) -> tuple[bool, float]:
+    """
+    Determine moving/not-moving from recent position history.
+    Uses frequency, count, horizontal Haversine distance, and fix age.
+    """
+    if not samples:
+        return False, 0.0
+
+    recent = [s for s in samples if now_ts - int(s.get("rx_time", 0)) <= config.MOTION_RECENT_WINDOW_S]
+    if len(recent) < 2:
+        return False, 0.0
+
+    confident = [s for s in recent if _is_confident_fix(s)]
+    pts = confident if len(confident) >= 2 else recent
+
+    if len(pts) < 2:
+        return False, 0.0
+
+    latest_ts = int(pts[-1].get("rx_time") or 0)
+    age_s = max(0, now_ts - latest_ts)
+
+    intervals = []
+    deltas = []
+    for i in range(1, len(pts)):
+        a = pts[i - 1]
+        b = pts[i]
+        dt = int(b.get("rx_time") or 0) - int(a.get("rx_time") or 0)
+        if dt > 0:
+            intervals.append(float(dt))
+        if a.get("lat") is None or a.get("lon") is None or b.get("lat") is None or b.get("lon") is None:
+            continue
+        d = _haversine_m(float(a["lat"]), float(a["lon"]), float(b["lat"]), float(b["lon"]))
+        deltas.append(d)
+
+    if not deltas:
+        return False, 0.0
+
+    jitter = float(config.MOTION_JITTER_METERS)
+    moving_steps = [d for d in deltas if d >= jitter]
+    path_m = sum(moving_steps)
+
+    first = pts[0]
+    last = pts[-1]
+    net_m = 0.0
+    if first.get("lat") is not None and first.get("lon") is not None and last.get("lat") is not None and last.get("lon") is not None:
+        net_m = _haversine_m(float(first["lat"]), float(first["lon"]), float(last["lat"]), float(last["lon"]))
+
+    score = 0.0
+    if len(pts) >= config.MOTION_MIN_RECENT_SAMPLES:
+        score += 1.0
+    med_interval = _median(intervals)
+    if med_interval > 0 and med_interval <= config.MOTION_MAX_MEDIAN_INTERVAL_S:
+        score += 1.0
+    if len(moving_steps) >= config.MOTION_MIN_MOVING_STEPS:
+        score += 1.0
+    if path_m >= config.MOTION_MIN_PATH_METERS:
+        score += 1.0
+    if net_m >= config.MOTION_MIN_NET_METERS:
+        score += 1.0
+    if age_s > config.MOTION_MAX_FIX_AGE_S:
+        score -= 2.0
+
+    return (score >= float(config.MOTION_MIN_SCORE), score)

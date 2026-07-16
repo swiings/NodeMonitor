@@ -50,6 +50,24 @@ RECONNECT_DELAY_MAX     = 60   # seconds
 # ── Console output ───────────────────────────────────────────────────
 PACKET_LOG_VERBOSE = True
 
+# ── Movement detection (position packets) ──────────────────────────
+# Movement classification uses 2D lat/lon only (horizontal Haversine).
+# Altitude is intentionally ignored to avoid false movement from smart-positioning altitude jitter.
+MOTION_LOOKBACK_S = 2 * 3600
+MOTION_MAX_SAMPLES = 120
+MOTION_RECENT_WINDOW_S = 30 * 60
+MOTION_MAX_FIX_AGE_S = 15 * 60
+MOTION_JITTER_METERS = 25.0
+MOTION_MIN_RECENT_SAMPLES = 4
+MOTION_MAX_MEDIAN_INTERVAL_S = 8 * 60
+MOTION_MIN_MOVING_STEPS = 2
+MOTION_MIN_PATH_METERS = 120.0
+MOTION_MIN_NET_METERS = 60.0
+MOTION_MIN_SCORE = 4
+MOTION_MIN_SATS = 4
+MOTION_MIN_PRECISION_BITS = 8
+MOTION_VEHICLE_TIMEOUT_S = 3600
+
 
 def reload() -> None:
     """Re-read active.json and update mutable runtime flags."""
