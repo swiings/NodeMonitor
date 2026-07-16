@@ -516,7 +516,7 @@ body.layout-split #nm-charts-container {
 .nm-hop-usage-plot {
   position: relative;
   height: 100%;
-  padding: 6px 12px 18px;
+  padding: 6px 12px 22px;
 }
 
 .nm-hop-usage-centerline {
@@ -561,14 +561,37 @@ body.layout-split #nm-charts-container {
   top: 50%;
 }
 
-.nm-hop-usage-tick {
+.nm-hop-usage-axis {
   position: absolute;
-  bottom: -14px;
+  left: 24px;
+  right: 24px;
+  bottom: 2px;
+  height: 16px;
+}
+
+.nm-hop-usage-axis-tick {
+  position: absolute;
+  bottom: 8px;
+  width: 1px;
+  height: 4px;
+  background: var(--text-dim);
+  opacity: 0.65;
+}
+
+.nm-hop-usage-axis-tick--major {
+  height: 8px;
+  opacity: 0.85;
+}
+
+.nm-hop-usage-axis-label {
+  position: absolute;
+  top: 9px;
   left: 50%;
   transform: translateX(-50%);
   color: var(--text-dim);
   font-size: 10px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .nm-hop-usage-empty {

@@ -328,13 +328,29 @@ const NMGauges = (() => {
       return `<div class="nm-hop-usage-bucket" title="${title}">
         <div class="nm-hop-usage-bar-top" style="height:${heightPct}%"></div>
         <div class="nm-hop-usage-bar-bottom" style="height:${heightPct}%"></div>
-        <div class="nm-hop-usage-tick">${r.bucket}%</div>
       </div>`;
     }).join("");
+
+    const labelMap = {
+      0: "NONE",
+      25: "25%",
+      50: "50%",
+      75: "75%",
+      100: "ALL",
+    };
+    const axisTicks = [];
+    for (let i = 0; i <= 100; i += 5) {
+      const major = i % 25 === 0;
+      const label = labelMap[i] || "";
+      axisTicks.push(`<div class="nm-hop-usage-axis-tick${major ? " nm-hop-usage-axis-tick--major" : ""}" style="left:${i}%">
+        ${label ? `<span class="nm-hop-usage-axis-label">${label}</span>` : ""}
+      </div>`);
+    }
 
     chart.innerHTML = `<div class="nm-hop-usage-plot">
       <div class="nm-hop-usage-centerline"></div>
       <div class="nm-hop-usage-bars">${bars}</div>
+      <div class="nm-hop-usage-axis">${axisTicks.join("")}</div>
     </div>`;
   }
 
