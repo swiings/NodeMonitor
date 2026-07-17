@@ -1707,8 +1707,11 @@ body.layout-split #nm-charts-container {
   border-top: 1px solid var(--border);
   background: var(--bg1);
   flex-shrink: 0;
-  max-height: 220px;
-  overflow-y: auto;
+  min-height: 92px;
+  height: 180px;
+  max-height: 60vh;
+  resize: vertical;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
