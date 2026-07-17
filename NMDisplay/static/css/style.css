@@ -530,8 +530,8 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-usage-bars {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  left: 34px;
+  right: 34px;
   top: 6px;
   bottom: 22px;
 }
@@ -541,7 +541,7 @@ body.layout-split #nm-charts-container {
   height: 100%;
   display: flex;
   align-items: stretch;
-  gap: 3px;
+  gap: 1px;
 }
 
 .nm-hop-usage-bucket {
@@ -562,8 +562,8 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-usage-axis {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  left: 34px;
+  right: 34px;
   bottom: 2px;
   height: 16px;
 }

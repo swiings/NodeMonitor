@@ -351,7 +351,7 @@ const NMGauges = (() => {
       const title = `${start}%-${end}%: ${r.count} pkts`;
       const barColor = hopUsagePalette[r.idx] || hopUsagePalette[hopUsagePalette.length - 1];
       const barHtml = heightPct > 0
-        ? `<div class="nm-hop-usage-bar" style="height:${heightPct}%;background:${barColor}"></div>`
+        ? `<div class="nm-hop-usage-bar" style="height:${heightPct}%;width:min(22px,100%);background:${barColor}"></div>`
         : "";
       return `<div class="nm-hop-usage-bucket" title="${title}">
         ${barHtml}
