@@ -301,11 +301,22 @@ const NMGauges = (() => {
     const state = _chartState["nm-hop-usage"];
     if (!state) return;
 
-    const rows = [];
+    // Render as 8 evenly-spaced X-axis positions while preserving incoming
+    // 10% source buckets by folding them into the nearest 8-bin slot.
+    const BIN_COUNT = 8;
+    const rows = Array.from({ length: BIN_COUNT }, (_, idx) => {
+      const start = Math.round((idx / BIN_COUNT) * 100);
+      const end = Math.round(((idx + 1) / BIN_COUNT) * 100);
+      return { idx, start, end, count: 0 };
+    });
+
     for (let bucket = 0; bucket <= 100; bucket += 10) {
       const count = Number(bucketMap?.[String(bucket)] ?? 0) || 0;
-      rows.push({ bucket, count });
+      if (count <= 0) continue;
+      const binIdx = Math.min(BIN_COUNT - 1, Math.floor((bucket / 100) * BIN_COUNT));
+      rows[binIdx].count += count;
     }
+
     state.allRows = rows;
     _renderHopUsage();
   }
@@ -321,32 +332,52 @@ const NMGauges = (() => {
     }
 
     const maxCount = Math.max(1, ...rows.map(r => r.count));
+    // Match Hop Counts palette direction: red -> green from left to right.
+    const hopUsagePalette = [
+      "#710b00",
+      "#7a3818",
+      "#8a6020",
+      "#8f7430",
+      "#7a7a3a",
+      "#6f8b4c",
+      "#719866",
+      "#6b9e7a",
+    ];
     const bars = rows.map(r => {
       const ratio = r.count > 0 ? Math.sqrt(r.count / maxCount) : 0;
       const heightPct = ratio > 0 ? Math.max(2, Math.round(ratio * 88)) : 0;
-      const start = r.bucket;
-      const end = Math.min(100, r.bucket + 9);
+      const start = r.start;
+      const end = Math.max(start, r.end - 1);
       const title = `${start}%-${end}%: ${r.count} pkts`;
+      const barColor = hopUsagePalette[r.idx] || hopUsagePalette[hopUsagePalette.length - 1];
       const barHtml = heightPct > 0
-        ? `<div class="nm-hop-usage-bar" style="height:${heightPct}%"></div>`
+        ? `<div class="nm-hop-usage-bar" style="height:${heightPct}%;background:${barColor}"></div>`
         : "";
       return `<div class="nm-hop-usage-bucket" title="${title}">
         ${barHtml}
       </div>`;
     }).join("");
 
-    const labelMap = {
-      0: "NONE",
-      25: "25%",
-      50: "50%",
-      75: "75%",
-      100: "ALL",
-    };
+    const tickCount = rows.length;
+    const labelTargets = [
+      { value: 0, label: "NONE" },
+      { value: 25, label: "25%" },
+      { value: 50, label: "50%" },
+      { value: 75, label: "75%" },
+      { value: 100, label: "ALL" },
+    ];
+    const indexLabelMap = new Map();
+    for (const t of labelTargets) {
+      const idx = Math.round((t.value / 100) * (tickCount - 1));
+      if (!indexLabelMap.has(idx)) indexLabelMap.set(idx, t.label);
+    }
+
     const axisTicks = [];
-    for (let i = 0; i <= 100; i += 5) {
-      const major = i % 25 === 0;
-      const label = labelMap[i] || "";
-      axisTicks.push(`<div class="nm-hop-usage-axis-tick${major ? " nm-hop-usage-axis-tick--major" : ""}" style="left:${i}%">
+    for (let i = 0; i < tickCount; i++) {
+      const leftPct = tickCount <= 1 ? 0 : (i / (tickCount - 1)) * 100;
+      const label = indexLabelMap.get(i) || "";
+      const major = !!label;
+      axisTicks.push(`<div class="nm-hop-usage-axis-tick${major ? " nm-hop-usage-axis-tick--major" : ""}" style="left:${leftPct}%">
         ${label ? `<span class="nm-hop-usage-axis-label">${label}</span>` : ""}
       </div>`);
     }
