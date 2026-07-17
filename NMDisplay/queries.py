@@ -253,12 +253,19 @@ def build_telemetry_lists(nodes: list[dict], cfg: dict) -> list[dict]:
         # count via drag without a settings round-trip. The configured limit is
         # passed as "limit" so the client knows the saved default.
         sorted_nodes = sorted(pool, key=key_fn, reverse=reverse)[:20]
-        result.append({
+        entry = {
             "id":    list_id,
             "title": LIST_TITLES.get(list_id, list_id.upper()),
             "limit": limit,
             "nodes": sorted_nodes,
-        })
+        }
+        if list_id == "nearby":
+            farthest_nodes = sorted(
+                pool,
+                key=lambda n: (n.get("distance_km") is None, -(n.get("distance_km") or 0)),
+            )[:20]
+            entry["farthest_nodes"] = farthest_nodes
+        result.append(entry)
     return result
 
 

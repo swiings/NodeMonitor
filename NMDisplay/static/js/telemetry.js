@@ -24,6 +24,7 @@ const NMTelemetry = (() => {
   const _displayLimits = {};
   // Full list data from the most recent server response, keyed by list.id
   const _cachedLists = new Map();
+  let _nearbyShowFarthest = false;
 
   // Static card IDs that live in the HTML (no resize handle, no data rows)
   const STATIC_IDS = ["hops_left", "pkt_breakdown", "hw_breakdown", "role_breakdown"];
@@ -191,6 +192,8 @@ const NMTelemetry = (() => {
       let card = null;
       if (list.id === "big_sig" && byId.has("lil_sig")) {
         card = _buildSigFlipCard(list, byId.get("lil_sig"));
+      } else if (list.id === "nearby") {
+        card = _buildNearbyFlipCard(list);
       } else {
         card = _buildCard(list);
       }
@@ -230,6 +233,56 @@ const NMTelemetry = (() => {
 
     _attachResizeDrag(handle, list);
 
+    return card;
+  }
+
+  function _buildNearbyFlipCard(list) {
+    const card = document.createElement("div");
+    card.className = "nm-list-card";
+
+    const title = document.createElement("div");
+    title.className = "nm-list-title nm-list-title--draggable";
+    title.textContent = _nearbyShowFarthest
+      ? "FARTHEST AWAY (CLICK TO FLIP)"
+      : "NEARBY (CLICK TO FLIP)";
+    card.appendChild(title);
+
+    const limit = _displayLimits[list.id] ?? list.limit ?? 5;
+    const body = document.createElement("div");
+    body.className = "nm-list-body";
+    body.style.height = `${Math.max(1, limit) * ROW_HEIGHT}px`;
+
+    const viewList = {
+      ...list,
+      id: list.id,
+      nodes: _nearbyShowFarthest
+        ? (Array.isArray(list.farthest_nodes) ? list.farthest_nodes : list.nodes)
+        : list.nodes,
+    };
+    _populateListBody(body, viewList);
+    card.appendChild(body);
+
+    title.addEventListener("click", () => {
+      _nearbyShowFarthest = !_nearbyShowFarthest;
+      const refreshed = _cachedLists.get("nearby") || list;
+      title.textContent = _nearbyShowFarthest
+        ? "FARTHEST AWAY (CLICK TO FLIP)"
+        : "NEARBY (CLICK TO FLIP)";
+      const renderList = {
+        ...refreshed,
+        id: "nearby",
+        nodes: _nearbyShowFarthest
+          ? (Array.isArray(refreshed.farthest_nodes) ? refreshed.farthest_nodes : refreshed.nodes)
+          : refreshed.nodes,
+      };
+      _updateCardRows(card, renderList, _displayLimits.nearby ?? refreshed.limit ?? 5);
+    });
+
+    const handle = document.createElement("div");
+    handle.className = "nm-list-resize-handle";
+    card.appendChild(handle);
+
+    _attachResizeDrag(handle, list);
     return card;
   }
 
