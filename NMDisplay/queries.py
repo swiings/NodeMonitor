@@ -3,12 +3,17 @@ import os
 import sqlite3
 import time
 import json
+import urllib.parse
+import urllib.request
 
 import bundle_paths
 import sessions as _sessions
 
 
 _VEHICLE_TIMEOUT_S = 3600
+_OSRM_MATCH_URL = os.environ.get("NM_OSRM_MATCH_URL", "https://router.project-osrm.org/match/v1/driving/")
+_OSRM_TIMEOUT_S = float(os.environ.get("NM_OSRM_TIMEOUT_S", "3.5"))
+_OSRM_MAX_POINTS = int(os.environ.get("NM_OSRM_MAX_POINTS", "100"))
 
 
 def get_conn() -> sqlite3.Connection:
@@ -780,12 +785,14 @@ def create_track_from_node(conn, node_id: int, *, color: str = "#ff9f1a") -> dic
     if len(points) < 2:
         return None
 
+    snapped_points, snap_provider = _snap_points_to_road(points)
+
     now = int(time.time())
     conn.execute("UPDATE tracks SET is_selected = 0")
     cur = conn.execute(
         """
-        INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json, snapped_path_json, snap_provider)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
         """,
         (
             node_id,
@@ -795,6 +802,8 @@ def create_track_from_node(conn, node_id: int, *, color: str = "#ff9f1a") -> dic
             len(points),
             color,
             json.dumps(points),
+            json.dumps(snapped_points) if snapped_points else None,
+            snap_provider,
         ),
     )
     conn.commit()
@@ -808,7 +817,10 @@ def create_track_from_node(conn, node_id: int, *, color: str = "#ff9f1a") -> dic
         "point_count": len(points),
         "color": color,
         "is_selected": True,
-        "points": points,
+        "points": snapped_points if snapped_points else points,
+        "raw_points": points,
+        "is_snapped": bool(snapped_points),
+        "snap_provider": snap_provider,
     }
 
 
@@ -820,6 +832,7 @@ def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
     rows = conn.execute(
         f"""
         SELECT id, node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json
+               , snapped_path_json, snap_provider
         FROM tracks
         {where}
         ORDER BY created_ts DESC
@@ -836,6 +849,18 @@ def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
                 pts = []
         except Exception:
             pts = []
+        snapped_pts = []
+        try:
+            raw_snapped = row["snapped_path_json"]
+            if raw_snapped:
+                s = json.loads(raw_snapped)
+                if isinstance(s, list):
+                    snapped_pts = s
+        except Exception:
+            snapped_pts = []
+
+        display_pts = snapped_pts if snapped_pts else pts
+
         out.append(
             {
                 "id": row["id"],
@@ -846,7 +871,10 @@ def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
                 "point_count": row["point_count"],
                 "color": row["color"] or "#ff9f1a",
                 "is_selected": bool(row["is_selected"]),
-                "points": pts,
+                "points": display_pts,
+                "raw_points": pts,
+                "is_snapped": bool(snapped_pts),
+                "snap_provider": row["snap_provider"],
             }
         )
     return out
@@ -870,6 +898,7 @@ def create_tracks_from_packets(conn, *, color: str = "#ff9f1a") -> dict:
     now = int(time.time())
     conn.execute("UPDATE tracks SET is_selected = 0")
     created = 0
+    snapped = 0
     for row in nodes:
         node_id = row["node_id"]
         pts_rows = conn.execute(
@@ -894,10 +923,12 @@ def create_tracks_from_packets(conn, *, color: str = "#ff9f1a") -> dict:
         if len(points) < 2:
             continue
 
+        snapped_points, snap_provider = _snap_points_to_road(points)
+
         conn.execute(
             """
-            INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            INSERT INTO tracks (node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json, snapped_path_json, snap_provider)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
             """,
             (
                 node_id,
@@ -907,9 +938,80 @@ def create_tracks_from_packets(conn, *, color: str = "#ff9f1a") -> dict:
                 len(points),
                 color,
                 json.dumps(points),
+                json.dumps(snapped_points) if snapped_points else None,
+                snap_provider,
             ),
         )
+        if snapped_points:
+            snapped += 1
         created += 1
 
     conn.commit()
-    return {"created": created, "node_count": len(nodes)}
+    return {"created": created, "node_count": len(nodes), "snapped": snapped}
+
+
+def _snap_points_to_road(points: list[dict]) -> tuple[list[dict] | None, str | None]:
+    """Best-effort map-matching via OSRM; returns None when snapping is unavailable."""
+    if len(points) < 2:
+        return None, None
+
+    pts = _downsample_points(points, _OSRM_MAX_POINTS)
+    coords = ";".join(f"{p['lon']:.6f},{p['lat']:.6f}" for p in pts)
+    timestamps = ";".join(str(int(p["rx_time"])) for p in pts)
+    query = urllib.parse.urlencode({
+        "geometries": "geojson",
+        "overview": "full",
+        "tidy": "true",
+        "timestamps": timestamps,
+    })
+    url = f"{_OSRM_MATCH_URL}{coords}?{query}"
+
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "NMDisplay/1.0"})
+        with urllib.request.urlopen(req, timeout=_OSRM_TIMEOUT_S) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+    except Exception:
+        return None, None
+
+    if data.get("code") != "Ok":
+        return None, None
+
+    matchings = data.get("matchings") or []
+    if not matchings:
+        return None, None
+
+    snapped_points = []
+    for m in matchings:
+        geom = m.get("geometry") or {}
+        coords_arr = geom.get("coordinates") or []
+        for c in coords_arr:
+            if not isinstance(c, (list, tuple)) or len(c) < 2:
+                continue
+            snapped_points.append({"lat": float(c[1]), "lon": float(c[0]), "rx_time": None, "altitude_m": None})
+
+    if len(snapped_points) < 2:
+        return None, None
+
+    # Preserve original start/end timestamps for labeling consistency.
+    snapped_points[0]["rx_time"] = int(points[0]["rx_time"])
+    snapped_points[-1]["rx_time"] = int(points[-1]["rx_time"])
+    return snapped_points, "osrm"
+
+
+def _downsample_points(points: list[dict], max_points: int) -> list[dict]:
+    if len(points) <= max_points:
+        return points
+    step = max(1, (len(points) - 1) // (max_points - 1))
+    sampled = points[::step]
+    if sampled[-1] is not points[-1]:
+        sampled.append(points[-1])
+    if sampled[0] is not points[0]:
+        sampled.insert(0, points[0])
+    # Ensure hard cap while preserving ends.
+    if len(sampled) > max_points:
+        core = sampled[1:-1]
+        keep = max_points - 2
+        core_step = max(1, len(core) // keep)
+        core = core[::core_step][:keep]
+        sampled = [sampled[0], *core, sampled[-1]]
+    return sampled

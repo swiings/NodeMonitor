@@ -914,7 +914,9 @@ function _initLoadTracksButton() {
       if (!resp.ok) {
         if (status) status.textContent = data.error || "Error";
       } else {
-        if (status) status.textContent = `Loaded ${data.created || 0} track(s)`;
+        const created = data.created || 0;
+        const snapped = data.snapped || 0;
+        if (status) status.textContent = `Loaded ${created} track(s), snapped ${snapped}`;
       }
     } catch (_) {
       if (status) status.textContent = "Error";

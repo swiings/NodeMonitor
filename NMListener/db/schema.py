@@ -127,6 +127,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
             color           TEXT,
             is_selected     INTEGER NOT NULL DEFAULT 1,
             path_json       TEXT NOT NULL,
+            snapped_path_json TEXT,
+            snap_provider   TEXT,
             FOREIGN KEY (node_id) REFERENCES nodes(node_id)
         );
 
@@ -181,6 +183,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("telemetry", "gas_resistance", "REAL"),
         ("positions", "source",        "TEXT"),
         ("positions", "sats",          "INTEGER"),
+        ("tracks", "snapped_path_json", "TEXT"),
+        ("tracks", "snap_provider",     "TEXT"),
     ]
     for table, col, definition in new_columns:
         try:

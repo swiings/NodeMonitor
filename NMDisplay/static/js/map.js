@@ -37,6 +37,7 @@ const NMMap = (() => {
   let _trackLayer = null;
   let _trackVisible = true;
   let _trackMode = "selected";
+  let _trackLabelsVisible = true;
   let _tracksCtlEl = null;
 
   // Hop filter state
@@ -140,6 +141,7 @@ const NMMap = (() => {
             <button data-action="hide">Hide Tracks</button>
             <button data-action="all">Show All Tracks</button>
             <button data-action="selected">Show Selected</button>
+            <button data-action="labels">Hide Labels</button>
           </div>`;
         const btn = wrap.querySelector(".nm-track-menu-btn");
         const menu = wrap.querySelector(".nm-track-menu");
@@ -156,6 +158,12 @@ const NMMap = (() => {
             if (action === "hide") {
               _trackVisible = false;
               _clearTracks();
+              return;
+            }
+            if (action === "labels") {
+              _trackLabelsVisible = !_trackLabelsVisible;
+              b.textContent = _trackLabelsVisible ? "Hide Labels" : "Show Labels";
+              if (_trackVisible) await _showTracksByMode(_trackMode);
               return;
             }
             _trackVisible = true;
@@ -926,7 +934,8 @@ const NMMap = (() => {
         lineCap: "round",
         lineJoin: "round",
       });
-      pl.bindTooltip(`Track #${t.id} · ${t.point_count || pts.length} points`, { direction: "top" });
+      const snapTag = t.is_snapped ? ` · snapped (${t.snap_provider || "provider"})` : "";
+      pl.bindTooltip(`Track #${t.id} · ${t.point_count || pts.length} points${snapTag}`, { direction: "top" });
       _trackLayer.addLayer(pl);
 
       const startPt = pts[0];
@@ -943,7 +952,7 @@ const NMMap = (() => {
         opacity: 0.95,
       });
       startDot.bindTooltip(`Start ${_fmtTrackTime(startTs)}`, {
-        permanent: true,
+        permanent: _trackLabelsVisible,
         direction: "left",
         className: "nm-track-time-label",
         offset: [-6, 0],
@@ -959,7 +968,7 @@ const NMMap = (() => {
         opacity: 0.95,
       });
       endDot.bindTooltip(`End ${_fmtTrackTime(endTs)}`, {
-        permanent: true,
+        permanent: _trackLabelsVisible,
         direction: "right",
         className: "nm-track-time-label",
         offset: [6, 0],
