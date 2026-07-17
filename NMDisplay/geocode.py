@@ -4,9 +4,9 @@ geocode.py - Reverse geocoding via Google Maps Geocoding API.
 Background thread scans for nodes with GPS coordinates but no address,
 calls the API, and writes street/city/state back to the DB.
 
-Nodes with lat/lon and blank address fields are candidates. On failure (no
-result or API error), all three fields are set to "" to avoid retrying forever.
-Transient network errors leave fields unchanged so the next pass retries.
+Nodes with lat/lon and blank address fields are candidates. Only confirmed
+ZERO_RESULTS responses are cached as blank fields; API/auth/quota failures are
+treated as transient so they can recover after config fixes.
 """
 
 import sqlite3
@@ -35,8 +35,14 @@ def _reverse_geocode(lat: float, lon: float, api_key: str) -> tuple:
         print(f"[geocode] request error: {e}")
         return None, None, None  # transient — will retry next pass
 
-    if data.get("status") != "OK" or not data.get("results"):
-        return "", "", ""  # no address exists — don't retry
+    status = data.get("status")
+    if status == "ZERO_RESULTS":
+        return "", "", ""  # confirmed no address for this point
+
+    if status != "OK" or not data.get("results"):
+        err = data.get("error_message") or ""
+        print(f"[geocode] API status {status or 'UNKNOWN'}: {err}")
+        return None, None, None
 
     components = data["results"][0].get("address_components", [])
     parts: dict = {}

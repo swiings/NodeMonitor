@@ -40,6 +40,7 @@ const NMMap = (() => {
   let _trackLabelsVisible = true;
   let _tracksCtlEl = null;
   let _geocodeInflight = new Set();
+  let _geocodeRetryAfter = new Map();
 
   // Hop filter state
   // _maxHopsFilter: max hops-away to show; Infinity = show all (ALL position)
@@ -840,17 +841,28 @@ const NMMap = (() => {
   async function _ensurePopupGeocode(node, rootEl) {
     if (!node || !rootEl || node.node_id == null) return;
     if (_hasAddress(node)) return;
-    if (node._geocodeAttempted) return;
     if (_geocodeInflight.has(node.node_id)) return;
 
-    node._geocodeAttempted = true;
+    const retryAfter = _geocodeRetryAfter.get(node.node_id) || 0;
+    if (Date.now() < retryAfter) return;
+
     _geocodeInflight.add(node.node_id);
     _setAddressInElement(rootEl, "Looking up...", "Looking up...", "");
     try {
       const resp = await fetch(`/api/nodes/${node.node_id}/geocode`, { method: "POST" });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok || !data.ok) {
-        _setAddressInElement(rootEl, "—", "", "");
+        const code = data.error || "geocode_failed";
+        if (code === "no_api_key") {
+          _setAddressInElement(rootEl, "Geocode unavailable", "Missing API key", "");
+        } else if (code === "geocoding_disabled") {
+          _setAddressInElement(rootEl, "Geocode disabled", "Set NM_ENABLE_GEOCODE=1", "");
+        } else if (code === "no_position") {
+          _setAddressInElement(rootEl, "No GPS fix", "", "");
+        } else {
+          _setAddressInElement(rootEl, "Lookup failed", "Will retry", "");
+        }
+        _geocodeRetryAfter.set(node.node_id, Date.now() + 60_000);
         return;
       }
       const addr = data.address || {};
@@ -858,6 +870,7 @@ const NMMap = (() => {
       node.city = addr.city || "";
       node.state = addr.state || "";
       _setAddressInElement(rootEl, node.street, node.city, node.state);
+      _geocodeRetryAfter.delete(node.node_id);
 
       const marker = _markers.get(node.node_id);
       if (marker?._nmNode) {
@@ -867,7 +880,8 @@ const NMMap = (() => {
         marker.setPopupContent(_popupHtml(marker._nmNode));
       }
     } catch (_) {
-      _setAddressInElement(rootEl, "—", "", "");
+      _setAddressInElement(rootEl, "Lookup failed", "Will retry", "");
+      _geocodeRetryAfter.set(node.node_id, Date.now() + 60_000);
     } finally {
       _geocodeInflight.delete(node.node_id);
     }
