@@ -39,6 +39,7 @@ const NMMap = (() => {
   let _trackMode = "selected";
   let _trackLabelsVisible = true;
   let _tracksCtlEl = null;
+  let _geocodeInflight = new Set();
 
   // Hop filter state
   // _maxHopsFilter: max hops-away to show; Infinity = show all (ALL position)
@@ -349,14 +350,16 @@ const NMMap = (() => {
     _map.on("popupopen", (e) => {
       const popupEl = e.popup.getElement();
       if (!popupEl) return;
+      const marker = e.popup._source;
+      const node = marker?._nmNode;
+
+      _ensurePopupGeocode(node, popupEl);
 
       const trafficBtn = popupEl.querySelector(".nm-traffic-btn");
       if (trafficBtn) {
         trafficBtn.addEventListener("click", (ev) => {
           L.DomEvent.stopPropagation(ev);
           const nodeId = parseInt(trafficBtn.dataset.nodeId, 10);
-          const marker = e.popup._source;
-          const node   = marker?._nmNode;
           const label  = node?.short_name || `!${(nodeId >>> 0).toString(16).padStart(8, "0")}`;
           document.dispatchEvent(new CustomEvent("nm:open-traffic", {
             detail: { by: "node", value: nodeId, label }
@@ -380,8 +383,6 @@ const NMMap = (() => {
         deleteBtn.addEventListener("click", async (ev) => {
           L.DomEvent.stopPropagation(ev);
           const nodeId = parseInt(deleteBtn.dataset.nodeId, 10);
-          const marker = e.popup._source;
-          const node   = marker?._nmNode;
           const label  = node?.short_name || node?.node_id_hex || nodeId;
           if (!confirm(`Delete node ${label} from this session?`)) return;
           const resp = await fetch(`/api/nodes/${nodeId}`, { method: "DELETE" });
@@ -817,6 +818,61 @@ const NMMap = (() => {
     }
   }
 
+  function _isBlank(v) {
+    return v == null || String(v).trim() === "";
+  }
+
+  function _hasAddress(node) {
+    if (!node) return false;
+    return !(_isBlank(node.street) && _isBlank(node.city) && _isBlank(node.state));
+  }
+
+  function _setAddressInElement(rootEl, street, city, state) {
+    const streetEl = rootEl?.querySelector(".nm-geocode-street");
+    const cityEl = rootEl?.querySelector(".nm-geocode-citystate");
+    if (!streetEl || !cityEl) return;
+    streetEl.textContent = !_isBlank(street) ? street : "—";
+    cityEl.textContent = (!_isBlank(city) || !_isBlank(state))
+      ? [city, state].filter((x) => !_isBlank(x)).join(", ")
+      : "—";
+  }
+
+  async function _ensurePopupGeocode(node, rootEl) {
+    if (!node || !rootEl || node.node_id == null) return;
+    if (_hasAddress(node)) return;
+    if (node._geocodeAttempted) return;
+    if (_geocodeInflight.has(node.node_id)) return;
+
+    node._geocodeAttempted = true;
+    _geocodeInflight.add(node.node_id);
+    _setAddressInElement(rootEl, "Looking up...", "Looking up...", "");
+    try {
+      const resp = await fetch(`/api/nodes/${node.node_id}/geocode`, { method: "POST" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.ok) {
+        _setAddressInElement(rootEl, "—", "", "");
+        return;
+      }
+      const addr = data.address || {};
+      node.street = addr.street || "";
+      node.city = addr.city || "";
+      node.state = addr.state || "";
+      _setAddressInElement(rootEl, node.street, node.city, node.state);
+
+      const marker = _markers.get(node.node_id);
+      if (marker?._nmNode) {
+        marker._nmNode.street = node.street;
+        marker._nmNode.city = node.city;
+        marker._nmNode.state = node.state;
+        marker.setPopupContent(_popupHtml(marker._nmNode));
+      }
+    } catch (_) {
+      _setAddressInElement(rootEl, "—", "", "");
+    } finally {
+      _geocodeInflight.delete(node.node_id);
+    }
+  }
+
   // ── Popup ─────────────────────────────────────────────────────
 
   function _popupHtml(node) {
@@ -841,6 +897,11 @@ const NMMap = (() => {
       ? `${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}`
       : "—";
 
+    const streetText = !_isBlank(node.street) ? node.street : "—";
+    const cityStateText = (!_isBlank(node.city) || !_isBlank(node.state))
+      ? [node.city, node.state].filter((x) => !_isBlank(x)).join(", ")
+      : "—";
+
     const rows = [
       ["ID",         node.node_id_hex || "—"],
       ["Short",      node.short_name  || "—"],
@@ -857,10 +918,6 @@ const NMMap = (() => {
       ["Location Source", _locationSourceLabel(node.source)],
       ["Sats",       node.sats != null ? String(node.sats) : "—"],
       ...(node.precision_bits != null ? [["Precision", _precisionLabel(node.precision_bits)]] : []),
-      ["Street",     node.street || "—"],
-      ["City, State", (node.city || node.state)
-                        ? [node.city, node.state].filter(Boolean).join(", ")
-                        : "—"],
       ["Altitude",   altStr],
       ["Packets",    node.total_packets],
       ["Last heard", ts],
@@ -868,7 +925,9 @@ const NMMap = (() => {
     ];
     const trs = rows.map(([k, v]) =>
       `<tr><td style="color:#888;padding-right:4px">${k}</td><td>${v}</td></tr>`
-    ).join("");
+    ).join("")
+      + `<tr><td style="color:#888;padding-right:4px">Street</td><td><span class="nm-geocode-street">${streetText}</span></td></tr>`
+      + `<tr><td style="color:#888;padding-right:4px">City, State</td><td><span class="nm-geocode-citystate">${cityStateText}</span></td></tr>`;
     const trackBtn = node.is_moving
       ? `<button class="nm-text-btn nm-track-btn" data-node-id="${node.node_id}" style="font-size:10px;padding:2px 8px">Show Track</button>`
       : "";
@@ -1134,5 +1193,6 @@ const NMMap = (() => {
     closePopups,
     createAndShowTrack: _createAndShowTrack,
     buildNodePopupHtml: _popupHtml,
+    ensurePopupGeocode: _ensurePopupGeocode,
   };
 })();

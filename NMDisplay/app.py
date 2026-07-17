@@ -350,6 +350,29 @@ def api_delete_node(node_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/nodes/<int:node_id>/geocode", methods=["POST"])
+def api_node_geocode(node_id):
+    if not _env_bool("NM_ENABLE_GEOCODE", True):
+        return jsonify({"ok": False, "error": "geocoding_disabled"}), 503
+
+    force = False
+    if request.is_json:
+        force = bool((request.get_json(silent=True) or {}).get("force", False))
+
+    result = geocode_mod.geocode_node(node_id=node_id, api_key=GOOGLE_MAPS_API_KEY, force=force)
+    if result.get("ok"):
+        return jsonify(result)
+
+    reason = result.get("reason", "error")
+    code = {
+        "not_found": 404,
+        "no_position": 400,
+        "no_api_key": 503,
+        "transient_error": 502,
+    }.get(reason, 500)
+    return jsonify({"ok": False, "error": reason}), code
+
+
 @app.route("/api/traffic")
 def api_traffic():
     by    = request.args.get("by", "")
@@ -952,10 +975,13 @@ def run_server() -> None:
     os.makedirs(TILE_CACHE_DIR, exist_ok=True)
     sess_mod.get_active()
     geocode_enabled = _env_bool("NM_ENABLE_GEOCODE", True)
-    if geocode_enabled:
+    geocode_background = _env_bool("NM_ENABLE_GEOCODE_BACKGROUND", False)
+    if not geocode_enabled:
+        print("[geocode] disabled by NM_ENABLE_GEOCODE")
+    elif geocode_background:
         geocode_mod.start(GOOGLE_MAPS_API_KEY)
     else:
-        print("[geocode] disabled by NM_ENABLE_GEOCODE")
+        print("[geocode] on-demand mode enabled (popup lazy load)")
     cert, key = _ensure_ssl_cert()
     lan_ip = _get_lan_ip()
     print("\nNMDisplay — Meshtastic Node Monitor")

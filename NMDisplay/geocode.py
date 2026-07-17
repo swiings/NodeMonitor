@@ -1,12 +1,12 @@
 """
-geocode.py — Reverse geocoding via Google Maps Geocoding API.
+geocode.py - Reverse geocoding via Google Maps Geocoding API.
 
 Background thread scans for nodes with GPS coordinates but no address,
 calls the API, and writes street/city/state back to the DB.
 
-Nodes with lat/lon and street=NULL are candidates. On failure (no result
-or API error), all three fields are set to "" to avoid retrying forever.
-Transient network errors leave fields as NULL so the next pass retries.
+Nodes with lat/lon and blank address fields are candidates. On failure (no
+result or API error), all three fields are set to "" to avoid retrying forever.
+Transient network errors leave fields unchanged so the next pass retries.
 """
 
 import sqlite3
@@ -16,6 +16,10 @@ import time
 import requests
 
 import sessions as _sessions
+
+
+def _is_blank(value) -> bool:
+    return value is None or str(value).strip() == ""
 
 
 def _reverse_geocode(lat: float, lon: float, api_key: str) -> tuple:
@@ -56,7 +60,12 @@ def _run_pass(api_key: str) -> None:
     try:
         rows = conn.execute(
             "SELECT node_id, lat, lon FROM nodes "
-            "WHERE lat IS NOT NULL AND lon IS NOT NULL AND street IS NULL"
+            "WHERE lat IS NOT NULL AND lon IS NOT NULL "
+            "AND ("
+            "TRIM(COALESCE(street, '')) = '' "
+            "OR TRIM(COALESCE(city, '')) = '' "
+            "OR TRIM(COALESCE(state, '')) = ''"
+            ")"
         ).fetchall()
         for node_id, lat, lon in rows:
             street, city, state = _reverse_geocode(lat, lon, api_key)
@@ -74,6 +83,59 @@ def _run_pass(api_key: str) -> None:
         conn.close()
 
 
+def geocode_node(node_id: int, api_key: str, force: bool = False) -> dict:
+    """Geocode one node on demand. Returns a structured status payload."""
+    if not api_key:
+        return {"ok": False, "reason": "no_api_key"}
+
+    db_path = _sessions.get_db_path()
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    try:
+        row = conn.execute(
+            "SELECT lat, lon, street, city, state FROM nodes WHERE node_id=?",
+            (node_id,),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "reason": "not_found"}
+
+        lat, lon, street, city, state = row
+        if lat is None or lon is None:
+            return {"ok": False, "reason": "no_position"}
+
+        has_address = not (_is_blank(street) and _is_blank(city) and _is_blank(state))
+        if has_address and not force:
+            return {
+                "ok": True,
+                "status": "cached",
+                "address": {
+                    "street": street or "",
+                    "city": city or "",
+                    "state": state or "",
+                },
+            }
+
+        new_street, new_city, new_state = _reverse_geocode(float(lat), float(lon), api_key)
+        if new_street is None:
+            return {"ok": False, "reason": "transient_error"}
+
+        conn.execute(
+            "UPDATE nodes SET street=?, city=?, state=? WHERE node_id=?",
+            (new_street, new_city, new_state, node_id),
+        )
+        conn.commit()
+        return {
+            "ok": True,
+            "status": "updated",
+            "address": {
+                "street": new_street or "",
+                "city": new_city or "",
+                "state": new_state or "",
+            },
+        }
+    finally:
+        conn.close()
+
+
 def _loop(api_key: str) -> None:
     while True:
         try:
@@ -86,6 +148,7 @@ def _loop(api_key: str) -> None:
 def start(api_key: str) -> None:
     """Start the background geocoding thread. No-op if api_key is empty."""
     if not api_key:
+        print("[geocode] not started: GOOGLE_MAPS_API_KEY is empty")
         return
     t = threading.Thread(target=_loop, args=(api_key,), daemon=True, name="geocode-bg")
     t.start()

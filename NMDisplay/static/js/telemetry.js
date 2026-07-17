@@ -556,6 +556,10 @@ const NMTelemetry = (() => {
     popup.style.top  = `${top}px`;
     popup.style.left = `${left}px`;
 
+    if (typeof NMMap?.ensurePopupGeocode === "function") {
+      NMMap.ensurePopupGeocode(node, popup);
+    }
+
     popup.querySelector(".nm-node-info-close").addEventListener("click", (e) => {
       e.stopPropagation();
       popup.remove();
