@@ -406,7 +406,7 @@ def api_create_track_from_node(node_id):
 @app.route("/api/tracks")
 def api_list_tracks():
     mode = (request.args.get("mode") or "all").strip().lower()
-    if mode not in ("all", "selected"):
+    if mode not in ("all", "selected", "in_motion"):
         return jsonify({"error": "invalid mode", "tracks": []}), 400
     conn = queries.get_conn()
     try:

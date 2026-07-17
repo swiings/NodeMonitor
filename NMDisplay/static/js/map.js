@@ -167,7 +167,7 @@ const NMMap = (() => {
               return;
             }
             _trackVisible = true;
-            _trackMode = action === "all" ? "all" : "selected";
+            _trackMode = action === "all" ? "in_motion" : "selected";
             await _showTracksByMode(_trackMode);
           });
         });
@@ -935,7 +935,8 @@ const NMMap = (() => {
         lineJoin: "round",
       });
       const snapTag = t.is_snapped ? ` · snapped (${t.snap_provider || "provider"})` : "";
-      pl.bindTooltip(`Track #${t.id} · ${t.point_count || pts.length} points${snapTag}`, { direction: "top" });
+      const moveTag = t.is_moving ? " · IN_MOTION" : "";
+      pl.bindTooltip(`Track #${t.id} · ${t.point_count || pts.length} points${snapTag}${moveTag}`, { direction: "top" });
       _trackLayer.addLayer(pl);
 
       const startPt = pts[0];
@@ -952,7 +953,7 @@ const NMMap = (() => {
         opacity: 0.95,
       });
       startDot.bindTooltip(`Start ${_fmtTrackTime(startTs)}`, {
-        permanent: _trackLabelsVisible,
+        permanent: _trackLabelsVisible && !!t.is_moving,
         direction: "left",
         className: "nm-track-time-label",
         offset: [-6, 0],
@@ -968,7 +969,7 @@ const NMMap = (() => {
         opacity: 0.95,
       });
       endDot.bindTooltip(`End ${_fmtTrackTime(endTs)}`, {
-        permanent: _trackLabelsVisible,
+        permanent: _trackLabelsVisible && !!t.is_moving,
         direction: "right",
         className: "nm-track-time-label",
         offset: [6, 0],

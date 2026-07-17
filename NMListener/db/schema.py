@@ -38,6 +38,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
         );
 
         CREATE INDEX IF NOT EXISTS idx_nodes_last_heard ON nodes(last_heard);
+        CREATE INDEX IF NOT EXISTS idx_nodes_last_motion_ts ON nodes(last_motion_ts);
 
         -- Every received packet, all portnums
         CREATE TABLE IF NOT EXISTS packets (
@@ -61,6 +62,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_packets_rx_time      ON packets(rx_time);
         CREATE INDEX IF NOT EXISTS idx_packets_from_node_id ON packets(from_node_id);
         CREATE INDEX IF NOT EXISTS idx_packets_portnum      ON packets(portnum);
+        CREATE INDEX IF NOT EXISTS idx_packets_from_rx_desc ON packets(from_node_id, rx_time DESC, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_packets_hoplimit_from ON packets(hop_limit, from_node_id);
 
         -- Text messages extracted from TEXT_MESSAGE_APP packets
         CREATE TABLE IF NOT EXISTS text_messages (
@@ -115,6 +118,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_positions_node_id ON positions(node_id);
         CREATE INDEX IF NOT EXISTS idx_positions_rx_time ON positions(rx_time);
+        CREATE INDEX IF NOT EXISTS idx_positions_node_rx_desc ON positions(node_id, rx_time DESC, id DESC);
 
         -- Saved map tracks (derived from node position history)
         CREATE TABLE IF NOT EXISTS tracks (

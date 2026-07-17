@@ -825,20 +825,34 @@ def create_track_from_node(conn, node_id: int, *, color: str = "#ff9f1a") -> dic
 
 
 def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
-    where = ""
-    params: tuple = ()
+    now = int(time.time())
+    where_parts = []
+    params: list = []
     if mode == "selected":
-        where = "WHERE is_selected = 1"
+        where_parts.append("t.is_selected = 1")
+    if mode == "in_motion":
+        where_parts.append("n.last_motion_ts IS NOT NULL")
+        where_parts.append("(? - n.last_motion_ts) < ?")
+        params.extend([now, _VEHICLE_TIMEOUT_S])
+
+    where = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
+
     rows = conn.execute(
         f"""
-        SELECT id, node_id, created_ts, start_ts, end_ts, point_count, color, is_selected, path_json
-               , snapped_path_json, snap_provider
-        FROM tracks
+        SELECT t.id, t.node_id, t.created_ts, t.start_ts, t.end_ts, t.point_count,
+               t.color, t.is_selected, t.path_json, t.snapped_path_json, t.snap_provider,
+               n.last_motion_ts,
+               CASE
+                 WHEN n.last_motion_ts IS NOT NULL AND (? - n.last_motion_ts) < ? THEN 1
+                 ELSE 0
+               END AS is_moving
+        FROM tracks t
+        LEFT JOIN nodes n ON n.node_id = t.node_id
         {where}
-        ORDER BY created_ts DESC
+        ORDER BY t.created_ts DESC
         LIMIT ?
         """,
-        params + (limit,),
+        tuple([now, _VEHICLE_TIMEOUT_S, *params, limit]),
     ).fetchall()
 
     out = []
@@ -875,6 +889,7 @@ def list_tracks(conn, *, mode: str = "all", limit: int = 200) -> list[dict]:
                 "raw_points": pts,
                 "is_snapped": bool(snapped_pts),
                 "snap_provider": row["snap_provider"],
+                "is_moving": bool(row["is_moving"]),
             }
         )
     return out
