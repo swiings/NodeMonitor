@@ -655,7 +655,11 @@ const NMMap = (() => {
     m.setLatLng([node.lat, node.lon]);
     m.setIcon(_iconForNode(node, isMyNode));
     m.setTooltipContent(_labelText(node));
-    m.setPopupContent(_popupHtml(node));
+    // Do not replace popup DOM while open; replacing it drops click handlers
+    // bound on popupopen (See Traffic / Show Track / Delete Node).
+    if (!m.isPopupOpen()) {
+      m.setPopupContent(_popupHtml(node));
+    }
     m._nmNode = node;
   }
 
@@ -877,7 +881,6 @@ const NMMap = (() => {
         marker._nmNode.street = node.street;
         marker._nmNode.city = node.city;
         marker._nmNode.state = node.state;
-        marker.setPopupContent(_popupHtml(marker._nmNode));
       }
     } catch (_) {
       _setAddressInElement(rootEl, "Lookup failed", "Will retry", "");
