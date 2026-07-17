@@ -856,7 +856,7 @@ const NMMap = (() => {
         if (code === "no_api_key") {
           _setAddressInElement(rootEl, "Geocode unavailable", "Missing API key", "");
         } else if (code === "geocoding_disabled") {
-          _setAddressInElement(rootEl, "Geocode disabled", "Set NM_ENABLE_GEOCODE=1", "");
+          _setAddressInElement(rootEl, "Geocode disabled", "Set NM_ENABLE_GEOCODE_LAZY=1", "");
         } else if (code === "no_position") {
           _setAddressInElement(rootEl, "No GPS fix", "", "");
         } else {

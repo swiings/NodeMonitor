@@ -352,7 +352,10 @@ def api_delete_node(node_id):
 
 @app.route("/api/nodes/<int:node_id>/geocode", methods=["POST"])
 def api_node_geocode(node_id):
-    if not _env_bool("NM_ENABLE_GEOCODE", True):
+    # Lazy popup geocoding is controlled independently from the background
+    # geocode worker so an env var meant to stop background scans does not
+    # block on-demand address lookup.
+    if not _env_bool("NM_ENABLE_GEOCODE_LAZY", True):
         return jsonify({"ok": False, "error": "geocoding_disabled"}), 503
 
     force = False
@@ -977,7 +980,7 @@ def run_server() -> None:
     geocode_enabled = _env_bool("NM_ENABLE_GEOCODE", True)
     geocode_background = _env_bool("NM_ENABLE_GEOCODE_BACKGROUND", False)
     if not geocode_enabled:
-        print("[geocode] disabled by NM_ENABLE_GEOCODE")
+        print("[geocode] background worker disabled by NM_ENABLE_GEOCODE")
     elif geocode_background:
         geocode_mod.start(GOOGLE_MAPS_API_KEY)
     else:
