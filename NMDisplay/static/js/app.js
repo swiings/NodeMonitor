@@ -193,10 +193,11 @@ return d.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", second
 // Format the BME680 gas resistance for display. The Meshtastic proto reports
 // gas_resistance in MOhm (see EnvironmentMetrics in telemetry.proto), so the
 // raw value is megohms. We show kΩ by default (higher = cleaner air), scaling
-// up to MΩ for large readings.
+// up to MΩ for large readings. 
 function _fmtGas(mohm) {
   if (mohm == null) return null;
-const kohm = mohm * 1000;
+// const kohm = mohm * 1000; we might be handling this wrong with this multiplication, so for now we just treat the value as kΩ.
+const kohm = mohm;
 
 if (kohm >= 1000) {
     // Keeps up to 2 decimal places for MΩ, but drops trailing .0 or .00
