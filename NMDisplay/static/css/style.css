@@ -636,7 +636,7 @@ body.layout-split #nm-charts-container {
   grid-template-columns: fit-content(24px) 1fr;
   gap: 6px;
   align-items: center;
-  min-height: 18px;
+  min-height: 16px;
 }
 
 .nm-hop-efficiency-label {
@@ -648,7 +648,7 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-efficiency-track {
   position: relative;
-  height: 18px;
+  height: 8px;
 }
 
 .nm-hop-efficiency-row-grid {
@@ -680,6 +680,7 @@ body.layout-split #nm-charts-container {
   align-items: center;
   justify-content: center;
   border-right: 2px solid var(--bg3);
+  border-radius: 2px;
   overflow: hidden;
 }
 
