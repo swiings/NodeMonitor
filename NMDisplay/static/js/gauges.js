@@ -459,10 +459,7 @@ const NMGauges = (() => {
     }).join("");
 
     chart.innerHTML = `<div class="nm-hop-efficiency-plot">
-      <div class="nm-hop-efficiency-header-row">
-        <div class="nm-hop-efficiency-header-label">START</div>
-        <div class="nm-hop-efficiency-header-track">LEFT</div>
-      </div>
+      <div class="nm-hop-efficiency-header-row">HOP START AND HOPS LEFT</div>
       <div class="nm-hop-efficiency-rows">${rowsHtml}</div>
       <div class="nm-hop-efficiency-axis">
         <span>0</span>

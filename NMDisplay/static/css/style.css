@@ -611,27 +611,15 @@ body.layout-split #nm-charts-container {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding: 4px 8px 6px;
 }
 
 .nm-hop-efficiency-header-row {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 8px;
-  align-items: end;
-}
-
-.nm-hop-efficiency-header-label,
-.nm-hop-efficiency-header-track {
   color: var(--accent);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.nm-hop-efficiency-header-label {
-  text-align: right;
 }
 
 .nm-hop-efficiency-rows {
@@ -639,16 +627,16 @@ body.layout-split #nm-charts-container {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding-right: 2px;
 }
 
 .nm-hop-efficiency-row {
   display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 8px;
+  grid-template-columns: fit-content(24px) 1fr;
+  gap: 6px;
   align-items: center;
-  min-height: 22px;
+  min-height: 18px;
 }
 
 .nm-hop-efficiency-label {
@@ -660,7 +648,7 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-efficiency-track {
   position: relative;
-  height: 22px;
+  height: 18px;
 }
 
 .nm-hop-efficiency-row-grid {
