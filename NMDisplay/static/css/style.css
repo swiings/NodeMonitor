@@ -615,27 +615,23 @@ body.layout-split #nm-charts-container {
   padding: 4px 8px 6px;
 }
 
-.nm-hop-efficiency-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  min-height: 14px;
+.nm-hop-efficiency-header-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  align-items: end;
 }
 
-.nm-hop-efficiency-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-dim);
+.nm-hop-efficiency-header-label,
+.nm-hop-efficiency-header-track {
+  color: var(--accent);
   font-size: 10px;
-  white-space: nowrap;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.nm-hop-efficiency-legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
+.nm-hop-efficiency-header-label {
+  text-align: right;
 }
 
 .nm-hop-efficiency-rows {
@@ -701,13 +697,6 @@ body.layout-split #nm-charts-container {
 
 .nm-hop-efficiency-segment:last-child {
   border-right: none;
-}
-
-.nm-hop-efficiency-segment-label {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 .nm-hop-efficiency-axis {

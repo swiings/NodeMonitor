@@ -440,30 +440,17 @@ const NMGauges = (() => {
       `<div class="nm-hop-efficiency-tick" style="left:${value}%"></div>`
     ).join("");
 
-    const legendKeys = new Set();
-    for (const row of rows) {
-      for (const segment of row.segments) {
-        legendKeys.add(segment.hopLeft >= 4 ? "4+" : String(segment.hopLeft));
-      }
-    }
-    const legendOrder = ["0", "1", "2", "3", "4+"];
-    const legend = legendOrder
-      .filter((key) => legendKeys.has(key))
-      .map((key) => `<span class="nm-hop-efficiency-legend-item"><span class="nm-hop-efficiency-legend-swatch" style="background:${_HOP_COLORS[key] || _HOP_COLORS["0"]}"></span>Left ${key}</span>`)
-      .join("");
-
     const rowsHtml = rows.map((row) => {
       const rowWidthPct = Math.max(4, (row.total / maxTotal) * 100);
       const segmentsHtml = row.segments.map((segment) => {
         const key = segment.hopLeft >= 4 ? "4+" : String(segment.hopLeft);
         const color = _HOP_COLORS[key] || _HOP_COLORS["0"];
         const segmentPct = (segment.count / row.total) * 100;
-        const showLabel = (rowWidthPct * segmentPct) / 100 >= 8;
-        return `<div class="nm-hop-efficiency-segment" style="width:${segmentPct}%;background:${color}" title="Hop Start ${row.hopStart} · Left ${segment.hopLeft} · ${segment.count} pkts">${showLabel ? `<span class="nm-hop-efficiency-segment-label">${segment.count}</span>` : ""}</div>`;
+        return `<div class="nm-hop-efficiency-segment" style="width:${segmentPct}%;background:${color}" title="Hop Start ${row.hopStart} · Left ${segment.hopLeft} · ${segment.count} pkts"></div>`;
       }).join("");
 
       return `<div class="nm-hop-efficiency-row">
-        <div class="nm-hop-efficiency-label">Start ${row.hopStart}</div>
+        <div class="nm-hop-efficiency-label">${row.hopStart}</div>
         <div class="nm-hop-efficiency-track">
           <div class="nm-hop-efficiency-row-grid">${ticks}</div>
           <div class="nm-hop-efficiency-stack" style="width:${rowWidthPct}%">${segmentsHtml}</div>
@@ -472,7 +459,10 @@ const NMGauges = (() => {
     }).join("");
 
     chart.innerHTML = `<div class="nm-hop-efficiency-plot">
-      <div class="nm-hop-efficiency-legend">${legend}</div>
+      <div class="nm-hop-efficiency-header-row">
+        <div class="nm-hop-efficiency-header-label">START</div>
+        <div class="nm-hop-efficiency-header-track">LEFT</div>
+      </div>
       <div class="nm-hop-efficiency-rows">${rowsHtml}</div>
       <div class="nm-hop-efficiency-axis">
         <span>0</span>
