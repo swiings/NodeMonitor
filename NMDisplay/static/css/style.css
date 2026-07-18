@@ -627,7 +627,7 @@ body.layout-split #nm-charts-container {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
   padding-right: 2px;
 }
 
