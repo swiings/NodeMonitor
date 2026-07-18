@@ -440,6 +440,26 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
             bucket = 100
         hop_usage_pct_buckets[str(bucket)] += cnt
 
+    # Raw hop efficiency rows grouped by hop_start and hops left.
+    hop_efficiency_rows = conn.execute(
+        """
+        SELECT hop_start, COALESCE(hop_limit, 0) AS hop_left, COUNT(*) AS cnt
+        FROM packets
+        WHERE from_node_id != ?
+          AND hop_start IS NOT NULL
+          AND hop_start > 0
+          AND hop_start >= COALESCE(hop_limit, 0)
+        GROUP BY hop_start, hop_left
+        ORDER BY hop_start DESC, hop_left ASC
+        """,
+        (excl_hop,),
+    ).fetchall()
+    hop_efficiency_raw: dict[str, dict[str, int]] = {}
+    for row in hop_efficiency_rows:
+        hop_start = str(row["hop_start"])
+        hop_left = str(row["hop_left"])
+        hop_efficiency_raw.setdefault(hop_start, {})[hop_left] = row["cnt"] or 0
+
     return {
         "direct_count":       direct,
         "active_count":       active,
@@ -456,6 +476,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
         "hop_dist_raw":       hop_dist_raw,
         "hop_used_raw":       hop_used_raw,
         "hop_usage_pct_buckets": hop_usage_pct_buckets,
+        "hop_efficiency_raw": hop_efficiency_raw,
         "router_count":       router_count,
         "client_count":       client_count,
     }

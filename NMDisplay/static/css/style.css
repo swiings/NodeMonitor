@@ -602,6 +602,131 @@ body.layout-split #nm-charts-container {
   font-size: 11px;
 }
 
+.nm-hop-efficiency-chart {
+  height: 100%;
+  min-height: 140px;
+}
+
+.nm-hop-efficiency-plot {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px 6px;
+}
+
+.nm-hop-efficiency-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 14px;
+}
+
+.nm-hop-efficiency-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.nm-hop-efficiency-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.nm-hop-efficiency-rows {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.nm-hop-efficiency-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  align-items: center;
+  min-height: 22px;
+}
+
+.nm-hop-efficiency-label {
+  color: var(--text-dim);
+  font-size: 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nm-hop-efficiency-track {
+  position: relative;
+  height: 22px;
+}
+
+.nm-hop-efficiency-row-grid {
+  position: absolute;
+  inset: 0;
+}
+
+.nm-hop-efficiency-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--divider);
+  opacity: 0.7;
+}
+
+.nm-hop-efficiency-stack {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  min-width: 2px;
+}
+
+.nm-hop-efficiency-segment {
+  height: 100%;
+  min-width: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 2px solid var(--bg3);
+  overflow: hidden;
+}
+
+.nm-hop-efficiency-segment:last-child {
+  border-right: none;
+}
+
+.nm-hop-efficiency-segment-label {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nm-hop-efficiency-axis {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 60px;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.nm-hop-efficiency-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
 .nm-node-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nm-node-meta { color: var(--text); font-size: 11px; text-align: right; white-space: nowrap; }
 

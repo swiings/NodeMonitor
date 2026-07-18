@@ -84,6 +84,42 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(buckets["20"], 1)
         self.assertEqual(buckets["100"], 1)
 
+    def test_gauges_hop_efficiency_raw_totals(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            now = 1_700_000_000
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, last_heard INTEGER, hop_limit INTEGER, role TEXT)")
+            conn.execute(
+                "CREATE TABLE packets (from_node_id INTEGER, hop_limit INTEGER, hop_start INTEGER, rx_time INTEGER, rx_rssi INTEGER, rx_snr REAL, portnum TEXT)"
+            )
+            conn.execute("CREATE TABLE packet_timeline (minute_ts INTEGER, count INTEGER, portnum TEXT)")
+
+            conn.execute("INSERT INTO nodes VALUES (123456789, ?, 3, 'ROUTER')", (now,))
+            conn.execute("INSERT INTO nodes VALUES (987654321, ?, 3, 'CLIENT')", (now,))
+
+            conn.execute("INSERT INTO packets VALUES (987654321, 0, 3, ?, -70, 4.0, 'TEXT_MESSAGE_APP')", (now - 30,))
+            conn.execute("INSERT INTO packets VALUES (987654321, 1, 3, ?, -70, 4.0, 'TEXT_MESSAGE_APP')", (now - 29,))
+            conn.execute("INSERT INTO packets VALUES (987654321, 1, 3, ?, -70, 4.0, 'TEXT_MESSAGE_APP')", (now - 28,))
+            conn.execute("INSERT INTO packets VALUES (987654321, 2, 4, ?, -70, 4.0, 'TEXT_MESSAGE_APP')", (now - 27,))
+
+            conn.execute("INSERT INTO packet_timeline VALUES (?, 4, 'TEXT_MESSAGE_APP')", (now - 60,))
+            conn.commit()
+
+            real_time = queries.time.time
+            queries.time.time = lambda: now
+            try:
+                gauges = queries.get_gauges(conn, my_node_id=123456789, my_lat=None, my_lon=None)
+            finally:
+                queries.time.time = real_time
+        finally:
+            conn.close()
+
+        raw = gauges["hop_efficiency_raw"]
+        self.assertEqual(raw["3"]["0"], 1)
+        self.assertEqual(raw["3"]["1"], 2)
+        self.assertEqual(raw["4"]["2"], 1)
+
     def test_self_telemetry_is_excluded_from_breakdown(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row
