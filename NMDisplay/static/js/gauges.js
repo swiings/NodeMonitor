@@ -203,6 +203,15 @@ const NMGauges = (() => {
     "0":  "#710b00",   // dark red-slate — fewest hops, most traversed
   };
 
+  // Hop Efficiency-specific reversed mapping: low hops-left = green, high hops-left = red.
+  const _HOP_COLORS_EFFICIENCY = {
+    "0":  _HOP_COLORS["4+"],
+    "1":  _HOP_COLORS["3"],
+    "2":  _HOP_COLORS["2"],
+    "3":  _HOP_COLORS["1"],
+    "4+": _HOP_COLORS["0"],
+  };
+
   function _toHopInt(value) {
     if (value == null) return null;
     const n = parseInt(value, 10);
@@ -444,7 +453,7 @@ const NMGauges = (() => {
       const rowWidthPct = Math.max(4, (row.total / maxTotal) * 100);
       const segmentsHtml = row.segments.map((segment) => {
         const key = segment.hopLeft >= 4 ? "4+" : String(segment.hopLeft);
-        const color = _HOP_COLORS[key] || _HOP_COLORS["0"];
+        const color = _HOP_COLORS_EFFICIENCY[key] || _HOP_COLORS_EFFICIENCY["4+"];
         const segmentPct = (segment.count / row.total) * 100;
         return `<div class="nm-hop-efficiency-segment" style="width:${segmentPct}%;background:${color}" title="Hop Start ${row.hopStart} · Left ${segment.hopLeft} · ${segment.count} pkts"></div>`;
       }).join("");
