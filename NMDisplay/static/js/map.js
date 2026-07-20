@@ -927,7 +927,6 @@ const NMMap = (() => {
       ["Long",       node.long_name   || "—"],
       ["HW",         node.hardware_model || "—"],
       ["Role",       node.role || "—"],
-      ...(node.is_airborne ? [["Tag", "AIRBORNE"]] : []),
       ["Packet Source", node.packet_source || "—"],
       ["Hops away",  hopsAway != null ? hopsAway : "—"],
       ["Distance",   distMi || "—"],
