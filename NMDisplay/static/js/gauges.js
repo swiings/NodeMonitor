@@ -124,6 +124,7 @@ const NMGauges = (() => {
   };
   function _roleEmoji(role) {
     const r = (_GAUGE_ROLE_INT_MAP[String(role ?? "0")] || String(role || "CLIENT")).toUpperCase();
+    if (r === "AIRCRAFT") return "✈️";
     if (r === "VEHICLE") return "🚙";
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER") return "📡";
     if (r === "TRACKER" || r === "TAK" || r === "TAK_TRACKER" || r === "LOST_AND_FOUND")    return "🐾";

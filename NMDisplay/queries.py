@@ -11,6 +11,8 @@ import sessions as _sessions
 
 
 _VEHICLE_TIMEOUT_S = 3600
+_AIRCRAFT_ALTITUDE_FT = 20000.0
+_AIRCRAFT_ALTITUDE_M = _AIRCRAFT_ALTITUDE_FT / 3.28084
 _OSRM_MATCH_URL = os.environ.get("NM_OSRM_MATCH_URL", "https://router.project-osrm.org/match/v1/driving/")
 _OSRM_TIMEOUT_S = float(os.environ.get("NM_OSRM_TIMEOUT_S", "3.5"))
 _OSRM_MAX_POINTS = int(os.environ.get("NM_OSRM_MAX_POINTS", "100"))
@@ -184,14 +186,19 @@ def get_all_nodes(conn, my_lat, my_lon) -> list[dict]:
 def _enrich_node(node: dict, now_ts: int | None = None) -> dict:
     now = now_ts if now_ts is not None else int(time.time())
     base_role = node.get("role")
+    altitude_m = node.get("altitude_m")
+    is_airborne = altitude_m is not None and float(altitude_m) >= _AIRCRAFT_ALTITUDE_M
     last_motion_ts = node.get("last_motion_ts")
     moving_recently = (
         last_motion_ts is not None
         and (now - int(last_motion_ts)) < _VEHICLE_TIMEOUT_S
     )
     node["base_role"] = base_role
+    node["is_airborne"] = is_airborne
     node["is_moving"] = moving_recently
-    if moving_recently:
+    if is_airborne:
+        node["role"] = "AIRCRAFT"
+    elif moving_recently:
         node["role"] = "VEHICLE"
     node["node_id_hex"] = f"!{node['node_id'] & 0xFFFFFFFF:08x}"
     return node

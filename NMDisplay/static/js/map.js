@@ -675,6 +675,8 @@ const NMMap = (() => {
   // Role → { color, emoji } for marker display
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
+    if (r === "AIRCRAFT")
+      return { color: "#88d4ffb5", emoji: "✈️" };
     if (r === "VEHICLE")
       return { color: "#8ec0ffa5", emoji: "🚙" };
     if (r === "ROUTER" || r === "ROUTER_CLIENT" || r === "ROUTER_LATE" || r === "REPEATER")
@@ -925,6 +927,7 @@ const NMMap = (() => {
       ["Long",       node.long_name   || "—"],
       ["HW",         node.hardware_model || "—"],
       ["Role",       node.role || "—"],
+      ...(node.is_airborne ? [["Tag", "AIRBORNE"]] : []),
       ["Packet Source", node.packet_source || "—"],
       ["Hops away",  hopsAway != null ? hopsAway : "—"],
       ["Distance",   distMi || "—"],
