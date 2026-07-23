@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import os
 import sqlite3
@@ -10,7 +12,7 @@ import bundle_paths
 import sessions as _sessions
 
 
-_VEHICLE_TIMEOUT_S = 3600
+_VEHICLE_TIMEOUT_S = 36000
 _AIRCRAFT_ALTITUDE_FT = 20000.0
 _AIRCRAFT_ALTITUDE_M = _AIRCRAFT_ALTITUDE_FT / 3.28084
 _OSRM_MATCH_URL = os.environ.get("NM_OSRM_MATCH_URL", "https://router.project-osrm.org/match/v1/driving/")
