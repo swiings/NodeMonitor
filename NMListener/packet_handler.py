@@ -187,7 +187,8 @@ def handle_text_message(
     msg_counter.record_sent(from_id)
     repo.upsert_message_count(from_id, sent_delta=1)
 
-    if to_id and to_id != 0xFFFFFFFF:
+    # if to_id and to_id != 0xFFFFFFFF: :Let's count the broadcasts as messages received 
+    if to_id is not None:
         msg_counter.record_received(to_id)
         repo.upsert_message_count(to_id, received_delta=1)
 
