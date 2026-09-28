@@ -56,6 +56,20 @@ const NMMap = (() => {
 
   let _maxAgeFilter = Infinity;
 
+  // Position source filter — set of checked source keys
+  const _POS_SOURCES = [
+    { key: "LOC_INTERNAL", label: "HW GPS" },
+    { key: "LOC_EXTERNAL", label: "Phone/Host" },
+    { key: "LOC_MANUAL",   label: "Manual" },
+    { key: "LOC_UNSET",    label: "Unknown" },
+  ];
+  const _posSourceFilter = new Set(_POS_SOURCES.map(s => s.key));
+
+  function _posSourceKey(source) {
+    return (source === "LOC_INTERNAL" || source === "LOC_EXTERNAL" || source === "LOC_MANUAL")
+      ? source : "LOC_UNSET";
+  }
+
   // Convex hull state
   let _hullLayer   = null;
   let _hullVisible = false;
@@ -297,6 +311,41 @@ const NMMap = (() => {
     });
     new HullControl().addTo(_map);
 
+    // Position source filter (hover to open; tap toggles on touch devices)
+    const PosSourceControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const wrap = L.DomUtil.create("div", "nm-pos-source-control");
+        const rows = _POS_SOURCES.map(s =>
+          `<label><input type="checkbox" value="${s.key}" checked> ${s.label}</label>`
+        ).join("");
+        wrap.innerHTML = `
+          <button class="nm-my-node-btn" title="Position source filter">&#128205;</button>
+          <div class="nm-pos-source-menu">
+            <div class="nm-pos-source-title">Position Source</div>
+            ${rows}
+          </div>`;
+        const btn = wrap.querySelector("button");
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          wrap.classList.toggle("open");
+        });
+        wrap.addEventListener("mouseleave", () => wrap.classList.remove("open"));
+        wrap.querySelectorAll("input[type=checkbox]").forEach(cb => {
+          cb.addEventListener("change", () => {
+            if (cb.checked) _posSourceFilter.add(cb.value);
+            else _posSourceFilter.delete(cb.value);
+            btn.classList.toggle("active", _posSourceFilter.size < _POS_SOURCES.length);
+            _applyFilters();
+          });
+        });
+        return wrap;
+      },
+    });
+    new PosSourceControl().addTo(_map);
+
     // Hull area display control
     const HullAreaControl = L.Control.extend({
       options: { position: "bottomleft" },
@@ -517,6 +566,7 @@ const NMMap = (() => {
   function _applyFilters() {
     const nowSec = Math.floor(Date.now() / 1000);
     const visible = _allGpsNodes.filter(n => {
+      if (!_posSourceFilter.has(_posSourceKey(n.source))) return false;
       if (_maxHopsFilter !== Infinity) {
         const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
         if (hopsAway == null || hopsAway > _maxHopsFilter) return false;
