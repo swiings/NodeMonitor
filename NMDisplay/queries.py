@@ -367,7 +367,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
 
     # Role counts: router-class vs client-class
     role_rows = conn.execute("SELECT role, COUNT(*) AS cnt FROM nodes GROUP BY role").fetchall()
-    _router_roles = {"ROUTER", "ROUTER_CLIENT", "ROUTER_LATE", "REPEATER"}
+    _router_roles = {"ROUTER", "ROUTER_CLIENT", "ROUTER_LATE", "REPEATER", "CLIENT_BASE"}
     router_count = 0
     client_count = 0
     for row in role_rows:
