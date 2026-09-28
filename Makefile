@@ -35,4 +35,4 @@ setup-pi:
 update-pi:
 	git pull --ff-only
 	.venv/bin/pip install -r NMDisplay/requirements.txt -r NMListener/requirements.txt
-	sudo systemctl restart nodemonitor.service
+	sudo systemctl restart nmdisplay.service

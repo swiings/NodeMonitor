@@ -40,10 +40,15 @@ if [[ ! -f "$REPO_DIR/.env" ]]; then
 fi
 
 if [[ "$INSTALL_SERVICE" == 1 ]]; then
-    echo "==> Installing systemd service nodemonitor.service"
-    sudo tee /etc/systemd/system/nodemonitor.service >/dev/null <<EOF
+    if [[ -f /etc/systemd/system/nodemonitor.service ]]; then
+        sudo systemctl disable --now nodemonitor.service || true
+        sudo rm -f /etc/systemd/system/nodemonitor.service
+    fi
+
+    echo "==> Installing systemd service nmdisplay.service"
+    sudo tee /etc/systemd/system/nmdisplay.service >/dev/null <<EOF
 [Unit]
-Description=NodeMonitor (NMDisplay + NMListener)
+Description=NMDisplay (web UI + NMListener)
 After=network-online.target bluetooth.target
 Wants=network-online.target
 
@@ -60,9 +65,9 @@ Environment=PYTHONUNBUFFERED=1
 WantedBy=multi-user.target
 EOF
     sudo systemctl daemon-reload
-    sudo systemctl enable nodemonitor.service
-    sudo systemctl restart nodemonitor.service
-    echo "==> Service running. Logs: journalctl -u nodemonitor -f"
+    sudo systemctl enable nmdisplay.service
+    sudo systemctl restart nmdisplay.service
+    echo "==> Service running. Logs: journalctl -u nmdisplay -f"
 fi
 
 echo
