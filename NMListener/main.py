@@ -12,7 +12,12 @@ Usage:
 import logging
 import os
 import sqlite3
+import sys
 import time
+
+# systemd/non-UTF-8 locales default stdout to latin-1; our logs contain Unicode.
+for _stream in (sys.stdout, sys.stderr):
+    _stream.reconfigure(encoding="utf-8", errors="replace")
 
 import config
 import listener
