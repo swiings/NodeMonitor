@@ -61,6 +61,8 @@ ExecStart=$VENV/bin/python3 -u app.py
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONUTF8=1
+Environment=PYTHONIOENCODING=utf-8
 
 [Install]
 WantedBy=multi-user.target
