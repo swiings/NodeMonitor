@@ -1,6 +1,6 @@
-.PHONY: install run-display run-listener build clean
+.PHONY: install run-display run-listener build clean setup-pi update-pi
 
-VENV := $(HOME)/.venv-nodemonitor
+VENV ?= $(HOME)/.venv-nodemonitor
 PYTHON := $(VENV)/bin/python3
 PIP := $(VENV)/bin/pip
 
@@ -26,3 +26,13 @@ build:
 
 clean:
 	rm -rf build dist
+
+# Raspberry Pi: first-time bootstrap (apt deps, .venv, systemd service)
+setup-pi:
+	bash scripts/setup_pi.sh
+
+# Raspberry Pi: pull latest code, refresh deps, restart service
+update-pi:
+	git pull --ff-only
+	.venv/bin/pip install -r NMDisplay/requirements.txt -r NMListener/requirements.txt
+	sudo systemctl restart nodemonitor.service

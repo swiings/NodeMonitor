@@ -34,6 +34,14 @@ def display_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def env_dir() -> str:
+    """Directory containing the .env secrets file (repo root in dev)."""
+    if _frozen:
+        return app_support_dir()
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.abspath(os.path.join(here, ".."))
+
+
 def listener_source_dir() -> str:
     """Path to the NMListener source directory."""
     if _frozen:

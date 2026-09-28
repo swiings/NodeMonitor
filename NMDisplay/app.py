@@ -18,9 +18,12 @@ import threading
 import time
 
 import requests as req_lib
+from dotenv import load_dotenv
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
 import bundle_paths
+
+load_dotenv(os.path.join(bundle_paths.env_dir(), ".env"))
 import geocode as geocode_mod
 import listener_proc
 import queries
@@ -162,8 +165,7 @@ def _get_nodes_snapshot(conn, my_node_id):
 
     return my_lat, my_lon, nodes
 
-# TILE_CACHE_DIR = "/mnt/nvme/tile_cache"
-TILE_CACHE_DIR = "tile_cache"
+TILE_CACHE_DIR = os.environ.get("NM_TILE_CACHE_DIR", "tile_cache")
 
 # ── Stadia Maps API key ────────────────────────────────────────────────────────
 # Required: server-side proxies do NOT get Stadia's localhost exemption.
@@ -173,19 +175,19 @@ TILE_CACHE_DIR = "tile_cache"
 # The proxy sends this as the Referer header so Stadia accepts the request.
 # If you have an API key instead, set STADIA_API_KEY and leave STADIA_REFERER empty.
 # REMOVE THIS BLOCK when removing all Stadia providers.
-STADIA_REFERER   = "http://HAXXpi5.local/"   # your registered hostname, or "" to skip
-STADIA_API_KEY   = ""                  # API key alternative; leave "" if using referer
+STADIA_REFERER   = os.environ.get("STADIA_REFERER", "http://HAXXpi5.local/")
+STADIA_API_KEY   = os.environ.get("STADIA_API_KEY", "")
 # ── End Stadia block ───────────────────────────────────────────────────────────
 
 # ── Thunderforest API key ──────────────────────────────────────────────────────
 # Required for tf_atlas.
 # REMOVE THIS BLOCK when removing all Thunderforest providers.
-THUNDERFOREST_API_KEY = "ccd1da931ab04f45b3ca124f3f694f08"
+THUNDERFOREST_API_KEY = os.environ.get("THUNDERFOREST_API_KEY", "")
 # ── End Thunderforest block ────────────────────────────────────────────────────
 
 # ── Google Maps API key ────────────────────────────────────────────────────────
 # Used for reverse geocoding (lat/lon → street address) on the node info popup.
-GOOGLE_MAPS_API_KEY = "AIzaSyBaB6pT0oSaZGqa_hTx5v6__gAVM259acc"
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 # ── End Google Maps block ──────────────────────────────────────────────────────
 
 TILE_PROVIDERS = {

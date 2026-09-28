@@ -23,6 +23,9 @@ NMData/reference_telemetry.json
 # TLS certificates (secrets)
 *.pem
 
+# API keys / local secrets
+.env
+
 # Tile cache (large, regenerated at runtime)
 NMDisplay/tile_cache/
 tile_cache/
@@ -35,7 +38,6 @@ tile_cache/
 
 # macOS
 .DS_Store
-.gitignore
 
 # runtime settings
 NMDisplay/config.json
