@@ -16,10 +16,11 @@ fi
 
 echo "==> Installing system packages"
 sudo apt-get update
-sudo apt-get install -y \
-    git python3 python3-venv python3-dev python3-pip \
-    build-essential libffi-dev libssl-dev \
-    bluez libglib2.0-dev
+sudo apt-get install -y git python3 python3-venv python3-pip bluez
+# Build headers are only needed if pip can't find a prebuilt aarch64 wheel.
+for pkg in python3-dev build-essential libffi-dev libssl-dev; do
+    sudo apt-get install -y "$pkg" || echo "   (skipping unavailable optional package $pkg)"
+done
 
 echo "==> Granting serial + Bluetooth access to $RUN_USER"
 sudo usermod -aG dialout,bluetooth "$RUN_USER"
