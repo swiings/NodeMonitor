@@ -1,14 +1,15 @@
 NodeMonitor README (work in progress)
 
+Main NodeMonitor Page 
 <img width="1048" height="751" alt="6E950BCE-A2B1-481D-80AE-63100C8D45EB_1_105_c" src="https://github.com/user-attachments/assets/b10ed1cd-0d2b-40c0-842e-6f853413c140" />
-
+Full Screen Map with Convex Hull and rare Airplane node in view
 <img width="1182" height="665" alt="B25B3245-73D5-42CF-982A-61D68501510D_1_105_c" src="https://github.com/user-attachments/assets/1b32bbc2-6c34-4330-a5b4-3f481a6ff07e" />
 
+Traffic Detail card displayed 
 <img width="1078" height="728" alt="C816E316-D688-4AD0-A823-0C3123CE747F_1_105_c" src="https://github.com/user-attachments/assets/581332de-718b-40d0-84a4-e77ddb5de555" />
 
-<img width="2560" height="1600" alt="3B6B1B05-4550-418D-9B57-29C92B8FB2B7" src="https://github.com/user-attachments/assets/91652035-bb5c-41a0-bc47-d10919b355dc" />
-
 <img width="570" height="1650" alt="image" src="https://github.com/user-attachments/assets/d820a9e7-4602-4bb0-a0ed-31e696f7eef6" />
+
 
 <img width="406" height="1734" alt="image" src="https://github.com/user-attachments/assets/e54127eb-5052-4993-89f6-73df056a285a" />
 
