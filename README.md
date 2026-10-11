@@ -18,6 +18,7 @@ Traffic Detail card displayed
     * Set Up
         * download
         * install
+           * There's a script in the root for building this on a Raspberry Pi. It may work on other machines. 
         * run
     * Usage
         * Starting and running NodeMonitor
