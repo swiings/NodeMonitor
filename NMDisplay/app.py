@@ -994,7 +994,7 @@ def run_server() -> None:
         print("[geocode] on-demand mode enabled (popup lazy load)")
     cert, key = _ensure_ssl_cert()
     lan_ip = _get_lan_ip()
-    print("\nNMDisplay — Meshtastic Node Monitor")
+    print("\nNMDisplay — Meshtastic Node Monitor v1.16")
     print(f"  Local:  https://localhost:5000")
     print(f"  iPad:   https://{lan_ip}:5000")
     print("  (Accept the self-signed cert warning on first visit)\n")
