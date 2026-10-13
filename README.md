@@ -1,7 +1,7 @@
 NodeMonitor README (work in progress)
 
 Main NodeMonitor Page 
-<img width="1048" height="751" alt="6E950BCE-A2B1-481D-80AE-63100C8D45EB_1_105_c" src="https://github.com/user-attachments/assets/b10ed1cd-0d2b-40c0-842e-6f853413c140" />
+<img width="1177" height="989" alt="Screenshot 2026-08-12 at 6 43 57 PM" src="https://github.com/user-attachments/assets/ed1eb064-d431-441b-84ad-a1145aa0383d" />
 Full Screen Map with Convex Hull and rare Airplane node in view
 <img width="1182" height="665" alt="B25B3245-73D5-42CF-982A-61D68501510D_1_105_c" src="https://github.com/user-attachments/assets/1b32bbc2-6c34-4330-a5b4-3f481a6ff07e" />
 
