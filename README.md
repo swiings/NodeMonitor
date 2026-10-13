@@ -14,21 +14,15 @@ Traffic Detail card displayed
 <img width="406" height="1734" alt="image" src="https://github.com/user-attachments/assets/e54127eb-5052-4993-89f6-73df056a285a" />
 
 
-* How to 
-    * Set Up
-        * download
-           * Easiest way is do a Git Pull from your Projects directory, Git will create a subdirectory for NodeMonitor    
-        * install
-           * There's a script in the scripts folder for building this on a Raspberry Pi. It will fetch any missing libraries.
-           * NodeMonitor needs to connect to the internet for map tiles and address geocoding 
-        * run
-           * Start the listener with "sudo systemctl restart nmdisplay.service".
-           * A startup message will give you a link for running NodeMonitor on your device. 
-    * Usage
-       *  
-       * Selecting a reference node
-       * Starting a new session
-       * Selecting an existing session
+Installation
+From a terminal window, while in your projects folder, 
+   run ‘git clone https://github.com/swiings/NodeMonitor’. 
+Git will create a subdirectory for NodeMonitor and download all the files. Look in the scripts folder for setup_pi.sh. 
+Run C:\Projects\NodeMonitor\scripts\setup_pi.sh to install all the requirements for the NodeMonitor server and the listener app. 
+It will fetch any missing libraries and may run for a few minutes. Watch the messages that get displayed. 
+At the end of the install, it’ll give you a URL to open from your computer to run NodeMonitor. 
+The URL will be something like http://localhost:5000
+If you are on WiFi, others on the network can use http://yourmachinename.local:5000
 
 
 NodeMonitor Technical Details
