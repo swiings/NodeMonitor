@@ -17,14 +17,18 @@ Traffic Detail card displayed
 * How to 
     * Set Up
         * download
+           * Easiest way is do a Git Pull from your Projects directory, Git will create a subdirectory for NodeMonitor    
         * install
-           * There's a script in the root for building this on a Raspberry Pi. It may work on other machines. 
+           * There's a script in the scripts folder for building this on a Raspberry Pi. It will fetch any missing libraries.
+           * NodeMonitor needs to connect to the internet for map tiles and address geocoding 
         * run
+           * Start the listener with "sudo systemctl restart nmdisplay.service".
+           * A startup message will give you a link for running NodeMonitor on your device. 
     * Usage
-        * Starting and running NodeMonitor
-        * Selecting a reference node
-        * Starting a new session
-        * Selecting an existing session
+       *  
+       * Selecting a reference node
+       * Starting a new session
+       * Selecting an existing session
 
 
 NodeMonitor Technical Details
@@ -48,7 +52,7 @@ NodeMonitor Technical Details
 
 NodeMonitor Main Screen
 * Settings page
-    * Monitor Sessions and how they work
+    * NodeMonitor Session management
     * Choosing a node to monitor
     * Other config settings
 * Title bar
