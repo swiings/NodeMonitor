@@ -373,7 +373,7 @@ def get_gauges(conn, my_node_id, my_lat, my_lon, precomputed_nodes=None) -> dict
     for row in role_rows:
         role = (row["role"] or "CLIENT").upper()
         if role in _router_roles:
-            router_count += row["cnt"]
+            router_count += row["cnt"]  
         else:
             client_count += row["cnt"]
 

@@ -1,0 +1,13 @@
+{
+  "id": "after_nodedb_reset_1790622687",
+  "name": "after nodeDB reset",
+  "db": "after_nodedb_reset_1790622687.db",
+  "connection": {
+    "type": "serial"
+  },
+  "seed_on_connect": false,
+  "save_packet_data": true,
+  "created": 1790622687,
+  "last_active": 1792078577,
+  "db_path": "/home/haxx/Projects/NodeMonitor/NMData/after_nodedb_reset_1790622687.db"
+}

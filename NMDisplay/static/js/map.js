@@ -19,7 +19,7 @@
  * A colored dot below each emoji shows recency (green/amber/red/grey).
  *
  * Tile layer switcher (Street / Satellite) is built into the map.
- * Source filter removed; only recency filter (ALL / 1H / 6H / 24H) remains.
+ * Marker, bounds, and convex hull views share position source, hop, and age filters.
  */
 
 "use strict";
@@ -563,21 +563,27 @@ const NMMap = (() => {
 
   // ── Filter logic ──────────────────────────────────────────────
 
-  function _applyFilters() {
+  function _nodePassesFilters(node, nowSec) {
+    if (!_posSourceFilter.has(_posSourceKey(node.source))) return false;
+    if (_maxHopsFilter !== Infinity) {
+      const hopsAway = (node.hops_away != null && Number.isFinite(node.hops_away)) ? node.hops_away : null;
+      if (hopsAway == null || hopsAway > _maxHopsFilter) return false;
+    }
+    if (_maxAgeFilter !== Infinity) {
+      if (node.last_heard == null) return false;
+      const ageMinutes = (nowSec - node.last_heard) / 60;
+      if (ageMinutes > _maxAgeFilter) return false;
+    }
+    return true;
+  }
+
+  function _filteredGpsNodes() {
     const nowSec = Math.floor(Date.now() / 1000);
-    const visible = _allGpsNodes.filter(n => {
-      if (!_posSourceFilter.has(_posSourceKey(n.source))) return false;
-      if (_maxHopsFilter !== Infinity) {
-        const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
-        if (hopsAway == null || hopsAway > _maxHopsFilter) return false;
-      }
-      if (_maxAgeFilter !== Infinity) {
-        if (n.last_heard == null) return false;
-        const ageMinutes = (nowSec - n.last_heard) / 60;
-        if (ageMinutes > _maxAgeFilter) return false;
-      }
-      return true;
-    });
+    return _allGpsNodes.filter(node => _nodePassesFilters(node, nowSec));
+  }
+
+  function _applyFilters() {
+    const visible = _filteredGpsNodes();
     _syncMarkers(visible);
 
     // Update filter indicator badge
@@ -1134,11 +1140,7 @@ const NMMap = (() => {
   }
 
   function _fitAllNodes() {
-    const visible = _allGpsNodes.filter(n => {
-      if (_maxHopsFilter === Infinity) return true;
-      const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
-      return hopsAway != null && hopsAway <= _maxHopsFilter;
-    });
+    const visible = _filteredGpsNodes();
     if (visible.length === 0) return;
     const bounds = L.latLngBounds(visible.map(n => [n.lat, n.lon]));
     _map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
@@ -1165,11 +1167,7 @@ const NMMap = (() => {
     if (!_hullVisible) return;
     if (_hullLayer) { _hullLayer.remove(); _hullLayer = null; }
 
-    const pts = _allGpsNodes.filter(n => {
-      if (_maxHopsFilter === Infinity) return true;
-      const hopsAway = (n.hops_away != null && Number.isFinite(n.hops_away)) ? n.hops_away : null;
-      return hopsAway != null && hopsAway <= _maxHopsFilter;
-    });
+    const pts = _filteredGpsNodes();
 
     if (pts.length < 3) {
       if (_hullAreaEl) {

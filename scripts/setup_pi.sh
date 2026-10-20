@@ -3,6 +3,11 @@
 # Usage: ./scripts/setup_pi.sh [--no-service]
 set -euo pipefail
 
+
+# need a switch here for installing and setting up NMGauge
+
+
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV="$REPO_DIR/.venv"
 RUN_USER="$(id -un)"
