@@ -94,7 +94,7 @@ base = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
 def render(m):
     img = base.copy()
     draw_metrics(ImageDraw.Draw(img), m)
-    return img.rotate(270, expand=True)
+    return img.rotate(90, expand=True)     # 270 has Pi0 ports on top, 90 has them on the bottom
 
 # --- NodeMonitor session data (NMData/active.json -> active session SQLite db)
 NMDATA = os.environ.get('NM_DATA_DIR',
