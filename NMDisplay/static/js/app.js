@@ -341,7 +341,7 @@ function _renderLog(lines) {
   if (nearBottom) body.scrollTop = body.scrollHeight;
 
   const sessLabel = document.getElementById("nm-log-session");
-  if (sessLabel && _logSessionName) sessLabel.textContent = _logSessionName;
+  if (sessLabel && _logSessionName) sessLabel.textContent = "session name: '" + _logSessionName + ".db'";
 }
 
 // Called when listener status is fetched
