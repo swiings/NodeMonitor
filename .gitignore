@@ -52,3 +52,7 @@ dist/
 __pycache__/
 *.pyc
 
+Docs/NodeMonitor sniffing node hardware copy.pxd
+Docs/NodeMonitor sniffing node hardware v2.pxd
+Docs/NodeMonitor sniffing node hardware.png
+Docs/NodeMonitor sniffing node hardware.pxd

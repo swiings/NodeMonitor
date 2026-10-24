@@ -599,6 +599,7 @@ const NMGauges = (() => {
     "TAK":           "🐾 TAK",
     "TAK_TRACKER":   "🐾 TAK_TRACKER",
     "SENSOR":        "📊 SENSOR",
+    "VEHICLE":       "🚙 VEHICLE",
   };
 
   function _updateRoleBreakdown(rows) {
