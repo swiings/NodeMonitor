@@ -243,7 +243,7 @@ def main():
     img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
     epd.displayPartial(epd.getbuffer(img))
 
-    img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(270, expand=True)
+    img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(90, expand=True)
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
