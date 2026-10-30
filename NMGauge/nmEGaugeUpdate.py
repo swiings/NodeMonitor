@@ -74,7 +74,7 @@ def draw_page2(draw, m):
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 25, 250, 25), fill=0, anchor='mt')  
     ## metrics related to the reference node used by NodeMonitor
-    draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
+    # draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
 
     # draw.text((0, 71), "FARTHEST", font=font12c, fill=0, anchor='lt')
     # draw.text((140, 71), m['farthest_node'], font=font12c, fill=0, anchor='rm')
