@@ -103,7 +103,7 @@ def draw_page3(draw, m):
     ## node count 
     draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font40b, fill=0, anchor='mm')
     draw.text((125, 90), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='mb')
-    draw.text((125, 100), "NODES", font=font15c, fill=0, anchor='mt')
+    draw.text((125, 100), "NODES HEARD", font=font15c, fill=0, anchor='mt')
 
 
 def draw_page4(draw, m):
