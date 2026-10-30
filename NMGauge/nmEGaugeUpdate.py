@@ -91,7 +91,7 @@ def draw_page2(draw, m):
 
     draw.text((0, 100), "NOISIEST ", font=font14c, fill=0, anchor='lt')
     draw.text((88, 100), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 100), m['noisiest'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 100), m['noisiest'] + " pkts", font=font14c, fill=0, anchor='lt')
 
 def draw_page3(draw, m):
     ## top row title, with a timestamp
@@ -134,7 +134,7 @@ def draw_page6(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## session up time
-    draw.text((127, 50), m['uptime'], font=font40b, fill=0, anchor='mm')
+    draw.text((127, 50), m['uptime'], font=font30b, fill=0, anchor='mm')
     draw.text((127, 100), "SESSION UP TIME", font=font25b, fill=0, anchor='mb')
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
