@@ -65,15 +65,13 @@ def draw_page2(draw, m):
     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
-    ## node count and packet count in bigest font used on the screen
-    draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font15c, fill=0, anchor='mm')
-    draw.text((62.5, 52), "TOTAL / ACT / DIR", font=font14c, fill=0, anchor='mt')
-    draw.text((187.5, 39), m['packets'], font=font15c, fill=0, anchor='mm')
-    draw.text((187.5, 52), m['permin'] + "/m   " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
+    ## node count and packet count 
+    draw.text((0, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] + "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font15c, fill=0, anchor='lt')
+
+
+    
     ## horizontal line separating node/packet counts from other metrics
-    draw.line((0, 64, 250, 64), fill=0)  
+    draw.line((0, 22, 250, 22), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
     # draw.text((0, 71), "CLOSEST", font=font12c, fill=0, anchor='lt')
     # draw.text((140, 71), m['closest_node'], font=font12c, fill=0, anchor='rm')
