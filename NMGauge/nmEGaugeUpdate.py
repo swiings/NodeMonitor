@@ -102,33 +102,33 @@ def draw_page2(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
-    draw.text((0, 13), "CLOSEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 13), m['closest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 13), m['closest'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 14), "CLOSEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 14), m['closest_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 14), m['closest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 29), "FARTHEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 29), m['farthest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 29), m['farthest'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 30), "FARTHEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 30), m['farthest_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 30), m['farthest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 45), "STRONGEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 45), m['loudest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 45), m['loudest'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 46), "STRONGEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 46), m['loudest_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 46), m['loudest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 61), "WEAKEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 61), m['quietest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 61), m['quietest'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 62), "WEAKEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 62), m['quietest_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 62), m['quietest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 77), "LATEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 77), m['last_heard_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 77), m['last_heard'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 78), "LATEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 78), m['last_heard_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 78), m['last_heard'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 93), "OLDEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 93), m['first_heard_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 93), m['first_heard'], font=font12c, fill=0, anchor='lt')
+    draw.text((0, 94), "OLDEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 94), m['first_heard_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 94), m['first_heard'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 109), "NOISIEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 109), m['noisiest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 109), m['noisiest'] + " pkts", font=font12c, fill=0, anchor='lt')
+    draw.text((0, 110), "NOISIEST ", font=font12c, fill=0, anchor='lt')
+    draw.text((88, 110), m['noisiest_node'], font=font12c, fill=0, anchor='lt')
+    draw.text((180, 110), m['noisiest'] + " pkts", font=font12c, fill=0, anchor='lt')
 
 def draw_page3(draw, m):
     ## top row title, with a timestamp
