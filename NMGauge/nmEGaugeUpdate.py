@@ -102,7 +102,9 @@ def draw_page3(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count 
     draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font40b, fill=0, anchor='mm')
-    draw.text((125, 90), "ALL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mb')
+    draw.text((125, 90), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='mb')
+    draw.text((125, 100), "NODES", font=font15c, fill=0, anchor='mt')
+
 
 def draw_page4(draw, m):
     ## top row title, with a timestamp
@@ -134,8 +136,8 @@ def draw_page6(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## session up time
-    draw.text((127, 50), m['uptime'], font=font30b, fill=0, anchor='mm')
-    draw.text((127, 100), "SESSION UP TIME", font=font25b, fill=0, anchor='mb')
+    draw.text((127, 50), m['uptime'], font=font40b, fill=0, anchor='mm')
+    draw.text((127, 100), "SESSION UP TIME", font=font15c, fill=0, anchor='mb')
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
 def get_pisugar(cmd, host='127.0.0.1', port=8423, timeout=2):
