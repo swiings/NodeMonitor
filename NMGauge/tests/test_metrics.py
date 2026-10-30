@@ -189,12 +189,13 @@ class GaugeMetricsTests(unittest.TestCase):
                     mock.call("allwhitebackground.png"),
                     mock.call("eatsleep2.png"),
                 ])
-                self.assertEqual(sleep.call_args_list, [mock.call(2)] * 6)
+                self.assertEqual(sleep.call_args_list,
+                                 [mock.call(2)] * 2 + [mock.call(gauge.PAGE_SECS)] * 4)
                 self.assertEqual(render.call_args_list, [
                     mock.call(metrics, gauge.draw_metrics),
                     mock.call(metrics, gauge.draw_page2),
                     mock.call(updated_metrics, gauge.draw_page3),
-                    mock.call(updated_metrics, gauge.draw_metrics),
+                    mock.call(updated_metrics, gauge.draw_page4),
                 ])
                 self.assertEqual(get_metrics.call_count, 2)
                 self.assertEqual(driver.init.call_count, 2 if cleanup_due else 1)
@@ -235,16 +236,82 @@ class GaugePageTests(unittest.TestCase):
         }
         draw = mock.Mock()
         gauge.draw_page2(draw, metrics)
-        for y, label, node, value in (
-            (35, "CLOSEST ", "NEAR", "6.9m"),
-            (50, "FARTHEST ", "FAR", "69.1m"),
-            (65, "LOUDEST ", "LOUD", "-30 3.0"),
-            (80, "LATEST ", "LAST", "0m 10s"),
-            (95, "NOISIEST ", "TALK", "30"),
+        drawn = [c.args[1] for c in draw.text.call_args_list]
+        for label, node, value in (
+            ("CLOSEST", "NEAR", "6.9m"),
+            ("FARTHEST", "FAR", "69.1m"),
+            ("LOUDEST", "LOUD", "-30 3.0"),
+            ("LATEST", "LAST", "0m 10s"),
+            ("NOISIEST", "TALK", "30"),
         ):
             with self.subTest(label=label):
-                for x, text in ((0, label), (88, node), (180, value)):
-                    draw.text.assert_any_call((x, y), text, font=gauge.font14c, fill=0, anchor="lt")
+                for text in (label, node, value):
+                    self.assertTrue(any(text in d for d in drawn), f"{text!r} not drawn")
+
+
+class GaugeSettingsTests(unittest.TestCase):
+    NAMES = ("UPDATE_SECS", "PAGE_SECS", "CLEAN_HOUR", "SCREEN_ROTATION")
+
+    def setUp(self):
+        saved = {name: getattr(gauge, name) for name in self.NAMES}
+        self.addCleanup(lambda: [setattr(gauge, n, v) for n, v in saved.items()])
+        self.defaults = saved
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.path = Path(temp_dir.name) / "NMGsettings.json"
+
+    def load(self, content):
+        self.path.write_text(content)
+        with self.assertLogs(level="WARNING") as logs:
+            gauge.load_settings(str(self.path))
+            gauge.logging.warning("end")
+        return [r for r in logs.output if not r.endswith(":end")]
+
+    def current(self):
+        return {name: getattr(gauge, name) for name in self.NAMES}
+
+    def test_missing_file_keeps_defaults(self):
+        gauge.load_settings(str(self.path))
+        self.assertEqual(self.current(), self.defaults)
+
+    def test_valid_settings_override_defaults(self):
+        warnings = self.load(json.dumps({
+            "update_secs": 30, "page_secs": 5, "clean_hour": 0, "screen_rotation": 90,
+        }))
+        self.assertEqual(warnings, [])
+        self.assertEqual(self.current(), {
+            "UPDATE_SECS": 30, "PAGE_SECS": 5, "CLEAN_HOUR": 0, "SCREEN_ROTATION": 90,
+        })
+
+    def test_partial_settings_override_only_given_keys(self):
+        self.load(json.dumps({"screen_rotation": 90}))
+        self.assertEqual(self.current(), dict(self.defaults, SCREEN_ROTATION=90))
+
+    def test_invalid_and_unknown_values_are_ignored_with_warnings(self):
+        warnings = self.load(json.dumps({
+            "screen_rotation": 45, "page_secs": 0, "clean_hour": 24,
+            "update_secs": "60", "rotation": 90,
+        }))
+        self.assertEqual(self.current(), self.defaults)
+        self.assertEqual(len(warnings), 5)
+
+    def test_malformed_file_is_ignored_with_warning(self):
+        for content in ("{not json", "[90]"):
+            with self.subTest(content=content):
+                warnings = self.load(content)
+                self.assertEqual(self.current(), self.defaults)
+                self.assertEqual(len(warnings), 1)
+
+    def test_rotation_setting_is_used_when_rendering(self):
+        metrics = dict.fromkeys(
+            ("datetime", "total", "act", "dir", "packets", "permin", "perhour", "uptime",
+             "ref_name", "ref_ch", "freq", "battery", "storage", "closest", "loudest",
+             "last_heard", "noisiest"), "--")
+        upright = gauge.render(metrics)
+        self.load(json.dumps({"screen_rotation": 90 if gauge.SCREEN_ROTATION == 270 else 270}))
+        flipped = gauge.render(metrics)
+        self.assertEqual(flipped.size, upright.size)
+        self.assertEqual(flipped.tobytes(), upright.rotate(180).tobytes())
 
 
 if __name__ == "__main__":

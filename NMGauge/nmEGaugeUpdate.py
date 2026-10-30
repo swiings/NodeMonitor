@@ -10,6 +10,38 @@ PAGE_SECS   = 10
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
 SCREEN_ROTATION   = 270       # 270 has Pi0 interface ports on top, 90 has them on the bottom
 
+# Per-device overrides for the defaults above (untracked; see NMGsettings.example.json)
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NMGsettings.json')
+SETTINGS = {
+    'update_secs':     ('UPDATE_SECS',     lambda v: v > 0),
+    'page_secs':       ('PAGE_SECS',       lambda v: v > 0),
+    'clean_hour':      ('CLEAN_HOUR',      lambda v: 0 <= v <= 23),
+    'screen_rotation': ('SCREEN_ROTATION', lambda v: v in (0, 90, 180, 270)),
+}
+
+def load_settings(path=SETTINGS_FILE):
+    """Apply valid overrides from the settings file; keep defaults for anything missing or invalid."""
+    try:
+        with open(path) as f:
+            overrides = json.load(f)
+    except FileNotFoundError:
+        return
+    except (OSError, ValueError) as e:
+        logging.warning("settings file %s ignored: %s", path, e)
+        return
+    if not isinstance(overrides, dict):
+        logging.warning("settings file %s ignored: expected a JSON object", path)
+        return
+    for key, value in overrides.items():
+        if key not in SETTINGS:
+            logging.warning("unknown setting '%s' ignored", key)
+            continue
+        name, valid = SETTINGS[key]
+        if type(value) is not int or not valid(value):
+            logging.warning("invalid value for '%s' ignored: %r", key, value)
+            continue
+        globals()[name] = value
+
 
 # --- fonts + draw_metrics() 
 FONTDIR = '/usr/share/fonts/truetype/dejavu/'   # sudo apt install fonts-dejavu-core
@@ -395,4 +427,5 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.WARNING)
+    load_settings()
     main()

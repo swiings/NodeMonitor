@@ -41,6 +41,7 @@ tile_cache/
 
 # runtime settings
 NMDisplay/config.json
+NMGauge/NMGsettings.json
 
 # PyInstaller outputs
 build/

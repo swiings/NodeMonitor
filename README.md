@@ -46,6 +46,7 @@ NodeMonitor Technical Details
         * Drives an optional e-paper display with live session metrics
         * After the opening image sequence, continuously cycles through the summary, node detail, and count pages, holding each for 2 seconds
         * Metrics refresh on minute boundaries independently of page changes; the daily full refresh remains at 03:00
+        * Per-device settings: copy `NMGauge/NMGsettings.example.json` to `NMGauge/NMGsettings.json` (ignored by Git) and edit any of `update_secs`, `page_secs`, `clean_hour` (0–23), or `screen_rotation` (0, 90, 180, 270; 270 puts the Pi Zero ports on top, 90 on the bottom). Omitted or invalid values keep the defaults in `nmEGaugeUpdate.py`
         * Its detail layout shows the closest and farthest nodes (in miles), loudest and latest nodes, and the node with the most received over-the-air packets; distances require positions for the reference node and its peers
         * Missing metrics show `--`; nodes without a short name are shown by hexadecimal node ID
 
