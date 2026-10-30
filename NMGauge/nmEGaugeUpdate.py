@@ -102,19 +102,19 @@ def draw_page2(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
-    draw.text((0, 13), "CLOSEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((0, 13), "CLOSEST ", font=font12c, fill=0, anchor='lt')
     draw.text((88, 13), m['closest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 13), m['closest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 29), "FARTHEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((0, 29), "FARTHEST ", font=font12c, fill=0, anchor='lt')
     draw.text((88, 29), m['farthest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 29), m['farthest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 45), "STRONGEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((0, 45), "STRONGEST ", font=font12c, fill=0, anchor='lt')
     draw.text((88, 45), m['loudest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 45), m['loudest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 61), "WEAKEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((0, 61), "WEAKEST ", font=font12c, fill=0, anchor='lt')
     draw.text((88, 61), m['quietest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 61), m['quietest'], font=font14c, fill=0, anchor='lt')
 
