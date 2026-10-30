@@ -6,8 +6,10 @@ from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
 
 UPDATE_SECS = 60
-PAGE_SECS   = 5
+PAGE_SECS   = 6
 CLEAN_HOUR  = 3        # daily full refresh (the only flash) at 03:00
+
+
 
 # --- fonts + draw_metrics() 
 FONTDIR = '/usr/share/fonts/truetype/dejavu/'   # sudo apt install fonts-dejavu-core
