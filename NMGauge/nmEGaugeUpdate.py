@@ -137,7 +137,7 @@ def draw_page5(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count 
     draw.text((125, 50), m['packets'], font=font60b, fill=0, anchor='mm')
-    draw.text((125, 110), "TOTAL PACKETS", font=font25b, fill=0, anchor='mb')
+    draw.text((125, 100), "TOTAL PACKETS", font=font25b, fill=0, anchor='mb')
 
 
 
