@@ -230,7 +230,7 @@ def main():
 
     # Display the initial sequence of Haxx Labs images
     img = Image.open('haxxlabsooo1.png').resize((250, 122)).convert('1')
-    epd.display(epd.getbuffer(img))
+    epd.displayPartBaseImage(epd.getbuffer(img))
     # time.sleep(1)
 
     img = Image.open('haxxlabsooo2.png').resize((250, 122)).convert('1')
@@ -243,7 +243,7 @@ def main():
                 
     # Clear the display before showing the "eat sleep" image 
     img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
-    epd.displayPartial(epd.getbuffer(img))
+    epd.displayPartBaseImage(epd.getbuffer(img))
 
     img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(90, expand=True)
     epd.displayPartial(epd.getbuffer(img))
