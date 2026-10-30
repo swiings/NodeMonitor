@@ -25,6 +25,8 @@ font25b  = ImageFont.truetype(BOLD, 25)
 font30b  = ImageFont.truetype(BOLD, 30)   
 font40b  = ImageFont.truetype(BOLD, 40)   
 font50b  = ImageFont.truetype(BOLD, 50)   
+font60b  = ImageFont.truetype(BOLD, 60)   
+font70b  = ImageFont.truetype(BOLD, 70)
 
 
 # --- drawing functions for the e-paper display
@@ -112,6 +114,30 @@ def draw_page3(draw, m):
     draw.text((125, 71), m['packets'], font=font40b, fill=0, anchor='mt')
     draw.text((125, 122), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mb')
 
+
+def draw_page4(draw, m):
+    """Draw live metrics onto the 250x122 landscape image (2nd page."""
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## node count 
+    draw.text((125, 65), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font60b, fill=0, anchor='mm')
+    draw.text((125, 122), "TOTAL / ACT / DIR NODES", font=font25b, fill=0, anchor='mb')
+
+def draw_page5(draw, m):
+    """Draw live metrics onto the 250x122 landscape image (2nd page."""
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## packet count 
+    draw.text((125, 65), m['packets'], font=font60b, fill=0, anchor='mm')
+    draw.text((125, 122), "PACKETS", font=font25b, fill=0, anchor='mb')
 
 
 
@@ -338,7 +364,7 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    pages = (draw_metrics, draw_page2, draw_page3)
+    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
