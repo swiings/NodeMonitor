@@ -44,6 +44,8 @@ NodeMonitor Technical Details
         * Permits users to refresh the monitor page on a timer, typically 30 seconds
     * NMGauge
         * Drives an optional e-paper display with live session metrics
+        * After the opening image sequence, continuously cycles through the summary, node detail, and count pages, holding each for 2 seconds
+        * Metrics refresh on minute boundaries independently of page changes; the daily full refresh remains at 03:00
         * Its detail layout shows the closest and farthest nodes (in miles), loudest and latest nodes, and the node with the most received over-the-air packets; distances require positions for the reference node and its peers
         * Missing metrics show `--`; nodes without a short name are shown by hexadecimal node ID
 

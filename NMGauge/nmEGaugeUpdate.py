@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
 
 UPDATE_SECS = 60
+PAGE_SECS   = 2
 CLEAN_HOUR  = 3        # daily full refresh (the only flash) at 03:00
 
 # --- fonts + draw_metrics() 
@@ -92,6 +93,24 @@ def draw_page2(draw, m):
     draw.text((88, 95), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 95), m['noisiest'], font=font14c, fill=0, anchor='lt')
 
+def draw_page3(draw, m):
+    """Draw live metrics onto the 250x122 landscape image (2nd page."""
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## node count and packet count 
+    draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
+    draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
+    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font25b, fill=0, anchor='mm')
+    draw.text((62.5, 54), "TOTAL / ACT / DIR", font=font15c, fill=0, anchor='mt')
+    draw.text((187.5, 39), m['packets'], font=font25b, fill=0, anchor='mm')
+    draw.text((187.5, 53), m['permin'] + "/m   " + m['perhour'] + "/h", font=font15c, fill=0, anchor='mt')
+
+
+
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
 def get_pisugar(cmd, host='127.0.0.1', port=8423, timeout=2):
@@ -128,10 +147,9 @@ def storage_str(path='/'):
 
 base = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
 
-def render(m):
+def render(m, draw_page=draw_metrics):
     img = base.copy()
-    draw_page2(ImageDraw.Draw(img), m)
-    # draw_metrics(ImageDraw.Draw(img), m)
+    draw_page(ImageDraw.Draw(img), m)
     return img.rotate(90, expand=True)     # 270 has Pi0 ports on top, 90 has them on the bottom
 
 # --- NodeMonitor session data (NMData/active.json -> active session SQLite db)
@@ -317,15 +335,24 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    img = render(get_metrics())
+    pages = (draw_metrics, draw_page2, draw_page3)
+    page_index = 0
+    metrics = get_metrics()
+    last_update = int(time.time() // UPDATE_SECS)
+    img = render(metrics, pages[page_index])
     epd.displayPartBaseImage(epd.getbuffer(img))
     
     last_bytes = img.tobytes()
     last_clean = datetime.now().date()
     
     while True:
-        time.sleep(UPDATE_SECS - time.time() % UPDATE_SECS)   # align to the minute
-        img = render(get_metrics())
+        time.sleep(PAGE_SECS)
+        update = int(time.time() // UPDATE_SECS)
+        if update != last_update:
+            metrics = get_metrics()
+            last_update = update
+        page_index = (page_index + 1) % len(pages)
+        img = render(metrics, pages[page_index])
         now = datetime.now()
 
         if now.hour == CLEAN_HOUR and now.date() != last_clean:

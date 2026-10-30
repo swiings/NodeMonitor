@@ -132,7 +132,9 @@ class GaugeMetricsTests(unittest.TestCase):
             "noisiest_node": "!fffffffe", "noisiest": "3",
         }
         self.assertEqual({key: metrics[key] for key in expected}, expected)
-        self.assertEqual(gauge.render(metrics).size, (122, 250))
+        for page in (gauge.draw_metrics, gauge.draw_page2, gauge.draw_page3):
+            with self.subTest(page=page.__name__):
+                self.assertEqual(gauge.render(metrics, page).size, (122, 250))
 
     def test_node_values_can_be_concatenated_into_page_text(self):
         self.add_node(1, "REF", last_heard=NOW)
@@ -149,7 +151,7 @@ class GaugeMetricsTests(unittest.TestCase):
                 text = label + " " + metrics[node_key] + " " + metrics[value_key]
                 self.assertEqual(text, expected)
 
-    def test_initial_display_and_refresh_render_unnamed_nodes(self):
+    def test_opening_sequence_then_cycle_repeats_and_refreshes_metrics(self):
         self.add_node(1, "REF", last_heard=NOW)
         self.add_node(42, None, last_heard=NOW - 10, rssi=-30, snr=2.0)
         self.add_packets(42, 2)
@@ -157,23 +159,47 @@ class GaugeMetricsTests(unittest.TestCase):
         updated_metrics = dict(metrics, noisiest="3")
         background = Image.new("1", (250, 122), 1)
         fixed_now = gauge.datetime(2025, 1, 1, 12)
-        driver = mock.Mock()
-        driver.getbuffer.side_effect = lambda image: image
+        next_clean = gauge.datetime(2025, 1, 2, 3)
 
-        with mock.patch.object(gauge, "epd2in13_V4") as epd, \
-                mock.patch.object(gauge.Image, "open", return_value=background), \
-                mock.patch.object(gauge.signal, "signal"), \
-                mock.patch.object(gauge.time, "sleep",
-                                  side_effect=[None, None, None, StopIteration]), \
-                mock.patch.object(gauge, "datetime") as clock, \
-                mock.patch.object(gauge, "get_metrics", side_effect=[metrics, updated_metrics]):
-            epd.EPD.return_value = driver
-            clock.now.return_value = fixed_now
-            with self.assertRaises(StopIteration):
-                gauge.main()
+        for cleanup_due in (False, True):
+            with self.subTest(cleanup_due=cleanup_due):
+                driver = mock.Mock()
+                driver.getbuffer.side_effect = lambda image: image
+                with mock.patch.object(gauge, "epd2in13_V4") as epd, \
+                        mock.patch.object(gauge.Image, "open", return_value=background) as open_image, \
+                        mock.patch.object(gauge.signal, "signal"), \
+                        mock.patch.object(gauge.time, "sleep",
+                                          side_effect=[None, None, None, None, None, StopIteration]) as sleep, \
+                        mock.patch.object(gauge.time, "time", side_effect=[58, 59, 60, 61]), \
+                        mock.patch.object(gauge, "datetime") as clock, \
+                        mock.patch.object(gauge, "get_metrics",
+                                          side_effect=[metrics, updated_metrics]) as get_metrics, \
+                        mock.patch.object(gauge, "render", wraps=gauge.render) as render:
+                    epd.EPD.return_value = driver
+                    clock.now.side_effect = [fixed_now] + [
+                        next_clean if cleanup_due else fixed_now
+                    ] * 3
+                    with self.assertRaises(StopIteration):
+                        gauge.main()
 
-        self.assertEqual(driver.displayPartBaseImage.call_count, 3)
-        self.assertEqual(driver.displayPartial.call_count, 4)
+                self.assertEqual(open_image.call_args_list, [
+                    mock.call("haxxlabsooo1.png"),
+                    mock.call("haxxlabsooo2.png"),
+                    mock.call("haxxlabsooo3.png"),
+                    mock.call("allwhitebackground.png"),
+                    mock.call("eatsleep2.png"),
+                ])
+                self.assertEqual(sleep.call_args_list, [mock.call(2)] * 6)
+                self.assertEqual(render.call_args_list, [
+                    mock.call(metrics, gauge.draw_metrics),
+                    mock.call(metrics, gauge.draw_page2),
+                    mock.call(updated_metrics, gauge.draw_page3),
+                    mock.call(updated_metrics, gauge.draw_metrics),
+                ])
+                self.assertEqual(get_metrics.call_count, 2)
+                self.assertEqual(driver.init.call_count, 2 if cleanup_due else 1)
+                self.assertEqual(driver.displayPartBaseImage.call_count, 4 if cleanup_due else 3)
+                self.assertEqual(driver.displayPartial.call_count, 5 if cleanup_due else 6)
 
     def test_sender_missing_from_nodes_uses_hex_id(self):
         self.add_node(1, "REF", last_heard=NOW)
@@ -190,7 +216,9 @@ class GaugeMetricsTests(unittest.TestCase):
                     "noisiest", "noisiest_node"):
             with self.subTest(key=key):
                 self.assertEqual(metrics[key], "--")
-        self.assertEqual(gauge.render(metrics).size, (122, 250))
+        for page in (gauge.draw_metrics, gauge.draw_page2, gauge.draw_page3):
+            with self.subTest(page=page.__name__):
+                self.assertEqual(gauge.render(metrics, page).size, (122, 250))
 
 
 class GaugePageTests(unittest.TestCase):
@@ -207,15 +235,16 @@ class GaugePageTests(unittest.TestCase):
         }
         draw = mock.Mock()
         gauge.draw_page2(draw, metrics)
-        for y, text in (
-            (35, "CLOSEST NEAR 6.9m"),
-            (50, "FARTHEST FAR 69.1m"),
-            (65, "LOUDEST LOUD -30 3.0"),
-            (80, "LATEST LAST 0m 10s"),
-            (95, "NOISIEST TALK 30"),
+        for y, label, node, value in (
+            (35, "CLOSEST ", "NEAR", "6.9m"),
+            (50, "FARTHEST ", "FAR", "69.1m"),
+            (65, "LOUDEST ", "LOUD", "-30 3.0"),
+            (80, "LATEST ", "LAST", "0m 10s"),
+            (95, "NOISIEST ", "TALK", "30"),
         ):
-            with self.subTest(text=text):
-                draw.text.assert_any_call((0, y), text, font=gauge.font14c, fill=0, anchor="lt")
+            with self.subTest(label=label):
+                for x, text in ((0, label), (88, node), (180, value)):
+                    draw.text.assert_any_call((x, y), text, font=gauge.font14c, fill=0, anchor="lt")
 
 
 if __name__ == "__main__":
