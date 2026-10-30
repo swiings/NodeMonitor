@@ -18,6 +18,7 @@ font11c = ImageFont.truetype(COND, 11)
 font12c = ImageFont.truetype(COND, 12)   
 font14c = ImageFont.truetype(COND, 14)   
 font15c = ImageFont.truetype(COND, 15)   
+font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
 font30b  = ImageFont.truetype(BOLD, 30)   
 
@@ -33,7 +34,7 @@ def draw_metrics(draw, m):
     ## node count and packet count in bigest font used on the screen
     draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
     draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font25b, fill=0, anchor='mm')
+    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font23b, fill=0, anchor='mm')
     draw.text((62.5, 54), "TOTAL / ACT / DIR", font=font14c, fill=0, anchor='mt')
     draw.text((187.5, 39), m['packets'], font=font25b, fill=0, anchor='mm')
     draw.text((187.5, 53), m['permin'] + "/m   " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
