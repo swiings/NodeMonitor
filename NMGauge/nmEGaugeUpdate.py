@@ -33,7 +33,6 @@ font70b  = ImageFont.truetype(BOLD, 70)
 
 # --- drawing functions for the e-paper display
 def draw_metrics(draw, m):
-    """Draw live metrics onto the 250x122 landscape image (before rotate)."""
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
@@ -67,7 +66,6 @@ def draw_metrics(draw, m):
     draw.text((248, 107), m['noisiest']+" pkts", font=font12c, fill=0, anchor='rt')  
 
 def draw_page2(draw, m):
-    """Draw live metrics onto the 250x122 landscape image (2nd page."""
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
@@ -80,7 +78,7 @@ def draw_page2(draw, m):
    
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 26, 250, 26), fill=0)  
-    ## metrics related to the reference node used by NodeMonitor
+
     draw.text((0, 35), "CLOSEST ", font=font14c, fill=0, anchor='lt')
     draw.text((88, 35), m['closest_node'], font=font14c, fill=0, anchor='lt')
     draw.text((180, 35), m['closest'], font=font14c, fill=0, anchor='lt')
@@ -102,23 +100,6 @@ def draw_page2(draw, m):
     draw.text((180, 95), m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 def draw_page3(draw, m):
-    """Draw live metrics onto the 250x122 landscape image (2nd page."""
-    ## top row title, with a timestamp
-    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
-    draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
-    draw.line((185, 10, 250, 10), fill=0) 
-    ## node count and packet count 
-    draw.text((125, 13), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mt')
-    draw.text((125, 64), "TOTAL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mm')
-
-    draw.text((125, 71), m['packets'], font=font40b, fill=0, anchor='mt')
-    draw.text((125, 122), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mb')
-
-
-def draw_page4(draw, m):
-    """Draw live metrics onto the 250x122 landscape image (2nd page."""
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
@@ -129,8 +110,7 @@ def draw_page4(draw, m):
     draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mm')
     draw.text((125, 90), "TOTAL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mb')
 
-def draw_page5(draw, m):
-    """Draw live metrics onto the 250x122 landscape image (2nd page."""
+def draw_page4(draw, m):
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
@@ -140,6 +120,17 @@ def draw_page5(draw, m):
     ## packet count 
     draw.text((125, 50), m['packets'], font=font60b, fill=0, anchor='mm')
     draw.text((125, 100), "TOTAL PACKETS", font=font25b, fill=0, anchor='mb')
+
+def draw_page5(draw, m):
+    # common page header for all pages
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## packet rate
+    draw.text((125, 50), m['permin'] + "/m   " + m['perhour'] + "/h", font=font60b, fill=0, anchor='mb')
+    draw.text((125, 90), "PACKET RATE", font=font15c, fill=0, anchor='mb')
 
 
 
@@ -366,7 +357,7 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    pages = (draw_metrics, draw_page2, draw_page4, draw_page5)
+    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
