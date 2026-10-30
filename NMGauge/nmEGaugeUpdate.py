@@ -224,13 +224,13 @@ def main():
 
     # Clear the display initially
     epd.Clear(0xFF);
-    
+
     # img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
     # epd.displayPartial(epd.getbuffer(img))
 
     # Display the initial sequence of Haxx Labs images
     img = Image.open('haxxlabsooo1.png').resize((250, 122)).convert('1')
-    epd.displayPartial(epd.getbuffer(img))
+    epd.display(epd.getbuffer(img))
     # time.sleep(1)
 
     img = Image.open('haxxlabsooo2.png').resize((250, 122)).convert('1')
