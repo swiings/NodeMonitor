@@ -75,7 +75,7 @@ def draw_page2(draw, m):
     # draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
     # draw.text((0, 50), "FARTHEST " + m['farthest_node'] + " " + m['farthest'], font=font14c, fill=0, anchor='lt')
     # draw.text((0, 65), "LOUDEST " + m['loudest_node'] + " " + m['loudest'], font=font14c, fill=0, anchor='lt')
-    draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
+    # draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
     # draw.text((0, 95), "NOISIEST " + m['noisiest_node'] + " " + m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 
