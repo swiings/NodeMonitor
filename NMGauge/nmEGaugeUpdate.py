@@ -109,7 +109,7 @@ def draw_page3(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
     draw.text((125, 13), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mt')
-    draw.text((125, 62), "TOTAL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mm')
+    draw.text((125, 64), "TOTAL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mm')
 
     draw.text((125, 71), m['packets'], font=font40b, fill=0, anchor='mt')
     draw.text((125, 122), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mb')
