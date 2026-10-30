@@ -126,7 +126,16 @@ def draw_page5(draw, m):
     draw.text((127, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font40b, fill=0, anchor='mm')
     draw.text((127, 100), "PACKET RATE", font=font25b, fill=0, anchor='mb')
 
-
+def draw_page6(draw, m):
+    # common page header for all pages
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## session up time
+    draw.text((127, 50), m['uptime'], font=font40b, fill=0, anchor='mm')
+    draw.text((127, 100), "SESSION UP TIME", font=font25b, fill=0, anchor='mb')
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
 def get_pisugar(cmd, host='127.0.0.1', port=8423, timeout=2):
@@ -351,7 +360,7 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5)
+    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5, draw_page6)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
