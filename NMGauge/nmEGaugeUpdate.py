@@ -239,7 +239,7 @@ def main():
                 
     img = Image.open('haxxlabsooo3.png').resize((250, 122)).convert('1')
     epd.displayPartial(epd.getbuffer(img))
-    time.sleep(1)
+    time.sleep(2)
                 
     # Clear the display before showing the "eat sleep" image 
     img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
