@@ -72,11 +72,11 @@ def draw_page2(draw, m):
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 26, 250, 26), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
-    # draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
-    # draw.text((0, 50), "FARTHEST " + m['farthest_node'] + " " + m['farthest'], font=font14c, fill=0, anchor='lt')
-    # draw.text((0, 65), "LOUDEST " + m['loudest_node'] + " " + m['loudest'], font=font14c, fill=0, anchor='lt')
-    # draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
-    # draw.text((0, 95), "NOISIEST " + m['noisiest_node'] + " " + m['noisiest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 50), "FARTHEST " + m['farthest_node'] + " " + m['farthest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 65), "LOUDEST " + m['loudest_node'] + " " + m['loudest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 95), "NOISIEST " + m['noisiest_node'] + " " + m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
@@ -138,6 +138,9 @@ def haversine_mi(lat1, lon1, lat2, lon2):
     a = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
     return 3958.8 * 2 * math.asin(math.sqrt(a))
 
+def node_label(node_id, short_name):
+    return short_name or f"!{node_id & 0xFFFFFFFF:08x}"
+
 def dhm_str(secs):
     """Duration like '4d 21h 18m'."""
     d, r = divmod(max(int(secs), 0), 86400)
@@ -179,10 +182,12 @@ def db_metrics(now):
     try:
         m['total'] = str(q("SELECT COUNT(*) FROM nodes")[0])
         m['act']   = str(q("SELECT COUNT(*) FROM nodes WHERE last_heard > ?", now - 3900)[0])
-        row = q("SELECT MAX(last_heard), short_name FROM nodes WHERE (node_id & 4294967295) != ?", excl)
+        row = q("""SELECT last_heard, node_id, short_name FROM nodes
+                   WHERE (node_id & 4294967295) != ?
+                   ORDER BY last_heard DESC, node_id LIMIT 1""", excl)
         if row and row[0]:
             m['last_heard'] = ms_str(now - row[0])
-            m['last_heard_node'] = row[1]   
+            m['last_heard_node'] = node_label(row[1], row[2])
         # direct = zero hops used (hop_start - hop_limit), same rule as NMDisplay's gauge
         # packet stats count over-the-air packets only: a reference node's own packets
         # arrive over serial with no rx_rssi (and a session may have had several ref nodes)
@@ -197,30 +202,24 @@ def db_metrics(now):
         m['permin']  = f"{recent_packets / 65:.1f}"
         m['perhour'] = str(recent_packets)
 
-        row = q("""SELECT COUNT(*) AS n FROM packets WHERE rx_rssi IS NOT NULL
-                   GROUP BY from_node_id ORDER BY n DESC LIMIT 1""")
+        row = q("""SELECT counts.from_node_id, nodes.short_name, counts.n
+                   FROM (
+                       SELECT from_node_id, COUNT(*) AS n FROM packets
+                       WHERE rx_rssi IS NOT NULL
+                       GROUP BY from_node_id
+                       ORDER BY n DESC, from_node_id LIMIT 1
+                   ) AS counts
+                   LEFT JOIN nodes ON nodes.node_id = counts.from_node_id""")
         if row:
-            m['noisiest'] = f"{row[0]:,}"
-            m['noisiest_node'] = q(
-                """SELECT from_node_id FROM packets WHERE rx_rssi IS NOT NULL
-                   GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"""
-            )[0] if q(
-                """SELECT from_node_id FROM packets WHERE rx_rssi IS NOT NULL
-                   GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"""
-            ) else None
+            m['noisiest'] = f"{row[2]:,}"
+            m['noisiest_node'] = node_label(row[0], row[1])
 
-        row = q("""SELECT rssi, snr FROM nodes
+        row = q("""SELECT node_id, short_name, rssi, snr FROM nodes
                    WHERE rssi IS NOT NULL AND (node_id & 4294967295) != ?
-                   ORDER BY rssi DESC LIMIT 1""", excl)
+                   ORDER BY rssi DESC, node_id LIMIT 1""", excl)
         if row:
-            m['loudest'] = f"{row[0]} {row[1]:.1f}" if row[1] is not None else str(row[0])
-            m['loudest_node'] = q(
-                """SELECT short_name FROM nodes WHERE rssi IS NOT NULL
-                   ORDER BY rssi DESC LIMIT 1"""
-            )[0] if q(
-                """SELECT short_name FROM nodes WHERE rssi IS NOT NULL
-                   ORDER BY rssi DESC LIMIT 1"""
-            ) else None
+            m['loudest'] = f"{row[2]} {row[3]:.1f}" if row[3] is not None else str(row[2])
+            m['loudest_node'] = node_label(row[0], row[1])
 
         if my_id is not None:
             ref = q("SELECT long_name, lat, lon FROM nodes WHERE (node_id & 4294967295) = ?", my_id)
@@ -228,27 +227,22 @@ def db_metrics(now):
                 if ref[0]:
                     m['ref_name'] = ref[0].upper()
                 if ref[1] is not None and ref[2] is not None:
-                    dists = [haversine_mi(ref[1], ref[2], lat, lon) for lat, lon in conn.execute(
-                        """SELECT lat, lon FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
-                           AND (node_id & 4294967295) != ?""", (my_id,))]
+                    dists = [
+                        (haversine_mi(ref[1], ref[2], lat, lon), node_id, short_name)
+                        for node_id, short_name, lat, lon in conn.execute(
+                            """SELECT node_id, short_name, lat, lon FROM nodes
+                               WHERE lat IS NOT NULL AND lon IS NOT NULL
+                               AND (node_id & 4294967295) != ?""",
+                            (my_id,),
+                        )
+                    ]
                     if dists:
-                        m['closest'] = f"{min(dists):.1f}m"
-                        m['closest_node'] = q(
-                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
-                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) ASC LIMIT 1""", (my_id, ref[1], ref[2])
-                        )[0] if q(
-                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
-                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) ASC LIMIT 1""", (my_id, ref[1], ref[2])
-                        ) else None
-
-                        m['farthest'] = f"{max(dists):.1f}m"
-                        m['farthest_node'] = q(
-                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
-                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) DESC LIMIT 1""", (my_id, ref[1], ref[2])
-                        )[0] if q(
-                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
-                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) DESC LIMIT 1""", (my_id, ref[1], ref[2])
-                        ) else None
+                        closest_dist, closest_id, closest_name = min(dists, key=lambda item: item[0])
+                        farthest_dist, farthest_id, farthest_name = max(dists, key=lambda item: item[0])
+                        m['closest'] = f"{closest_dist:.1f}m"
+                        m['closest_node'] = node_label(closest_id, closest_name)
+                        m['farthest'] = f"{farthest_dist:.1f}m"
+                        m['farthest_node'] = node_label(farthest_id, farthest_name)
     except sqlite3.Error as e:
         logging.warning("db query failed: %s", e)
     finally:

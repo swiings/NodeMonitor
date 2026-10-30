@@ -42,6 +42,10 @@ NodeMonitor Technical Details
         * Provides an API for populating the NodeMonitor data elements
         * Offers an Index.html page as entry to NodeMonitor
         * Permits users to refresh the monitor page on a timer, typically 30 seconds
+    * NMGauge
+        * Drives an optional e-paper display with live session metrics
+        * Its detail layout shows the closest and farthest nodes (in miles), loudest and latest nodes, and the node with the most received over-the-air packets; distances require positions for the reference node and its peers
+        * Missing metrics show `--`; nodes without a short name are shown by hexadecimal node ID
 
 
 NodeMonitor Main Screen
