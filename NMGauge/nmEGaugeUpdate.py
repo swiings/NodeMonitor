@@ -67,7 +67,7 @@ def draw_page2(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
     draw.text((126, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
-               "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
+               "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font12c, fill=0, anchor='mt')
 
 
     
@@ -299,7 +299,7 @@ def main():
     epd.init()
 
     # Clear the display initially
-    epd.Clear(0xFF);
+    # epd.Clear(0xFF);
 
     # img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
     # epd.displayPartial(epd.getbuffer(img))
