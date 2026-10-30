@@ -23,6 +23,7 @@ font20c = ImageFont.truetype(COND, 20)
 font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
 font30b  = ImageFont.truetype(BOLD, 30)   
+font48b  = ImageFont.truetype(BOLD, 48)   
 font50b  = ImageFont.truetype(BOLD, 50)   
 
 
@@ -108,7 +109,7 @@ def draw_page3(draw, m):
     draw.text((125, 13), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mt')
     draw.text((125, 55), "TOTAL / ACT / DIR NODES", font=font15c, fill=0, anchor='mt')
 
-    draw.text((125, 68), m['packets'], font=font50b, fill=0, anchor='mt')
+    draw.text((125, 68), m['packets'], font=font48b, fill=0, anchor='mt')
     draw.text((125, 122), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mb')
 
 
