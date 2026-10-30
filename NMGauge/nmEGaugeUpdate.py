@@ -124,8 +124,8 @@ def draw_page4(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count 
-    draw.text((125, 65), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font60b, fill=0, anchor='mm')
-    draw.text((125, 122), "TOTAL / ACT / DIR NODES", font=font25b, fill=0, anchor='mb')
+    draw.text((125, 30), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mt')
+    draw.text((125, 122), "TOTAL / ACT / DIR NODES", font=font20c, fill=0, anchor='mb')
 
 def draw_page5(draw, m):
     """Draw live metrics onto the 250x122 landscape image (2nd page."""
@@ -136,8 +136,8 @@ def draw_page5(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count 
-    draw.text((125, 65), m['packets'], font=font60b, fill=0, anchor='mm')
-    draw.text((125, 122), "PACKETS", font=font25b, fill=0, anchor='mb')
+    draw.text((125, 60), m['packets'], font=font60b, fill=0, anchor='mm')
+    draw.text((125, 110), "TOTAL PACKETS", font=font25b, fill=0, anchor='mb')
 
 
 
