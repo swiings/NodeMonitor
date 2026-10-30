@@ -75,25 +75,25 @@ def draw_page2(draw, m):
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 64, 250, 64), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
-    draw.text((0, 71), "CLOSEST", font=font12c, fill=0, anchor='lt')
-    draw.text((140, 71), m['closest_node'], font=font12c, fill=0, anchor='rm')
-    draw.text((180, 71), m['closest'], font=font12c, fill=0, anchor='lm')
+    # draw.text((0, 71), "CLOSEST", font=font12c, fill=0, anchor='lt')
+    # draw.text((140, 71), m['closest_node'], font=font12c, fill=0, anchor='rm')
+    # draw.text((180, 71), m['closest'], font=font12c, fill=0, anchor='lm')
 
-    draw.text((0, 71), "FARTHEST", font=font12c, fill=0, anchor='lt')
-    draw.text((140, 71), m['farthest_node'], font=font12c, fill=0, anchor='rm')
-    draw.text((180, 71), m['farthest'], font=font12c, fill=0, anchor='lm')
+    # draw.text((0, 71), "FARTHEST", font=font12c, fill=0, anchor='lt')
+    # draw.text((140, 71), m['farthest_node'], font=font12c, fill=0, anchor='rm')
+    # draw.text((180, 71), m['farthest'], font=font12c, fill=0, anchor='lm')
 
-    draw.text((0, 83), "LOUDEST", font=font12c, fill=0, anchor='lt')
-    draw.text((140, 83), m['loudest_node'], font=font12c, fill=0, anchor='rm')
-    draw.text((180, 83), m['loudest'], font=font12c, fill=0, anchor='lm')      
+    # draw.text((0, 83), "LOUDEST", font=font12c, fill=0, anchor='lt')
+    # draw.text((140, 83), m['loudest_node'], font=font12c, fill=0, anchor='rm')
+    # draw.text((180, 83), m['loudest'], font=font12c, fill=0, anchor='lm')      
 
-    draw.text((0, 95), "LATEST", font=font12c, fill=0, anchor='lt')
-    draw.text((140, 95), m['last_heard_node'], font=font12c, fill=0, anchor='rm')
-    draw.text((180, 95), m['last_heard'], font=font12c, fill=0, anchor='lm')
+    # draw.text((0, 95), "LATEST", font=font12c, fill=0, anchor='lt')
+    # draw.text((140, 95), m['last_heard_node'], font=font12c, fill=0, anchor='rm')
+    # draw.text((180, 95), m['last_heard'], font=font12c, fill=0, anchor='lm')
 
-    draw.text((0, 107), "NOISIEST", font=font12c, fill=0, anchor='lt')
-    draw.text((140, 107), m['noisiest_node'], font=font12c, fill=0, anchor='rm')
-    draw.text((180, 107), m['noisiest'], font=font12c, fill=0, anchor='lm') 
+    # draw.text((0, 107), "NOISIEST", font=font12c, fill=0, anchor='lt')
+    # draw.text((140, 107), m['noisiest_node'], font=font12c, fill=0, anchor='rm')
+    # draw.text((180, 107), m['noisiest'], font=font12c, fill=0, anchor='lm') 
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
