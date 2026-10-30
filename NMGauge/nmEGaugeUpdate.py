@@ -73,14 +73,24 @@ def draw_page2(draw, m):
     draw.line((0, 26, 250, 26), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
     draw.text((0, 35), "CLOSEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((100, 35), m['closest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((200, 35), m['closest'], font=font14c, fill=0, anchor='lt')
+    draw.text((90, 35), m['closest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((210, 35), m['closest'], font=font14c, fill=0, anchor='lt')
 
+    draw.text((0, 50), "FARTHEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((90, 50), m['farthest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((210, 50), m['farthest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 50), "FARTHEST " + m['farthest_node'] + " " + m['farthest'], font=font14c, fill=0, anchor='lt')
-    draw.text((0, 65), "LOUDEST " + m['loudest_node'] + " " + m['loudest'], font=font14c, fill=0, anchor='lt')
-    draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
-    draw.text((0, 95), "NOISIEST " + m['noisiest_node'] + " " + m['noisiest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 65), "LOUDEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((90, 65), m['loudest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((210, 65), m['loudest'], font=font14c, fill=0, anchor='lt')
+
+    draw.text((0, 80), "LATEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((90, 80), m['last_heard_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((210, 80), m['last_heard'], font=font14c, fill=0, anchor='lt')
+
+    draw.text((0, 95), "NOISIEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((90, 95), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((210, 95), m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
