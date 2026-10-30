@@ -70,25 +70,13 @@ def draw_page2(draw, m):
                "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font12c, fill=0, anchor='mt')
    
     ## horizontal line separating node/packet counts from other metrics
-    draw.line((0, 25, 250, 25), fill=0)  
+    draw.line((0, 26, 250, 26), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
-    # draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
-
-    # draw.text((0, 71), "FARTHEST", font=font12c, fill=0, anchor='lt')
-    # draw.text((140, 71), m['farthest_node'], font=font12c, fill=0, anchor='rm')
-    # draw.text((180, 71), m['farthest'], font=font12c, fill=0, anchor='lm')
-
-    # draw.text((0, 83), "LOUDEST", font=font12c, fill=0, anchor='lt')
-    # draw.text((140, 83), m['loudest_node'], font=font12c, fill=0, anchor='rm')
-    # draw.text((180, 83), m['loudest'], font=font12c, fill=0, anchor='lm')      
-
-    # draw.text((0, 95), "LATEST", font=font12c, fill=0, anchor='lt')
-    # draw.text((140, 95), m['last_heard_node'], font=font12c, fill=0, anchor='rm')
-    # draw.text((180, 95), m['last_heard'], font=font12c, fill=0, anchor='lm')
-
-    # draw.text((0, 107), "NOISIEST", font=font12c, fill=0, anchor='lt')
-    # draw.text((140, 107), m['noisiest_node'], font=font12c, fill=0, anchor='rm')
-    # draw.text((180, 107), m['noisiest'], font=font12c, fill=0, anchor='lm') 
+    draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 50), "FARTHEST " + m['farthest_node'] + " " + m['farthest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 65), "LOUDEST " + m['loudest_node'] + " " + m['loudest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 80), "LATEST " + m['last_heard_node'] + " " + m['last_heard'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 95), "NOISIEST " + m['noisiest_node'] + " " + m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
