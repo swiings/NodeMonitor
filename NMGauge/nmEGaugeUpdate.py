@@ -68,11 +68,9 @@ def draw_page2(draw, m):
     ## node count and packet count 
     draw.text((126, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
                "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font12c, fill=0, anchor='mt')
-
-
-    
+   
     ## horizontal line separating node/packet counts from other metrics
-    draw.line((0, 25, 250, 25), fill=0, anchor='mt')  
+    draw.line((0, 25, 250, 25), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
     # draw.text((0, 35), "CLOSEST " + m['closest_node'] + " " + m['closest'], font=font14c, fill=0, anchor='lt')
 
