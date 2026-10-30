@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
 
 UPDATE_SECS = 60
-PAGE_SECS   = 2
+PAGE_SECS   = 5
 CLEAN_HOUR  = 3        # daily full refresh (the only flash) at 03:00
 
 # --- fonts + draw_metrics() 
