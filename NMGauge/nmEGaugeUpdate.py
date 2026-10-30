@@ -109,7 +109,7 @@ def draw_page3(draw, m):
     draw.text((125, 13), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mt')
     draw.text((125, 55), "TOTAL / ACT / DIR NODES", font=font15c, fill=0, anchor='mt')
 
-    draw.text((125, 69), m['packets'], font=font40b, fill=0, anchor='mt')
+    draw.text((125, 70), m['packets'], font=font40b, fill=0, anchor='mt')
     draw.text((125, 122), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mb')
 
 
