@@ -19,6 +19,7 @@ font11c = ImageFont.truetype(COND, 11)
 font12c = ImageFont.truetype(COND, 12)   
 font14c = ImageFont.truetype(COND, 14)   
 font15c = ImageFont.truetype(COND, 15)   
+font20c = ImageFont.truetype(COND, 20)   
 font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
 font30b  = ImageFont.truetype(BOLD, 30)   
@@ -102,12 +103,12 @@ def draw_page3(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
-    draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font25b, fill=0, anchor='mm')
-    draw.text((62.5, 54), "TOTAL / ACT / DIR", font=font15c, fill=0, anchor='mt')
-    draw.text((187.5, 39), m['packets'], font=font25b, fill=0, anchor='mm')
-    draw.text((187.5, 53), m['permin'] + "/m   " + m['perhour'] + "/h", font=font15c, fill=0, anchor='mt')
+    draw.text((62.5, 15), "NODE COUNT", font=font20c, fill=0, anchor='mt')
+    draw.text((187.5, 15), "PACKET COUNT", font=font20c, fill=0, anchor='mt')
+    draw.text((62.5, 40), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font30b, fill=0, anchor='mm')
+    draw.text((62.5, 56), "TOTAL / ACT / DIR", font=font20c, fill=0, anchor='mt')
+    draw.text((187.5, 40), m['packets'], font=font30b, fill=0, anchor='mm')
+    draw.text((187.5, 56), m['permin'] + "/m   " + m['perhour'] + "/h", font=font20c, fill=0, anchor='mt')
 
 
 
