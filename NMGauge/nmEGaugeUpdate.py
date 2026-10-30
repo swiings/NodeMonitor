@@ -8,7 +8,7 @@ from waveshare_epd import epd2in13_V4
 UPDATE_SECS = 60
 PAGE_SECS   = 10
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
-SCREEN_ROTATION   = 270       # 270 has Pi0 interface ports on top, 90 has them on the bottom
+SCREEN_ROTATION   = 270     # 270 puts Pi0 interface ports on top, 90 puts them on the bottom
 
 # Per-device overrides for the defaults above (untracked; see NMGsettings.example.json)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NMGsettings.json')
@@ -53,18 +53,12 @@ font11c = ImageFont.truetype(COND, 11)
 font12c = ImageFont.truetype(COND, 12)   
 font14c = ImageFont.truetype(COND, 14)   
 font15c = ImageFont.truetype(COND, 15)   
-font18c = ImageFont.truetype(COND, 18)   
 font20c = ImageFont.truetype(COND, 20)   
 font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
-font30b  = ImageFont.truetype(BOLD, 30)   
-font32b  = ImageFont.truetype(BOLD, 32)
 font35b  = ImageFont.truetype(BOLD, 35)
 font40b  = ImageFont.truetype(BOLD, 40)   
 font50b  = ImageFont.truetype(BOLD, 50)   
-font60b  = ImageFont.truetype(BOLD, 60)   
-font70b  = ImageFont.truetype(BOLD, 70)
-
 
 # --- drawing functions for the e-paper display
 def draw_metrics(draw, m):
@@ -108,25 +102,33 @@ def draw_page2(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
-    draw.text((0, 35), "CLOSEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 35), m['closest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 35), m['closest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 13), "CLOSEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 13), m['closest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 13), m['closest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 52), "FARTHEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 52), m['farthest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 52), m['farthest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 29), "FARTHEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 29), m['farthest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 29), m['farthest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 68), "LOUDEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 68), m['loudest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 68), m['loudest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 45), "STRONGEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 45), m['loudest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 45), m['loudest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 84), "LATEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 84), m['last_heard_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 84), m['last_heard'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 61), "WEAKEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 61), m['quietest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 61), m['quietest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 100), "NOISIEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 100), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 100), m['noisiest'] + " pkts", font=font14c, fill=0, anchor='lt')
+    draw.text((0, 77), "LATEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 77), m['last_heard_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 77), m['last_heard'], font=font14c, fill=0, anchor='lt')
+
+    draw.text((0, 93), "OLDEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 93), m['oldest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 93), m['oldest'], font=font14c, fill=0, anchor='lt')
+
+    draw.text((0, 109), "NOISIEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 109), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 109), m['noisiest'] + " pkts", font=font14c, fill=0, anchor='lt')
 
 def draw_page3(draw, m):
     ## top row title, with a timestamp
@@ -308,12 +310,21 @@ def db_metrics(now):
             m['noisiest'] = f"{row[2]:,}"
             m['noisiest_node'] = node_label(row[0], row[1])
 
+        # get the loudest node
         row = q("""SELECT node_id, short_name, rssi, snr FROM nodes
                    WHERE rssi IS NOT NULL AND (node_id & 4294967295) != ?
                    ORDER BY rssi DESC, node_id LIMIT 1""", excl)
         if row:
             m['loudest'] = f"{row[2]} {row[3]:.1f}" if row[3] is not None else str(row[2])
             m['loudest_node'] = node_label(row[0], row[1])
+
+        # get the quietest node
+        row = q("""SELECT node_id, short_name, rssi, snr FROM nodes
+                   WHERE rssi IS NOT NULL AND (node_id & 4294967295) != ?
+                   ORDER BY rssi ASC, node_id LIMIT 1""", excl)
+        if row:
+            m['quietest'] = f"{row[2]} {row[3]:.1f}" if row[3] is not None else str(row[2])
+            m['quietest_node'] = node_label(row[0], row[1]) 
 
         if my_id is not None:
             ref = q("SELECT long_name, lat, lon FROM nodes WHERE (node_id & 4294967295) = ?", my_id)
@@ -347,9 +358,8 @@ def db_metrics(now):
 def get_metrics():
     now = int(time.time())
     m = {k: '--' for k in ('total', 'act', 'dir', 'ref_ch', 'ref_name', 'freq', 'uptime', 'packets', 'permin', 'perhour',
-                           'closest', 'closest_node',
-                           'farthest', 'farthest_node',
-                           'loudest', 'loudest_node', 
+                           'closest', 'closest_node', 'farthest', 'farthest_node',
+                           'loudest', 'loudest_node', 'quietest', 'quietest_node',
                            'last_heard', 'last_heard_node', 
                            'noisiest', 'noisiest_node')}
 
