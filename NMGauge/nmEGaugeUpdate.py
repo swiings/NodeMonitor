@@ -73,31 +73,31 @@ def draw_page2(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
-    draw.text((126, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
+    draw.text((126, 17), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
                "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font12c, fill=0, anchor='mt')
    
     ## horizontal line separating node/packet counts from other metrics
-    draw.line((0, 26, 250, 26), fill=0)  
+    draw.line((0, 29, 250, 29), fill=0)  
 
-    draw.text((0, 35), "CLOSEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 35), m['closest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 35), m['closest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 36), "CLOSEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 36), m['closest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 36), m['closest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 50), "FARTHEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 50), m['farthest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 50), m['farthest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 51), "FARTHEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 51), m['farthest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 51), m['farthest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 65), "LOUDEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 65), m['loudest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 65), m['loudest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 66), "LOUDEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 66), m['loudest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 66), m['loudest'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 80), "LATEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 80), m['last_heard_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 80), m['last_heard'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 81), "LATEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 81), m['last_heard_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 81), m['last_heard'], font=font14c, fill=0, anchor='lt')
 
-    draw.text((0, 95), "NOISIEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 95), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 95), m['noisiest'], font=font14c, fill=0, anchor='lt')
+    draw.text((0, 96), "NOISIEST ", font=font14c, fill=0, anchor='lt')
+    draw.text((88, 96), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 96), m['noisiest'], font=font14c, fill=0, anchor='lt')
 
 def draw_page3(draw, m):
     ## top row title, with a timestamp
@@ -129,7 +129,7 @@ def draw_page5(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet rate
-    draw.text((125, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font50b, fill=0, anchor='mm')
+    draw.text((125, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font40b, fill=0, anchor='mm')
     draw.text((125, 100), "PACKET RATE", font=font25b, fill=0, anchor='mb')
 
 
