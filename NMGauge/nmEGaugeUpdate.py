@@ -366,7 +366,7 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5)
+    pages = (draw_metrics, draw_page2, draw_page4, draw_page5)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
