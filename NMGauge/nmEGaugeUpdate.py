@@ -123,8 +123,8 @@ def draw_page2(draw, m):
     draw.text((180, 77), m['last_heard'], font=font14c, fill=0, anchor='lt')
 
     draw.text((0, 93), "OLDEST ", font=font14c, fill=0, anchor='lt')
-    draw.text((88, 93), m['oldest_node'], font=font14c, fill=0, anchor='lt')
-    draw.text((180, 93), m['oldest'], font=font14c, fill=0, anchor='lt')
+    draw.text((88, 93), m['first_heard_node'], font=font14c, fill=0, anchor='lt')
+    draw.text((180, 93), m['first_heard'], font=font14c, fill=0, anchor='lt')
 
     draw.text((0, 109), "NOISIEST ", font=font14c, fill=0, anchor='lt')
     draw.text((88, 109), m['noisiest_node'], font=font14c, fill=0, anchor='lt')
@@ -278,12 +278,23 @@ def db_metrics(now):
     try:
         m['total'] = str(q("SELECT COUNT(*) FROM nodes")[0])
         m['act']   = str(q("SELECT COUNT(*) FROM nodes WHERE last_heard > ?", now - 3900)[0])
+
+        # get the latest heard node
         row = q("""SELECT last_heard, node_id, short_name FROM nodes
                    WHERE (node_id & 4294967295) != ?
                    ORDER BY last_heard DESC, node_id LIMIT 1""", excl)
         if row and row[0]:
             m['last_heard'] = ms_str(now - row[0])
             m['last_heard_node'] = node_label(row[1], row[2])
+        # get the oldest heard node
+        row = q("""SELECT last_heard, node_id, short_name FROM nodes
+                   WHERE (node_id & 4294967295) != ?
+                   ORDER BY last_heard ASC, node_id LIMIT 1""", excl)
+        if row and row[0]:
+            m['first_heard'] = ms_str(now - row[0])
+            m['first_heard_node'] = node_label(row[1], row[2])
+
+
         # direct = zero hops used (hop_start - hop_limit), same rule as NMDisplay's gauge
         # packet stats count over-the-air packets only: a reference node's own packets
         # arrive over serial with no rx_rssi (and a session may have had several ref nodes)
