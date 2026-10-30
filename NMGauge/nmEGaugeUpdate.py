@@ -57,6 +57,45 @@ def draw_metrics(draw, m):
     draw.text((130, 107), "MOST", font=font12c, fill=0, anchor='lt')
     draw.text((248, 107), m['noisiest']+" pkts", font=font12c, fill=0, anchor='rt')  
 
+def draw_page2(draw, m):
+    """Draw live metrics onto the 250x122 landscape image (2nd page."""
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## node count and packet count in bigest font used on the screen
+    draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
+    draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
+    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font15c, fill=0, anchor='mm')
+    draw.text((62.5, 52), "TOTAL / ACT / DIR", font=font14c, fill=0, anchor='mt')
+    draw.text((187.5, 39), m['packets'], font=font15c, fill=0, anchor='mm')
+    draw.text((187.5, 52), m['permin'] + "/m   " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
+    ## horizontal line separating node/packet counts from other metrics
+    draw.line((0, 64, 250, 64), fill=0)  
+    ## metrics related to the reference node used by NodeMonitor
+    draw.text((0, 71), "CLOSEST", font=font12c, fill=0, anchor='lt')
+    draw.text((140, 71), m['closest_node'], font=font12c, fill=0, anchor='rm')
+    draw.text((180, 71), m['closest'], font=font12c, fill=0, anchor='lm')
+
+    draw.text((0, 71), "FARTHEST", font=font12c, fill=0, anchor='lt')
+    draw.text((140, 71), m['farthest_node'], font=font12c, fill=0, anchor='rm')
+    draw.text((180, 71), m['farthest'], font=font12c, fill=0, anchor='lm')
+
+    draw.text((0, 83), "LOUDEST", font=font12c, fill=0, anchor='lt')
+    draw.text((140, 83), m['loudest_node'], font=font12c, fill=0, anchor='rm')
+    draw.text((180, 83), m['loudest'], font=font12c, fill=0, anchor='lm')      
+
+    draw.text((0, 95), "LATEST", font=font12c, fill=0, anchor='lt')
+    draw.text((140, 95), m['last_heard_node'], font=font12c, fill=0, anchor='rm')
+    draw.text((180, 95), m['last_heard'], font=font12c, fill=0, anchor='lm')
+
+    draw.text((0, 107), "NOISIEST", font=font12c, fill=0, anchor='lt')
+    draw.text((140, 107), m['noisiest_node'], font=font12c, fill=0, anchor='rm')
+    draw.text((180, 107), m['noisiest'], font=font12c, fill=0, anchor='lm') 
+
+
 # --- PiSugar battery via pisugar-server (TCP 8423)
 def get_pisugar(cmd, host='127.0.0.1', port=8423, timeout=2):
     """Send one command to pisugar-server; return the value after ':' or None."""
@@ -94,7 +133,8 @@ base = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
 
 def render(m):
     img = base.copy()
-    draw_metrics(ImageDraw.Draw(img), m)
+    draw_page2(ImageDraw.Draw(img), m)
+    # draw_metrics(ImageDraw.Draw(img), m)
     return img.rotate(90, expand=True)     # 270 has Pi0 ports on top, 90 has them on the bottom
 
 # --- NodeMonitor session data (NMData/active.json -> active session SQLite db)
@@ -156,9 +196,10 @@ def db_metrics(now):
     try:
         m['total'] = str(q("SELECT COUNT(*) FROM nodes")[0])
         m['act']   = str(q("SELECT COUNT(*) FROM nodes WHERE last_heard > ?", now - 3900)[0])
-        row = q("SELECT MAX(last_heard) FROM nodes WHERE (node_id & 4294967295) != ?", excl)
+        row = q("SELECT MAX(last_heard), short_name FROM nodes WHERE (node_id & 4294967295) != ?", excl)
         if row and row[0]:
             m['last_heard'] = ms_str(now - row[0])
+            m['last_heard_node'] = row[1]   
         # direct = zero hops used (hop_start - hop_limit), same rule as NMDisplay's gauge
         # packet stats count over-the-air packets only: a reference node's own packets
         # arrive over serial with no rx_rssi (and a session may have had several ref nodes)
@@ -177,12 +218,26 @@ def db_metrics(now):
                    GROUP BY from_node_id ORDER BY n DESC LIMIT 1""")
         if row:
             m['noisiest'] = f"{row[0]:,}"
+            m['noisiest_node'] = q(
+                """SELECT from_node_id FROM packets WHERE rx_rssi IS NOT NULL
+                   GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"""
+            )[0] if q(
+                """SELECT from_node_id FROM packets WHERE rx_rssi IS NOT NULL
+                   GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"""
+            ) else None
 
         row = q("""SELECT rssi, snr FROM nodes
                    WHERE rssi IS NOT NULL AND (node_id & 4294967295) != ?
                    ORDER BY rssi DESC LIMIT 1""", excl)
         if row:
             m['loudest'] = f"{row[0]} {row[1]:.1f}" if row[1] is not None else str(row[0])
+            m['loudest_node'] = q(
+                """SELECT short_name FROM nodes WHERE rssi IS NOT NULL
+                   ORDER BY rssi DESC LIMIT 1"""
+            )[0] if q(
+                """SELECT short_name FROM nodes WHERE rssi IS NOT NULL
+                   ORDER BY rssi DESC LIMIT 1"""
+            ) else None
 
         if my_id is not None:
             ref = q("SELECT long_name, lat, lon FROM nodes WHERE (node_id & 4294967295) = ?", my_id)
@@ -195,6 +250,22 @@ def db_metrics(now):
                            AND (node_id & 4294967295) != ?""", (my_id,))]
                     if dists:
                         m['closest'] = f"{min(dists):.1f}m"
+                        m['closest_node'] = q(
+                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
+                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) ASC LIMIT 1""", (my_id, ref[1], ref[2])
+                        )[0] if q(
+                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
+                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) ASC LIMIT 1""", (my_id, ref[1], ref[2])
+                        ) else None
+
+                        m['farthest'] = f"{max(dists):.1f}m"
+                        m['farthest_node'] = q(
+                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
+                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) DESC LIMIT 1""", (my_id, ref[1], ref[2])
+                        )[0] if q(
+                            """SELECT short_name FROM nodes WHERE lat IS NOT NULL AND lon IS NOT NULL
+                               AND (node_id & 4294967295) != ? ORDER BY haversine_mi(?, ?, lat, lon) DESC LIMIT 1""", (my_id, ref[1], ref[2])
+                        ) else None
     except sqlite3.Error as e:
         logging.warning("db query failed: %s", e)
     finally:
@@ -204,8 +275,13 @@ def db_metrics(now):
 # return the dict of values from the active NodeMonitor session; '--' where unavailable
 def get_metrics():
     now = int(time.time())
-    m = {k: '--' for k in ('closest', 'loudest', 'last_heard', 'noisiest', 'total', 'act', 'dir',
-                           'ref_ch', 'ref_name', 'freq', 'uptime', 'packets', 'permin', 'perhour')}
+    m = {k: '--' for k in ('total', 'act', 'dir', 'ref_ch', 'ref_name', 'freq', 'uptime', 'packets', 'permin', 'perhour',
+                           'closest', 'closest_node',
+                           'farthest', 'farthest_node',
+                           'loudest', 'loudest_node', 
+                           'last_heard', 'last_heard_node', 
+                           'noisiest', 'noisiest_node')}
+
     m.update(db_metrics(now))
     m['datetime'] = datetime.now().strftime('%m/%d %H:%M')
     m['battery']  = battery_str()       # battery percentage with charging status
@@ -252,6 +328,7 @@ def main():
 
     img = render(get_metrics())
     epd.displayPartBaseImage(epd.getbuffer(img))
+    
     last_bytes = img.tobytes()
     last_clean = datetime.now().date()
     
