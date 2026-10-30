@@ -23,7 +23,7 @@ font20c = ImageFont.truetype(COND, 20)
 font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
 font30b  = ImageFont.truetype(BOLD, 30)   
-font65b  = ImageFont.truetype(BOLD, 65)   
+font55b  = ImageFont.truetype(BOLD, 55)   
 
 
 # --- drawing functions for the e-paper display
@@ -105,10 +105,10 @@ def draw_page3(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
-    draw.text((125, 26), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font65b, fill=0, anchor='mt')
+    draw.text((125, 26), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font55b, fill=0, anchor='mt')
     draw.text((125, 75), "TOTAL / ACT / DIR NODES", font=font15c, fill=0, anchor='mt')
 
-    draw.text((125, 90), m['packets'], font=font65b, fill=0, anchor='mt')
+    draw.text((125, 90), m['packets'], font=font55b, fill=0, anchor='mt')
     draw.text((125, 120), m['permin'] + "/m   " + m['perhour'] + "/h", font=font30b, fill=0, anchor='mt')
 
 
