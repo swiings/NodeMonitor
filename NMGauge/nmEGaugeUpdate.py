@@ -21,6 +21,7 @@ font11c = ImageFont.truetype(COND, 11)
 font12c = ImageFont.truetype(COND, 12)   
 font14c = ImageFont.truetype(COND, 14)   
 font15c = ImageFont.truetype(COND, 15)   
+font18c = ImageFont.truetype(COND, 18)   
 font20c = ImageFont.truetype(COND, 20)   
 font23b  = ImageFont.truetype(BOLD, 23)   
 font25b  = ImageFont.truetype(BOLD, 25)   
@@ -136,7 +137,7 @@ def draw_page6(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## session up time
-    draw.text((127, 50), m['uptime'], font=font40b, fill=0, anchor='mm')
+    draw.text((127, 50), m['uptime'], font=font30b, fill=0, anchor='mm')
     draw.text((127, 100), "SESSION UP TIME", font=font20c, fill=0, anchor='mb')
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
