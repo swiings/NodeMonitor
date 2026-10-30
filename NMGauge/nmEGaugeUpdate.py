@@ -66,7 +66,7 @@ def draw_page2(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count 
-    draw.text((0, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
+    draw.text((126, 15), "NODES " + m['total'] + "/" + m['act'] + "/" + m['dir'] +
                "  PACKETS " + m['packets'] + " " + m['permin'] + "/m " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
 
 
