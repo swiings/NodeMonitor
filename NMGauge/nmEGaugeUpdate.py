@@ -101,8 +101,8 @@ def draw_page3(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count 
-    draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font50b, fill=0, anchor='mm')
-    draw.text((125, 90), "TOTAL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mb')
+    draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font40b, fill=0, anchor='mm')
+    draw.text((125, 90), "ALL / ACTIVE / DIRECT NODES", font=font15c, fill=0, anchor='mb')
 
 def draw_page4(draw, m):
     ## top row title, with a timestamp
@@ -113,7 +113,7 @@ def draw_page4(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count 
     draw.text((125, 50), m['packets'], font=font60b, fill=0, anchor='mm')
-    draw.text((125, 100), "TOTAL PACKETS", font=font25b, fill=0, anchor='mb')
+    draw.text((125, 100), "PACKET COUNT", font=font25b, fill=0, anchor='mb')
 
 def draw_page5(draw, m):
     # common page header for all pages
