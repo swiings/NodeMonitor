@@ -15,13 +15,17 @@ Traffic Detail card displayed
 
 
 Installation
-From a terminal window, while in your projects folder, 
-   run ‘git clone https://github.com/swiings/NodeMonitor’. 
-Git will create a subdirectory for NodeMonitor and download all the files. Look in the scripts folder for setup_pi.sh. 
-Run C:\Projects\NodeMonitor\scripts\setup_pi.sh to install all the requirements for the NodeMonitor server and the listener app. 
-It will fetch any missing libraries and may run for a few minutes. Watch the messages that get displayed. 
-At the end of the install, it’ll give you a URL to open from your computer to run NodeMonitor. 
-The URL will be something like http://localhost:5000
+Using a terminal window, from your projects folder, run the following command...
+    git clone https://github.com/swiings/NodeMonitor
+
+Git will create a subdirectory for NodeMonitor and download all the files. 
+
+Look in the /projects/NodeMonitor/scripts folder for setup_pi.sh. 
+
+    Execute /Projects/NodeMonitor/scripts/setup_pi.sh 
+
+This will install all the requirements for the NodeMonitor server, the listener and other apps. It will fetch any missing libraries and display a verbose log. At the end of the install script, the Listener will be running. The setup log will have the URL to put in a browser to see the NodeMonitor screens.  The URL will be http://localhost:5000 unless you change it in the setup script.
+
 If you are on WiFi, others on the network can use http://yourmachinename.local:5000
 
 
