@@ -6,8 +6,6 @@ Dependencies:
   Install Waveshare's e-Paper Python package/library for your HAT.
 """
 
-import os, sys, time, signal, logging, socket, shutil, json, math, sqlite3
-
 from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
 
@@ -19,6 +17,11 @@ WHITE = 255
 REGULAR_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf"
 BOLD_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
 BOLD_ITALIC_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-BoldOblique.ttf"
+
+# Sized for DejaVu Sans Condensed on the physical 250 px display.
+HEADER_SIDE_MAX_SIZE = 9
+HEADER_TITLE_MAX_SIZE = 18
+HEADER_UPTIME_MAX_SIZE = 9
 
 
 def font(path, size):
@@ -62,16 +65,22 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
-    small_italic = font(BOLD_ITALIC_FONT, 12)
-    title_font = font(BOLD_ITALIC_FONT, 21)
+    header_left_font = fit_font(
+        draw, "MESHTASTIC", BOLD_ITALIC_FONT, HEADER_SIDE_MAX_SIZE, 58
+    )
+    title_font = fit_font(
+        draw, "NodeMonitor", BOLD_ITALIC_FONT, HEADER_TITLE_MAX_SIZE, 116
+    )
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
 
-    draw.text((4, 3), "MESHTASTIC", font=small_italic, fill=BLACK)
-    centered_text(draw, (64, 0, 186, 25), "NodeMonitor", title_font)
-    uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
+    draw.text((4, 5), "MESHTASTIC", font=header_left_font, fill=BLACK)
+    centered_text(draw, (67, 0, 184, 21), "NodeMonitor", title_font)
+    uptime_font = fit_font(
+        draw, UpTime, BOLD_ITALIC_FONT, HEADER_UPTIME_MAX_SIZE, 58
+    )
     bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
-    draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
+    draw.text((246 - (bounds[2] - bounds[0]), 5), str(UpTime), font=uptime_font, fill=BLACK)
     draw.line((4, 21, 63, 21), fill=BLACK, width=1)
     draw.line((187, 21, 246, 21), fill=BLACK, width=1)
 
