@@ -53,7 +53,7 @@ def draw_rate_card(draw, x, w, label, value):
     draw.rounded_rectangle((x, 26, x + w, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
-    centered_text(draw, (x + 2, 29, x + w, 42), label, label_font)
+    centered_text(draw, (x + 2, 25, x + w, 42), label, label_font)
     centered_text(draw, (x + 2, 40, x + w, 67), value, value_font)
 
 
@@ -72,8 +72,8 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
     bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
     draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
-    draw.line((4, 18, 63, 18), fill=BLACK, width=1)
-    draw.line((189, 18, 246, 18), fill=BLACK, width=1)
+    draw.line((5), fill=BLACK, width=1)
+    draw.line((190, 18, 246, 18), fill=BLACK, width=1)
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
