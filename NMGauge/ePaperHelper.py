@@ -50,7 +50,7 @@ def fit_font(draw, text, path, max_size, max_width):
 
 
 def draw_rate_card(draw, x, w, label, value):
-    draw.rounded_rectangle((x, 26, x + 49 + w, 68), radius=10, outline=BLACK, width=1)
+    draw.rounded_rectangle((x, 26, x + w, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
     centered_text(draw, (x + 2, 29, x + w, 42), label, label_font)
@@ -62,7 +62,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
-    small_italic = font(BOLD_ITALIC_FONT, 11)
+    small_italic = font(BOLD_ITALIC_FONT, 10)
     title_font = font(BOLD_ITALIC_FONT, 18)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
