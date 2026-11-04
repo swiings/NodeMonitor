@@ -49,12 +49,12 @@ def fit_font(draw, text, path, max_size, max_width):
     return font(path, 8)
 
 
-def draw_rate_card(draw, x, w, label, value):
-    draw.rounded_rectangle((x, 26, x + w, 68), radius=10, outline=BLACK, width=1)
+def draw_rate_card(draw, x, label, value):
+    draw.rounded_rectangle((x, 26, x + 49, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
-    centered_text(draw, (x + 2, 29, x + w - 3, 42), label, label_font)
-    centered_text(draw, (x + 2, 40, x + w - 3, 67), value, value_font)
+    centered_text(draw, (x + 2, 29, x + 46, 42), label, label_font)
+    centered_text(draw, (x + 2, 40, x + 45, 67), value, value_font)
 
 
 def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
@@ -62,14 +62,14 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
-    small_italic = font(BOLD_ITALIC_FONT, 10)
+    small_italic = font(BOLD_ITALIC_FONT, 11)
     title_font = font(BOLD_ITALIC_FONT, 18)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
 
     draw.text((4, 3), "MESHTASTIC", font=small_italic, fill=BLACK)
     centered_text(draw, (64, 0, 186, 25), "NodeMonitor", title_font)
-    uptime_font = fit_font(draw, UpTime, small_italic, 12, 61)
+    uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
     bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
     draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
     draw.line((4, 21, 63, 21), fill=BLACK, width=1)
@@ -77,8 +77,8 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
-    draw_rate_card(draw, 135, 53, "MINUTE", PPM)
-    draw_rate_card(draw, 197, 49, "HOUR", PPH)
+    draw_rate_card(draw, 140, "MINUTE", PPM)
+    draw_rate_card(draw, 197, "HOUR", PPH)
 
     for y in (73, 88, 103):
         for x in range(4, 247, 5):
