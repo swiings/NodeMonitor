@@ -68,7 +68,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
 
     draw.text((4, 3), "MESHTASTIC", font=small_italic, fill=BLACK)
-    centered_text(draw, (64, 0, 186, 25), "NodeMonitor", title_font)
+    centered_text(draw, (64, 0, 186, 25), " NodeMonitor", title_font)
     uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
     bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
     draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
@@ -77,7 +77,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
-    draw_rate_card(draw, 138, 50, "MINUTE", PPM)
+    draw_rate_card(draw, 138, 51, "MINUTE", PPM)
     draw_rate_card(draw, 197, 49, "HOUR", PPH)
 
     for y in (73, 88, 103):
