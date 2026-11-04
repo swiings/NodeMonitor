@@ -6,6 +6,8 @@ Dependencies:
   Install Waveshare's e-Paper Python package/library for your HAT.
 """
 
+import os, sys, time, signal, logging, socket, shutil, json, math, sqlite3
+
 from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
 
