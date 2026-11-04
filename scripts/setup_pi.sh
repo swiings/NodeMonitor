@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Bootstrap NodeMonitor on a fresh Raspberry Pi OS install. Safe to re-run.
 # Usage: ./scripts/setup_pi.sh [--no-service]
+#   NM_MDNS_NAME=nodemonitor-car ./scripts/setup_pi.sh   # advertise a different .local name
 set -euo pipefail
 
 
@@ -11,6 +12,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV="$REPO_DIR/.venv"
 RUN_USER="$(id -un)"
+MDNS_NAME="${NM_MDNS_NAME:-nodemonitor}"   # browse to https://$MDNS_NAME.local:5000
 INSTALL_SERVICE=1
 [[ "${1:-}" == "--no-service" ]] && INSTALL_SERVICE=0
 
@@ -21,7 +23,7 @@ fi
 
 echo "==> Installing system packages"
 sudo apt-get update
-sudo apt-get install -y git python3 python3-venv python3-pip bluez
+sudo apt-get install -y git python3 python3-venv python3-pip bluez avahi-daemon avahi-utils
 # Build headers are only needed if pip can't find a prebuilt aarch64 wheel.
 for pkg in python3-dev build-essential libffi-dev libssl-dev; do
     sudo apt-get install -y "$pkg" || echo "   (skipping unavailable optional package $pkg)"
@@ -76,8 +78,34 @@ EOF
     sudo systemctl enable nmdisplay.service
     sudo systemctl restart nmdisplay.service
     echo "==> Service running. Logs: journalctl -u nmdisplay -f"
+
+    echo "==> Installing nodemonitor-mdns.service (advertises $MDNS_NAME.local)"
+    sudo tee /etc/systemd/system/nodemonitor-mdns.service >/dev/null <<EOF
+[Unit]
+Description=Advertise $MDNS_NAME.local for NodeMonitor
+After=avahi-daemon.service network-online.target
+Wants=avahi-daemon.service network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash $REPO_DIR/scripts/mdns_alias.sh $MDNS_NAME
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo systemctl enable --now avahi-daemon
+    sudo systemctl daemon-reload
+    sudo systemctl enable nodemonitor-mdns.service
+    sudo systemctl restart nodemonitor-mdns.service
 fi
 
 echo
-echo "Done. Open https://$(hostname).local:5000 (accept the self-signed cert)."
+if [[ "$INSTALL_SERVICE" == 1 ]]; then
+    echo "Done. Open https://$MDNS_NAME.local:5000 (accept the self-signed cert)."
+    echo "      or https://$(hostname).local:5000 if another NodeMonitor on this network already uses $MDNS_NAME.local"
+else
+    echo "Done. Open https://$(hostname).local:5000 (accept the self-signed cert)."
+fi
 echo "Log out/in (or reboot) once so the dialout/bluetooth group changes apply."

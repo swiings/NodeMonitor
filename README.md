@@ -24,9 +24,9 @@ Look in the /projects/NodeMonitor/scripts folder for setup_pi.sh.
 
     Execute /Projects/NodeMonitor/scripts/setup_pi.sh 
 
-This will install all the requirements for the NodeMonitor server, the listener and other apps. It will fetch any missing libraries and display a verbose log. At the end of the install script, the Listener will be running. The setup log will have the URL to put in a browser to see the NodeMonitor screens.  The URL will be http://localhost:5000 unless you change it in the setup script.
-
-If you are on WiFi, others on the network can use http://yourmachinename.local:5000
+This will install all the requirements for the NodeMonitor server, the listener and other apps. It will fetch any missing libraries and display a verbose log. At the end of the install script, the Listener will be running. The setup log will have the URL to put in a browser to see the NodeMonitor screens.  The URL will be https://nodemonitor.local:5000 (from any device on the same network; accept the self-signed certificate warning).
+The Pi’s own name also works: https://yourmachinename.local:5000
+If you run more than one NodeMonitor Pi on the same network, give each its own name when installing, e.g. NM_MDNS_NAME=nodemonitor-car ./scripts/setup_pi.sh
 
 
 NodeMonitor Technical Details
