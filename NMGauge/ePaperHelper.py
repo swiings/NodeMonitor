@@ -63,7 +63,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw = ImageDraw.Draw(image)
 
     small_italic = font(BOLD_ITALIC_FONT, 12)
-    title_font = font(BOLD_ITALIC_FONT, 21)
+    title_font = font(BOLD_ITALIC_FONT, 20)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
 
@@ -77,7 +77,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
-    draw_rate_card(draw, 141, "MINUTE", PPM)
+    draw_rate_card(draw, 140, "MINUTE", PPM)
     draw_rate_card(draw, 197, "HOUR", PPH)
 
     for y in (73, 88, 103):
