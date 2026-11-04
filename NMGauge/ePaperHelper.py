@@ -72,8 +72,8 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
     bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
     draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
-    draw.line((4, 20, 63, 21), fill=BLACK, width=1)
-    draw.line((188, 20, 246, 21), fill=BLACK, width=1)
+    draw.line((4, 18, 63, 18), fill=BLACK, width=1)
+    draw.line((189, 18, 246, 18), fill=BLACK, width=1)
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
