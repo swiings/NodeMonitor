@@ -53,7 +53,7 @@ def draw_rate_card(draw, x, w, label, value):
     draw.rounded_rectangle((x, 26, x + w, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
-    centered_text(draw, (x + 2, 25, x + w, 42), label, label_font)
+    centered_text(draw, (x + 2, 29, x + w, 42), label, label_font)
     centered_text(draw, (x + 2, 40, x + w, 67), value, value_font)
 
 
