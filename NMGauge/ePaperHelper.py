@@ -50,7 +50,7 @@ def fit_font(draw, text, path, max_size, max_width):
 
 
 def draw_rate_card(draw, x, label, value):
-    draw.rounded_rectangle((x, 27, x + 49, 68), radius=10, outline=BLACK, width=1)
+    draw.rounded_rectangle((x, 26, x + 49, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
     centered_text(draw, (x + 2, 29, x + 45, 42), label, label_font)
@@ -62,9 +62,9 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
-    small_italic = font(BOLD_ITALIC_FONT, 13)
-    title_font = font(BOLD_ITALIC_FONT, 22)
-    packet_label_font = font(BOLD_ITALIC_FONT, 12)
+    small_italic = font(BOLD_ITALIC_FONT, 12)
+    title_font = font(BOLD_ITALIC_FONT, 21)
+    packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 32, 136)
 
     draw.text((4, 3), "MESHTASTIC", font=small_italic, fill=BLACK)
@@ -77,7 +77,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
 
     draw.text((4, 24), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 70), PacketCount, packet_font)
-    draw_rate_card(draw, 142, "MINUTE", PPM)
+    draw_rate_card(draw, 141, "MINUTE", PPM)
     draw_rate_card(draw, 197, "HOUR", PPH)
 
     for y in (73, 88, 103):
