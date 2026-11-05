@@ -7,6 +7,7 @@ Dependencies:
 """
 
 import os, sys, time, signal, logging, socket, shutil, json, math, sqlite3
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -21,9 +22,7 @@ REGULAR_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf"
 BOLD_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
 BOLD_ITALIC_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-BoldOblique.ttf"
 
-# font10c = ImageFont.truetype(COND, 10)   
-# font11c = ImageFont.truetype(COND, 11)   
-# font15c = ImageFont.truetype(COND, 15)   
+now_string = datetime.now().strftime('%m/%d %H:%M')
 
 
 def font(path, size):
@@ -92,7 +91,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), "11/01 20:10", font=font11c, fill=0, anchor='rt')
+    draw.text((250, 0), now_string, font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
     draw.text((3, 22), "PACKETS", font=packet_label_font, fill=BLACK)
