@@ -58,9 +58,16 @@ class PacketStatsTests(unittest.TestCase):
         self.assertEqual(stats["PacketCount"], "9")
         self.assertEqual(stats["PPM"], "0.1")
         self.assertEqual(stats["PPH"], "7")
-        self.assertEqual(stats["UpTime"], "25:01:01")
+        self.assertEqual(stats["UpTime"], "1d1h1m")
         self.assertEqual(stats["PacketRate"], [1, 1] + [0] * 27 + [2])
         self.assertEqual(packet_display.make_frame(**stats).size, (250, 122))
+
+    def test_uptime_uses_compact_days_hours_and_minutes(self):
+        stats = packet_display.load_packet_stats(
+            NOW - 90_061 + 2 * 86400 + 12 * 3600 + 4 * 60 + 59,
+            self.data_dir,
+        )
+        self.assertEqual(stats["UpTime"], "2d12h4m")
 
     def test_empty_database_uses_actual_zeroes(self):
         stats = packet_display.load_packet_stats(NOW, self.data_dir)
@@ -75,7 +82,7 @@ class PacketStatsTests(unittest.TestCase):
         }))
         stats = packet_display.load_packet_stats(NOW, self.data_dir)
         self.assertEqual(stats["PacketCount"], "--")
-        self.assertEqual(stats["UpTime"], "00:00:00")
+        self.assertEqual(stats["UpTime"], "0d0h0m")
         self.assertFalse((self.data_dir / "missing.db").exists())
 
     def test_missing_or_invalid_session_uses_placeholders(self):

@@ -111,8 +111,9 @@ def load_packet_stats(now=None, data_dir=None):
             raise ValueError("active.json must contain an object")
         if active.get("created") is not None:
             elapsed = max(0, now - int(active["created"]))
-            hours, remainder = divmod(elapsed, 3600)
-            stats["UpTime"] = f"{hours:02d}:{remainder // 60:02d}:{remainder % 60:02d}"
+            days, remainder = divmod(elapsed, 86400)
+            hours, remainder = divmod(remainder, 3600)
+            stats["UpTime"] = f"{days}d{hours}h{remainder // 60}m"
         if not active.get("db"):
             return stats
         db_path = (data_dir / active["db"]).resolve()
