@@ -7,6 +7,7 @@ Dependencies:
 """
 
 import os, sys, time, signal, logging, socket, shutil, json, math, sqlite3
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 from waveshare_epd import epd2in13_V4
@@ -96,6 +97,50 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     return image
 
 
+def load_packet_stats(now=None, data_dir=None):
+    """Read air-packet stats; the graph contains 30 trailing one-minute buckets."""
+    now = int(time.time()) if now is None else int(now)
+    data_dir = Path(data_dir or os.environ.get("NM_DATA_DIR") or
+                    Path(__file__).resolve().parent.parent / "NMData")
+    stats = {"PacketCount": "--", "PPM": "--", "PPH": "--",
+             "UpTime": "--", "PacketRate": [0] * 30}
+    try:
+        with (data_dir / "active.json").open() as active_file:
+            active = json.load(active_file)
+        if not isinstance(active, dict):
+            raise ValueError("active.json must contain an object")
+        if active.get("created") is not None:
+            elapsed = max(0, now - int(active["created"]))
+            hours, remainder = divmod(elapsed, 3600)
+            stats["UpTime"] = f"{hours:02d}:{remainder // 60:02d}:{remainder % 60:02d}"
+        if not active.get("db"):
+            return stats
+        db_path = (data_dir / active["db"]).resolve()
+        conn = sqlite3.connect(db_path.as_uri() + "?mode=ro", uri=True, timeout=5)
+        try:
+            total, recent = conn.execute(
+                """SELECT COUNT(*), COALESCE(SUM(rx_time >= ? AND rx_time <= ?), 0)
+                   FROM packets WHERE rx_rssi IS NOT NULL""",
+                (now - 3900, now),
+            ).fetchone()
+            start = now - 30 * 60
+            rates = [0] * 30
+            for bucket, count in conn.execute(
+                """SELECT CAST((rx_time - ?) / 60 AS INTEGER), COUNT(*)
+                   FROM packets WHERE rx_rssi IS NOT NULL
+                   AND rx_time >= ? AND rx_time < ? GROUP BY 1""",
+                (start, start, now),
+            ):
+                rates[bucket] = count
+            stats.update(PacketCount=f"{total:,}", PPM=f"{recent / 65:.1f}",
+                         PPH=str(recent), PacketRate=rates)
+        finally:
+            conn.close()
+    except (OSError, ValueError, TypeError, sqlite3.Error) as error:
+        logging.warning("Packet stats unavailable: %s", error)
+    return stats
+
+
 def render_display(PacketCount, PPM, PPH, UpTime, PacketRate, epd=None):
     """Draw the values and send one full refresh to an initialized or new V4 display."""
     owns_driver = epd is None
@@ -109,16 +154,12 @@ def render_display(PacketCount, PPM, PPH, UpTime, PacketRate, epd=None):
 
 
 if __name__ == "__main__":
-    PacketCount = "47,488"
-    PPM = "0.7"
-    PPH = "97"
-    UpTime = "14:33:09"
-    PacketRate = [21.2, 32.4, 34.1, 27.3, 40, 25.2, 29.1, 34.4, 29, 19.2, 15.1, 19.3, 21.4, 25.3, 29.2, 22, 27.4, 28.1, 33.2, 35.4, 29.2, 22.1, 37, 19.4, 18.2, 32.1, 33.3, 18.1, 20, 27.2]
+    stats = load_packet_stats()
 
     display = epd2in13_V4.EPD()
     try:
         display.init()
-        render_display(PacketCount, PPM, PPH, UpTime, PacketRate, display)
+        render_display(**stats, epd=display)
         display.sleep()
     except KeyboardInterrupt:
         epd2in13_V4.epdconfig.module_exit(cleanup=True)

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import sqlite3
 import sys
 import tempfile
@@ -15,8 +16,8 @@ GAUGE_PATH = Path(__file__).resolve().parents[1] / "nmEGaugeUpdate.py"
 NOW = 1_700_000_000
 
 
-def load_gauge():
-    spec = importlib.util.spec_from_file_location("nmEGaugeUpdate", GAUGE_PATH)
+def load_gauge(path=GAUGE_PATH):
+    spec = importlib.util.spec_from_file_location(path.stem, path)
     gauge = importlib.util.module_from_spec(spec)
     waveshare = types.ModuleType("waveshare_epd")
     waveshare.epd2in13_V4 = None
@@ -30,6 +31,66 @@ def load_gauge():
 
 
 gauge = load_gauge()
+packet_display = load_gauge(GAUGE_PATH.with_name("PacketStats_Display.py"))
+
+
+class PacketStatsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.data_dir = Path(self.temp_dir.name)
+        (self.data_dir / "active.json").write_text(json.dumps({
+            "db": "session.db", "created": NOW - 90_061,
+        }))
+        self.conn = sqlite3.connect(self.data_dir / "session.db")
+        self.addCleanup(self.conn.close)
+        self.conn.execute("CREATE TABLE packets (rx_time INTEGER, rx_rssi INTEGER)")
+
+    def test_live_counts_rates_and_chronological_buckets(self):
+        self.conn.executemany("INSERT INTO packets VALUES (?, ?)", [
+            (NOW - 3901, -70), (NOW - 3900, -70),
+            (NOW - 1801, -70), (NOW - 1800, -70),
+            (NOW - 1740, -70), (NOW - 1, -70), (NOW - 1, -70),
+            (NOW, -70), (NOW + 1, -70), (NOW - 1, None),
+        ])
+        self.conn.commit()
+        stats = packet_display.load_packet_stats(NOW, self.data_dir)
+        self.assertEqual(stats["PacketCount"], "9")
+        self.assertEqual(stats["PPM"], "0.1")
+        self.assertEqual(stats["PPH"], "7")
+        self.assertEqual(stats["UpTime"], "25:01:01")
+        self.assertEqual(stats["PacketRate"], [1, 1] + [0] * 27 + [2])
+        self.assertEqual(packet_display.make_frame(**stats).size, (250, 122))
+
+    def test_empty_database_uses_actual_zeroes(self):
+        stats = packet_display.load_packet_stats(NOW, self.data_dir)
+        self.assertEqual(stats["PacketCount"], "0")
+        self.assertEqual(stats["PPM"], "0.0")
+        self.assertEqual(stats["PPH"], "0")
+        self.assertEqual(stats["PacketRate"], [0] * 30)
+
+    def test_missing_database_is_not_created(self):
+        (self.data_dir / "active.json").write_text(json.dumps({
+            "db": "missing.db", "created": NOW + 10,
+        }))
+        stats = packet_display.load_packet_stats(NOW, self.data_dir)
+        self.assertEqual(stats["PacketCount"], "--")
+        self.assertEqual(stats["UpTime"], "00:00:00")
+        self.assertFalse((self.data_dir / "missing.db").exists())
+
+    def test_missing_or_invalid_session_uses_placeholders(self):
+        for contents in (None, "not json", "[]"):
+            with self.subTest(contents=contents):
+                active_path = self.data_dir / "active.json"
+                if contents is None:
+                    active_path.unlink()
+                else:
+                    active_path.write_text(contents)
+                with mock.patch.dict(os.environ, {"NM_DATA_DIR": str(self.data_dir)}):
+                    stats = packet_display.load_packet_stats(NOW)
+                self.assertEqual(stats["UpTime"], "--")
+                self.assertEqual(stats["PacketCount"], "--")
+                self.assertEqual(stats["PacketRate"], [0] * 30)
 
 
 class GaugeMetricsTests(unittest.TestCase):
