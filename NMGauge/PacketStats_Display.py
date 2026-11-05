@@ -75,6 +75,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     title_font = font(BOLD_ITALIC_FONT, 16)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 35, 136)
+
     font10c = ImageFont.truetype(COND, 10)  
     font11c = ImageFont.truetype(COND, 11)  
     font15c = ImageFont.truetype(COND, 15)  
@@ -91,7 +92,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.text((250, 0), "11/01 20:10", font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
     draw.text((3, 22), "PACKETS", font=packet_label_font, fill=BLACK)
