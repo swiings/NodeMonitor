@@ -436,7 +436,7 @@ def main():
     last_clean = datetime.now().date()
     
     while True:
-        time.sleep(PAGE_SECS)
+        # time.sleep(PAGE_SECS)
         update = int(time.time() // UPDATE_SECS)
         if update != last_update:
             metrics = get_metrics()
