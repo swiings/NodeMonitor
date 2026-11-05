@@ -21,6 +21,10 @@ REGULAR_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf"
 BOLD_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
 BOLD_ITALIC_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-BoldOblique.ttf"
 
+# font10c = ImageFont.truetype(COND, 10)   
+# font11c = ImageFont.truetype(COND, 11)   
+# font15c = ImageFont.truetype(COND, 15)   
+
 
 def font(path, size):
     try:
@@ -63,18 +67,32 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
+    FONTDIR = '/usr/share/fonts/truetype/dejavu/'   # sudo apt install fonts-dejavu-core
+    BOLD    = FONTDIR + 'DejaVuSans-Bold.ttf'
+    COND    = FONTDIR + 'DejaVuSansCondensed-Bold.ttf'
+    
     small_italic = font(BOLD_ITALIC_FONT, 10)
     title_font = font(BOLD_ITALIC_FONT, 16)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 35, 136)
+    font10c = ImageFont.truetype(COND, 10)  
+    font11c = ImageFont.truetype(COND, 11)  
+    font15c = ImageFont.truetype(COND, 15)  
 
-    draw.text((4,5), "MESHTASTIC", font=small_italic, fill=BLACK)
-    centered_text(draw, (65, 0, 186, 22), " NodeMonitor", title_font)
-    uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
-    bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
-    draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
-    draw.line((4, 18, 64, 18), fill=BLACK, width=1)
-    draw.line((189, 18, 247, 18), fill=BLACK, width=1)
+    # draw.text((4,5), "MESHTASTIC", font=small_italic, fill=BLACK)
+    # centered_text(draw, (65, 0, 186, 22), " NodeMonitor", title_font)
+    # uptime_font = fit_font(draw, UpTime, BOLD_ITALIC_FONT, 12, 61)
+    # bounds = draw.textbbox((0, 0), str(UpTime), font=uptime_font)
+    # draw.text((246 - (bounds[2] - bounds[0]), 3), str(UpTime), font=uptime_font, fill=BLACK)
+    # draw.line((4, 18, 64, 18), fill=BLACK, width=1)
+    # draw.line((189, 18, 247, 18), fill=BLACK, width=1)
+
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
 
     draw.text((3, 22), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 71), PacketCount, packet_font)
