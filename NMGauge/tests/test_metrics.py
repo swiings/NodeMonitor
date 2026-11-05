@@ -24,6 +24,7 @@ def load_gauge(path=GAUGE_PATH):
     font = ImageFont.load_default()
     background = Image.new("1", (250, 122), 1)
     with mock.patch.dict(sys.modules, {"waveshare_epd": waveshare}), \
+            mock.patch.object(sys, "path", [str(path.parent)] + sys.path), \
             mock.patch.object(ImageFont, "truetype", return_value=font), \
             mock.patch.object(Image, "open", return_value=background):
         spec.loader.exec_module(gauge)
@@ -237,8 +238,8 @@ class GaugeMetricsTests(unittest.TestCase):
                         mock.patch.object(gauge.Image, "open", return_value=background) as open_image, \
                         mock.patch.object(gauge.signal, "signal"), \
                         mock.patch.object(gauge.time, "sleep",
-                                          side_effect=[None, None, None, None, None, StopIteration]) as sleep, \
-                        mock.patch.object(gauge.time, "time", side_effect=[58, 59, 60, 61]), \
+                                          side_effect=[None] * 10 + [StopIteration]) as sleep, \
+                        mock.patch.object(gauge.time, "time", side_effect=[58, 59, 60] + [61] * 6), \
                         mock.patch.object(gauge, "datetime") as clock, \
                         mock.patch.object(gauge, "get_metrics",
                                           side_effect=[metrics, updated_metrics]) as get_metrics, \
@@ -246,7 +247,7 @@ class GaugeMetricsTests(unittest.TestCase):
                     epd.EPD.return_value = driver
                     clock.now.side_effect = [fixed_now] + [
                         next_clean if cleanup_due else fixed_now
-                    ] * 3
+                    ] * 8
                     with self.assertRaises(StopIteration):
                         gauge.main()
 
@@ -258,17 +259,39 @@ class GaugeMetricsTests(unittest.TestCase):
                     mock.call("eatsleep2.png"),
                 ])
                 self.assertEqual(sleep.call_args_list,
-                                 [mock.call(2)] * 2 + [mock.call(gauge.PAGE_SECS)] * 4)
+                                 [mock.call(2)] * 2 + [mock.call(gauge.PAGE_SECS)] * 9)
                 self.assertEqual(render.call_args_list, [
                     mock.call(metrics, gauge.draw_metrics),
                     mock.call(metrics, gauge.draw_page2),
                     mock.call(updated_metrics, gauge.draw_page3),
                     mock.call(updated_metrics, gauge.draw_page4),
+                    mock.call(updated_metrics, gauge.draw_page5),
+                    mock.call(updated_metrics, gauge.draw_page6),
+                    mock.call(updated_metrics, gauge.packet_stats.make_frame),
+                    mock.call(updated_metrics, gauge.draw_metrics),
+                    mock.call(updated_metrics, gauge.draw_page2),
                 ])
                 self.assertEqual(get_metrics.call_count, 2)
                 self.assertEqual(driver.init.call_count, 2 if cleanup_due else 1)
                 self.assertEqual(driver.displayPartBaseImage.call_count, 4 if cleanup_due else 3)
-                self.assertEqual(driver.displayPartial.call_count, 5 if cleanup_due else 6)
+                self.assertEqual(driver.displayPartial.call_count, 10 if cleanup_due else 11)
+
+    def test_packet_stats_page_uses_live_data_and_configured_rotation(self):
+        self.add_packets(42, 65)
+        self.add_packets(1, 10, rssi=None)
+        metrics = self.get_metrics()
+        self.assertEqual(metrics["packet_stats"]["PacketCount"], "65")
+        self.assertEqual(metrics["packet_stats"]["PPM"], "1.0")
+        self.assertEqual(metrics["packet_stats"]["PPH"], "65")
+        for rotation, size in ((0, (250, 122)), (90, (122, 250)),
+                               (180, (250, 122)), (270, (122, 250))):
+            with self.subTest(rotation=rotation), \
+                    mock.patch.object(gauge, "SCREEN_ROTATION", rotation), \
+                    mock.patch.object(gauge.packet_stats, "make_frame",
+                                      wraps=gauge.packet_stats.make_frame) as make_frame:
+                image = gauge.render(metrics, gauge.packet_stats.make_frame)
+                self.assertEqual(image.size, size)
+                make_frame.assert_called_once_with(**metrics["packet_stats"])
 
     def test_sender_missing_from_nodes_uses_hex_id(self):
         self.add_node(1, "REF", last_heard=NOW)

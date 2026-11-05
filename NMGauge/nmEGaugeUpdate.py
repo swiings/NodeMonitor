@@ -7,7 +7,7 @@ from waveshare_epd import epd2in13_V4
 import PacketStats_Display as packet_stats
 
 UPDATE_SECS = 60
-PAGE_SECS   = 10
+PAGE_SECS   = 4
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
 SCREEN_ROTATION   = 270     # 270 puts Pi0 interface ports on top, 90 puts them on the bottom
 
@@ -413,7 +413,7 @@ def main():
                 
     img = Image.open('haxxlabsooo3.png').resize((250, 122)).convert('1')
     epd.displayPartial(epd.getbuffer(img))
-    time.sleep(2)
+    time.sleep(3)
                 
     # Clear the display before showing the "eat sleep" image 
     img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
