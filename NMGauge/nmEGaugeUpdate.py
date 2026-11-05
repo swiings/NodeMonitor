@@ -4,6 +4,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
     
 from waveshare_epd import epd2in13_V4
+import PacketStats_Display as packet_stats
 
 UPDATE_SECS = 60
 PAGE_SECS   = 10
@@ -212,8 +213,11 @@ def storage_str(path='/'):
 base = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
 
 def render(m, draw_page=draw_metrics):
-    img = base.copy()
-    draw_page(ImageDraw.Draw(img), m)
+    if draw_page is packet_stats.make_frame:
+        img = packet_stats.make_frame(**m['packet_stats'])
+    else:
+        img = base.copy()
+        draw_page(ImageDraw.Draw(img), m)
     return img.rotate(SCREEN_ROTATION, expand=True)     # 270 has Pi0 ports on top, 90 has them on the bottom
 
 # --- NodeMonitor session data (NMData/active.json -> active session SQLite db)
@@ -378,6 +382,7 @@ def get_metrics():
     m['datetime'] = datetime.now().strftime('%m/%d %H:%M')
     m['battery']  = battery_str()       # battery percentage with charging status
     m['storage']  = storage_str()       # storage usage percentage
+    m['packet_stats'] = packet_stats.load_packet_stats(now, NMDATA)
     return m
 
 def main():
@@ -418,7 +423,8 @@ def main():
     epd.displayPartial(epd.getbuffer(img))
     time.sleep(2)
 
-    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5, draw_page6)
+    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5, draw_page6,
+             packet_stats.make_frame)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
