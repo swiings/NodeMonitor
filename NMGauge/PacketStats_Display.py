@@ -76,7 +76,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw.line((4, 18, 64, 18), fill=BLACK, width=1)
     draw.line((189, 18, 247, 18), fill=BLACK, width=1)
 
-    draw.text((3, 23), "PACKETS", font=packet_label_font, fill=BLACK)
+    draw.text((3, 22), "PACKETS", font=packet_label_font, fill=BLACK)
     centered_text(draw, (4, 34, 139, 71), PacketCount, packet_font)
     draw_rate_card(draw, 135, 53, "MINUTE", PPM)
     draw_rate_card(draw, 197, 49, "HOUR", PPH)
