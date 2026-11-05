@@ -64,7 +64,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw = ImageDraw.Draw(image)
 
     small_italic = font(BOLD_ITALIC_FONT, 10)
-    title_font = font(BOLD_ITALIC_FONT, 18)
+    title_font = font(BOLD_ITALIC_FONT, 16)
     packet_label_font = font(BOLD_ITALIC_FONT, 11)
     packet_font = fit_font(draw, PacketCount, BOLD_FONT, 35, 136)
 
