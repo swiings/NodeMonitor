@@ -7,7 +7,7 @@ from waveshare_epd import epd2in13_V4
 import PacketStats_Display as packet_stats
 
 UPDATE_SECS = 60
-PAGE_SECS   = 2
+PAGE_SECS   = 1
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
 SCREEN_ROTATION   = 270     # 270 puts Pi0 interface ports on top, 90 puts them on the bottom
 
