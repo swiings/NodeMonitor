@@ -186,12 +186,12 @@ def draw_page7(draw, m):
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count / rate
-    draw.text((122, 20), m['packets'], font=font30b, fill=0, anchor='rt')
-    draw.text((128, 25), "PACKETS", font=font15c, fill=0, anchor='lt')
-    draw.text((125, 45), m['permin'] + "/m " + m['perhour'] + "/h ", font=font20c, fill=0, anchor='mt')
+    draw.text((125, 20), "PACKETS", font=font15c, fill=0, anchor='mt')
+    draw.text((122, 45), m['packets'], font=font30b, fill=0, anchor='rm')
+    draw.text((125, 45), m['permin'] + "/m " + m['perhour'] + "/h ", font=font20c, fill=0, anchor='lm')
     ## node count 
-    draw.text((125, 65), "NODES", font=font15c, fill=0, anchor='mt')
-    draw.text((125, 80), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font20c, fill=0, anchor='mt')
+    draw.text((125, 70), "NODES", font=font15c, fill=0, anchor='mt')
+    draw.text((125, 95), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font20c, fill=0, anchor='mt')
     draw.text((125, 95), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='mt')
 
 
