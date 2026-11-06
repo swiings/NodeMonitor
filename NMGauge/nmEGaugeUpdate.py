@@ -80,7 +80,7 @@ def draw_metrics(draw, m):
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 67, 250, 67), fill=0)  
     ## metrics related to the reference node used by NodeMonitor
-    draw.text((0, 71), "UP", font=font12c, fill=0, anchor='lt')
+    draw.text((0, 71), "UPTIME", font=font12c, fill=0, anchor='lt')
     draw.text((125, 71), m['uptime'], font=font12c, fill=0, anchor='rt')
     draw.text((0, 83), "NODE" , font=font12c, fill=0, anchor='lt')
     draw.text((125, 83), m['ref_name'], font=font12c, fill=0, anchor='rt')
