@@ -452,7 +452,7 @@ def main():
     last_clean = datetime.now().date()
     
     while True:
-        time.sleep(5)
+        time.sleep(12)
         update = int(time.time() // UPDATE_SECS)
         if update != last_update:
             metrics = get_metrics()
