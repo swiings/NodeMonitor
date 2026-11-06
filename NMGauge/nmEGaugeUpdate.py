@@ -186,13 +186,13 @@ def draw_page7(draw, m):
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count / rate
     draw.text((124, 20), m['packets'], font=font25b, fill=0, anchor='rt')
-    draw.text((126, 20), "PACKETS", font=font25b, fill=0, anchor='lt')
+    draw.text((126, 21), "PACKETS", font=font15c, fill=0, anchor='lt')
     draw.text((125, 30), m['permin'] + "/m " + m['perhour'] + "/h ", font=font15c, fill=0, anchor='mt')
 
     ## node count 
     draw.text((125, 50), "NODES", font=font15c, fill=0, anchor='lt')
     draw.text((124, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font15c, fill=0, anchor='lt')
-    draw.text((126, 60), "ALL / ACTIVE / DIRECT", font=font12c, fill=0, anchor='lm')
+    draw.text((126, 75), "ALL / ACTIVE / DIRECT", font=font12c, fill=0, anchor='lm')
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
