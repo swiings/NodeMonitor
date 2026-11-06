@@ -25,7 +25,8 @@ echo "=== 2. Reconfiguring Network Connections ==="
 nmcli connection delete "Hotspot" 2>/dev/null
 
 # Create the Wi-Fi profile directly in Access Point (AP) shared mode
-nmcli connection add type wifi ifname wlan0 con-name "Hotspot" sside "$(hostname)" mode ap
+# FIXED: Changed 'sside' to 'ssid'
+nmcli connection add type wifi ifname wlan0 con-name "Hotspot" ssid "$(hostname)" mode ap
 
 # Apply your custom configurations, static IP, and credentials while it's down
 nmcli connection modify "Hotspot" 802-11-wireless.ssid "$(hostname)"
@@ -39,7 +40,6 @@ nmcli connection modify "Hotspot" connection.autoconnect yes
 nmcli connection modify "Hotspot" connection.autoconnect-priority 5
 
 # Configure your client/fallback network ("TACOCAT")
-# (Note: This will still throw an error if "TACOCAT" hasn't been created on this Pi yet)
 nmcli connection modify "TACOCAT" connection.autoconnect yes 2>/dev/null || echo "Note: TACOCAT profile not found yet, skipping priority."
 nmcli connection modify "TACOCAT" connection.autoconnect-priority 10 2>/dev/null
 
@@ -61,4 +61,5 @@ nmcli connection up "Hotspot"
 echo "=== Setup Complete! ==="
 echo "Hotspot '$(hostname)' is running at 10.5.6.7."
 echo "Traffic on port 80 is automatically routing to port 5000."
+
 echo "You can connect to the hotspot using the password 'NMhotspot'."
