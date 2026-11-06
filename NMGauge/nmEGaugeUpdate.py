@@ -95,76 +95,76 @@ def draw_metrics(draw, m):
     draw.text((130, 107), "MOST", font=font12c, fill=0, anchor='lt')
     draw.text((248, 107), m['noisiest']+" pkts", font=font12c, fill=0, anchor='rt')  
 
-def draw_page2(draw, m):
-    ## top row title, with a timestamp
-    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
-    draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
-    draw.line((185, 10, 250, 10), fill=0) 
+# def draw_page2(draw, m):
+#     ## top row title, with a timestamp
+#     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+#     draw.line((0, 10, 63, 10), fill=0) 
+#     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+#     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+#     draw.line((185, 10, 250, 10), fill=0) 
 
-    draw.text((0, 14), "CLOSEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 14), m['closest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 14), m['closest'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 14), "CLOSEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 14), m['closest_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 14), m['closest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 30), "FARTHEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 30), m['farthest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 30), m['farthest'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 30), "FARTHEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 30), m['farthest_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 30), m['farthest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 46), "STRONGEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 46), m['loudest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 46), m['loudest'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 46), "STRONGEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 46), m['loudest_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 46), m['loudest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 62), "WEAKEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 62), m['quietest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 62), m['quietest'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 62), "WEAKEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 62), m['quietest_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 62), m['quietest'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 78), "LATEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 78), m['last_heard_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 78), m['last_heard'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 78), "LATEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 78), m['last_heard_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 78), m['last_heard'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 94), "OLDEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 94), m['first_heard_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 94), m['first_heard'], font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 94), "OLDEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 94), m['first_heard_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 94), m['first_heard'], font=font12c, fill=0, anchor='lt')
 
-    draw.text((0, 110), "NOISIEST ", font=font12c, fill=0, anchor='lt')
-    draw.text((88, 110), m['noisiest_node'], font=font12c, fill=0, anchor='lt')
-    draw.text((180, 110), m['noisiest'] + " pkts", font=font12c, fill=0, anchor='lt')
+#     draw.text((0, 110), "NOISIEST ", font=font12c, fill=0, anchor='lt')
+#     draw.text((88, 110), m['noisiest_node'], font=font12c, fill=0, anchor='lt')
+#     draw.text((180, 110), m['noisiest'] + " pkts", font=font12c, fill=0, anchor='lt')
 
-def draw_page3(draw, m):
-    ## top row title, with a timestamp
-    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
-    draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
-    draw.line((185, 10, 250, 10), fill=0) 
-    ## node count 
-    draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font40b, fill=0, anchor='mm')
-    draw.text((125, 90), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='mb')
-    draw.text((125, 100), "NODES HEARD THIS SESSION", font=font15c, fill=0, anchor='mt')
+# def draw_page3(draw, m):
+#     ## top row title, with a timestamp
+#     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+#     draw.line((0, 10, 63, 10), fill=0) 
+#     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+#     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+#     draw.line((185, 10, 250, 10), fill=0) 
+#     ## node count 
+#     draw.text((125, 50), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font40b, fill=0, anchor='mm')
+#     draw.text((125, 90), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='mb')
+#     draw.text((125, 100), "NODES HEARD THIS SESSION", font=font15c, fill=0, anchor='mt')
 
 
-def draw_page4(draw, m):
-    ## top row title, with a timestamp
-    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
-    draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
-    draw.line((185, 10, 250, 10), fill=0) 
-    ## packet count 
-    draw.text((125, 50), m['packets'], font=font50b, fill=0, anchor='mm')
-    draw.text((125, 100), "PACKET COUNT", font=font25b, fill=0, anchor='mb')
+# def draw_page4(draw, m):
+#     ## top row title, with a timestamp
+#     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+#     draw.line((0, 10, 63, 10), fill=0) 
+#     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+#     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+#     draw.line((185, 10, 250, 10), fill=0) 
+#     ## packet count 
+#     draw.text((125, 50), m['packets'], font=font50b, fill=0, anchor='mm')
+#     draw.text((125, 100), "PACKET COUNT", font=font25b, fill=0, anchor='mb')
 
-def draw_page5(draw, m):
-    # common page header for all pages
-    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
-    draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
-    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
-    draw.line((185, 10, 250, 10), fill=0) 
-    ## packet rate
-    draw.text((127, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font40b, fill=0, anchor='mm')
-    draw.text((127, 100), "PACKET RATE", font=font25b, fill=0, anchor='mb')
+# def draw_page5(draw, m):
+#     # common page header for all pages
+#     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+#     draw.line((0, 10, 63, 10), fill=0) 
+#     draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+#     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+#     draw.line((185, 10, 250, 10), fill=0) 
+#     ## packet rate
+#     draw.text((127, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font40b, fill=0, anchor='mm')
+#     draw.text((127, 100), "PACKET RATE", font=font25b, fill=0, anchor='mb')
 
 def draw_page6(draw, m):
     # common page header for all pages
@@ -176,6 +176,24 @@ def draw_page6(draw, m):
     ## session up time
     draw.text((127, 50), m['uptime'], font=font35b, fill=0, anchor='mm')
     draw.text((127, 100), "SESSION ELAPSED TIME", font=font20c, fill=0, anchor='mb')
+
+def draw_page7(draw, m):
+    ## top row title, with a timestamp
+    draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
+    draw.line((0, 10, 63, 10), fill=0) 
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
+    draw.line((185, 10, 250, 10), fill=0) 
+    ## packet count / rate
+    draw.text((124, 17), m['packets'], font=font25b, fill=0, anchor='rt')
+    draw.text((126, 17), "PACKETS", font=font20c, fill=0, anchor='lt')
+    draw.text((125, 35), m['permin'] + "/m " + m['perhour'] + "/h ", font=font25b, fill=0, anchor='mt')
+
+    ## node count 
+    draw.text((30, 90), "NODES", font=font15c, fill=0, anchor='lt')
+    draw.text((54, 90), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font25b, fill=0, anchor='lt')
+    draw.text((54, 90), "ALL / ACTIVE / DIRECT", font=font15c, fill=0, anchor='lt')
+
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
 def get_pisugar(cmd, host='127.0.0.1', port=8423, timeout=2):
@@ -424,8 +442,7 @@ def main():
     time.sleep(2)
 
     # pages = (draw_metrics, packet_stats.make_frame)
-    pages = (draw_metrics, draw_page2, draw_page3, draw_page4, draw_page5, draw_page6,
-             packet_stats.make_frame)
+    pages = (draw_metrics, draw_page6, draw_page7, packet_stats.make_frame)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
