@@ -441,7 +441,7 @@ def main():
     time.sleep(2)
 
     # pages = (draw_metrics, packet_stats.make_frame)
-    pages = (draw_metrics, draw_page7, packet_stats.make_frame)
+    pages = (draw_metrics, packet_stats.make_frame)
     page_index = 0
     metrics = get_metrics()
     last_update = int(time.time() // UPDATE_SECS)
@@ -452,7 +452,7 @@ def main():
     last_clean = datetime.now().date()
     
     while True:
-        time.sleep(3)
+        time.sleep(5)
         update = int(time.time() // UPDATE_SECS)
         if update != last_update:
             metrics = get_metrics()
