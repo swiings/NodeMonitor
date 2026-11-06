@@ -25,7 +25,6 @@ echo "=== 2. Reconfiguring Network Connections ==="
 nmcli connection delete "Hotspot" 2>/dev/null
 
 # Create the Wi-Fi profile directly in Access Point (AP) shared mode
-# FIXED: Changed 'sside' to 'ssid'
 nmcli connection add type wifi ifname wlan0 con-name "Hotspot" ssid "$(hostname)" mode ap
 
 # Apply your custom configurations, static IP, and credentials while it's down
@@ -39,11 +38,18 @@ nmcli connection modify "Hotspot" ipv4.addresses 10.5.6.7/24
 nmcli connection modify "Hotspot" connection.autoconnect yes
 nmcli connection modify "Hotspot" connection.autoconnect-priority 5
 
-# Configure your client/fallback network ("TACOCAT")
-nmcli connection modify "TACOCAT" connection.autoconnect yes 2>/dev/null || echo "Note: TACOCAT profile not found yet, skipping priority."
-nmcli connection modify "TACOCAT" connection.autoconnect-priority 10 2>/dev/null
+echo "=== 3. Configuring Client Network (netplan-wlan0-TACOCAT) ==="
+# If the Netplan profile doesn't exist in NetworkManager yet, create it
+if ! nmcli connection show "netplan-wlan0-TACOCAT" >/dev/null 2>&1; then
+    echo "Creating missing netplan-wlan0-TACOCAT connection profile..."
+    nmcli connection add type wifi ifname wlan0 con-name "netplan-wlan0-TACOCAT" ssid "TACOCAT"
+fi
 
-echo "=== 3. Setting Up Firewall Port Redirection (80 -> 5000) ==="
+# Apply autoconnect settings and set its priority HIGHER than the Hotspot (10 vs 5)
+nmcli connection modify "netplan-wlan0-TACOCAT" connection.autoconnect yes
+nmcli connection modify "netplan-wlan0-TACOCAT" connection.autoconnect-priority 10
+
+echo "=== 4. Setting Up Firewall Port Redirection (80 -> 5000) ==="
 # Add nftables rules to catch standard HTTP requests and redirect them to port 5000
 nft add table ip nat 2>/dev/null || true
 nft add chain ip nat prerouting '{ type nat hook prerouting priority dstnat; }' 2>/dev/null || true
@@ -54,12 +60,12 @@ nft list ruleset > /etc/nftables.conf
 systemctl enable nftables --now >/dev/null 2>&1
 echo "Firewall rules persistent."
 
-echo "=== 4. Starting the Hotspot ==="
 # Bring the newly customized hotspot up cleanly
-nmcli connection up "Hotspot"
-
 echo "=== Setup Complete! ==="
 echo "Hotspot '$(hostname)' is running at 10.5.6.7."
 echo "Traffic on port 80 is automatically routing to port 5000."
+echo "=== 5. Starting the Hotspot ==="
 
-echo "You can connect to the hotspot using the password 'NMhotspot'."
+nmcli connection up "Hotspot"
+
+
