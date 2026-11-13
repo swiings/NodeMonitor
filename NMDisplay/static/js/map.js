@@ -731,7 +731,7 @@ const NMMap = (() => {
   // Role → { color, emoji } for marker display
   function _roleStyle(role) {
     const r = (_ROLE_INT_MAP[String(role ?? "0")] || String(role ?? "CLIENT")).toUpperCase();
-    if (r === *FLYING")
+    if (r === "FLYING")
       return { color: "#88d4ffb5", emoji: "✈️" };
     if (r === "VEHICLE")
       return { color: "#8ec0ffa5", emoji: "🚙" };
