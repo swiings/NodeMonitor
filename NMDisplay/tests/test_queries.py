@@ -280,7 +280,7 @@ class PacketBreakdownTests(unittest.TestCase):
 
             rows = queries.get_all_nodes(conn, None, None)
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["role"], "AIRCRAFT")
+            self.assertEqual(rows[0]["role"], *FLYING")
             self.assertTrue(rows[0]["is_airborne"])
 
             # Drop below threshold and verify automatic reversion.

@@ -199,7 +199,7 @@ def _enrich_node(node: dict, now_ts: int | None = None) -> dict:
     node["is_airborne"] = is_airborne
     node["is_moving"] = moving_recently
     if is_airborne:
-        node["role"] = "AIRCRAFT"
+        node["role"] = *FLYING"
     elif moving_recently:
         node["role"] = "VEHICLE"
     node["node_id_hex"] = f"!{node['node_id'] & 0xFFFFFFFF:08x}"
