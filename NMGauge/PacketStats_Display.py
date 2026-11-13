@@ -69,6 +69,8 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     FONTDIR = '/usr/share/fonts/truetype/dejavu/'   # sudo apt install fonts-dejavu-core
     BOLD    = FONTDIR + 'DejaVuSans-Bold.ttf'
     COND    = FONTDIR + 'DejaVuSansCondensed-Bold.ttf'
+
+    now_string = datetime.now().strftime('%m/%d %H:%M')
     
     small_italic = font(BOLD_ITALIC_FONT, 10)
     title_font = font(BOLD_ITALIC_FONT, 16)
