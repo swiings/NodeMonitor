@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """NodeMonitor renderer for the Waveshare 2.13-inch e-Paper HAT.
 
-Works with the 2-color V4 and the 4-color G panels; display_driver picks
+Works with the 2-color V4 and the 4-color G V2 panels; display_driver picks
 the configured driver from NMGsettings.json and exposes
 IS_COLOR / DISPLAY_COLORS plus the BLACK/WHITE/RED/YELLOW fill values.
 

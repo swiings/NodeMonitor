@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Driver selection for the Waveshare 2.13-inch e-Paper HAT.
 
-Supports the 2-color V4 panel (epd2in13_V4) and the 4-color "G" panel
-(epd2in13g), selected in NMGsettings.json. After init_display()
+Supports the 2-color V4 panel (epd2in13_V4) and the 4-color G V2 panel
+(epd2in13g_V2), selected in NMGsettings.json. After init_display()
 (or configure()) the module globals describe the active panel:
 
-    DISPLAY_TYPE    'epd2in13_V4' (2-color) or 'epd2in13g' (4-color)
+    DISPLAY_TYPE    'epd2in13_V4' (2-color) or 'epd2in13g_V2' (4-color)
     DISPLAY_COLORS  2 or 4
     IS_COLOR        True on the 4-color panel
     IMAGE_MODE      PIL mode to draw frames in: '1' (mono) or 'RGB' (color)
@@ -34,7 +34,7 @@ BLACK, WHITE, RED, YELLOW = 0, 255, 0, 0
 
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NMGsettings.json')
 _KINDS = {'v4': 'epd2in13_V4', 'epd2in13_V4': 'epd2in13_V4',
-          'g': 'epd2in13g', 'epd2in13g': 'epd2in13g'}
+          'g': 'epd2in13g_V2', 'epd2in13g_V2': 'epd2in13g_V2'}
 
 
 def configure(kind):
@@ -42,7 +42,7 @@ def configure(kind):
     global DISPLAY_TYPE, DISPLAY_COLORS, IS_COLOR, IMAGE_MODE
     global BLACK, WHITE, RED, YELLOW
     DISPLAY_TYPE = _KINDS[kind]
-    IS_COLOR = DISPLAY_TYPE == 'epd2in13g'
+    IS_COLOR = DISPLAY_TYPE == 'epd2in13g_V2'
     DISPLAY_COLORS = 4 if IS_COLOR else 2
     IMAGE_MODE = 'RGB' if IS_COLOR else '1'
     if IS_COLOR:
@@ -77,7 +77,7 @@ class Display:
     def __init__(self, kind):
         configure(kind)
         if IS_COLOR:
-            from waveshare_epd import epd2in13g as driver
+            from waveshare_epd import epd2in13g_V2 as driver
         else:
             from waveshare_epd import epd2in13_V4 as driver
         self.driver = driver
@@ -135,5 +135,5 @@ def init_display(kind=None):
     if not isinstance(kind, str) or kind not in _KINDS:
         raise ValueError(f"Invalid display_type {kind!r}; choose 'v4', 'g', or 'b'")
     logging.info("Selected display: %s (%s colors), configured as %r",
-                 _KINDS[kind], 4 if _KINDS[kind] == 'epd2in13g' else 2, kind)
+                 _KINDS[kind], 4 if _KINDS[kind] == 'epd2in13g_V2' else 2, kind)
     return Display(kind)

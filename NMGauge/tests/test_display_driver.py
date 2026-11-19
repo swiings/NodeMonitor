@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from PIL import Image
+
 
 GAUGE_DIR = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("display_driver", GAUGE_DIR / "display_driver.py")
@@ -21,7 +23,7 @@ class DisplaySelectionTests(unittest.TestCase):
     def test_explicit_drivers_and_color_capabilities(self):
         for kind, module_name, colors in (
             ('v4', 'epd2in13_V4', 2),
-            ('g', 'epd2in13g', 4),
+            ('g', 'epd2in13g_V2', 4),
         ):
             with self.subTest(kind=kind):
                 package = types.ModuleType("waveshare_epd")
@@ -61,18 +63,18 @@ class DisplaySelectionTests(unittest.TestCase):
 
     def test_failed_initialization_is_not_reported_as_success(self):
         package = types.ModuleType("waveshare_epd")
-        driver = types.ModuleType("epd2in13g")
+        driver = types.ModuleType("epd2in13g_V2")
         driver.epdconfig = mock.Mock()
         driver.EPD = mock.Mock()
         driver.EPD.return_value.init.return_value = -1
-        package.epd2in13g = driver
+        package.epd2in13g_V2 = driver
         with mock.patch.dict(sys.modules, {"waveshare_epd": package}):
             display = display_driver.init_display('g')
             with self.assertRaisesRegex(RuntimeError, 'initialization failed'):
                 display.init()
 
 
-class GBusyTests(unittest.TestCase):
+class GV2DriverTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         package = types.ModuleType("waveshare_epd")
@@ -83,7 +85,7 @@ class GBusyTests(unittest.TestCase):
         config.digital_read = mock.Mock()
         package.epdconfig = config
         spec = importlib.util.spec_from_file_location(
-            "waveshare_epd.epd2in13g", GAUGE_DIR / "waveshare_epd" / "epd2in13g.py")
+            "waveshare_epd.epd2in13g_V2", GAUGE_DIR / "waveshare_epd" / "epd2in13g_V2.py")
         cls.driver = importlib.util.module_from_spec(spec)
         with mock.patch.dict(sys.modules, {"waveshare_epd": package,
                                           "waveshare_epd.epdconfig": config}):
@@ -101,6 +103,39 @@ class GBusyTests(unittest.TestCase):
         with mock.patch.object(self.driver.time, "monotonic", side_effect=[0, 120]):
             with self.assertRaisesRegex(TimeoutError, 'BUSY stayed low'):
                 self.driver.EPD().ReadBusy()
+
+    def test_v2_initialization_uses_v2_panel_commands(self):
+        self.config.module_init = mock.Mock(return_value=0)
+        epd = self.driver.EPD()
+        with mock.patch.object(epd, "reset"), mock.patch.object(epd, "ReadBusy"), \
+                mock.patch.object(epd, "send_command") as command, \
+                mock.patch.object(epd, "send_data") as data:
+            self.assertEqual(epd.init(), 0)
+        self.assertEqual(command.call_args_list, [mock.call(0x61), mock.call(0xE9), mock.call(0x04)])
+        self.assertEqual(data.call_args_list,
+                         [mock.call(x) for x in (0x00, 0x7C, 0x00, 0xFA, 0x01)])
+
+    def test_four_color_buffer_for_portrait_and_landscape(self):
+        epd = self.driver.EPD()
+        for size in ((122, 250), (250, 122)):
+            for color, expected in (((0, 0, 0), 0x00), ((255, 255, 255), 0x55),
+                                    ((255, 255, 0), 0xaa), ((255, 0, 0), 0xff)):
+                with self.subTest(size=size, color=color):
+                    buffer = epd.getbuffer(Image.new("RGB", size, color))
+                    self.assertEqual(len(buffer), 31 * 250)
+                    self.assertEqual(buffer[0], expected)
+                    self.assertEqual(buffer[-1], expected & 0xf0)
+
+    def test_color_refresh_uses_v2_full_display(self):
+        epd = self.driver.EPD()
+        buffer = [0x55] * (31 * 250)
+        with mock.patch.object(epd, "send_command") as command, \
+                mock.patch.object(epd, "send_data") as data, \
+                mock.patch.object(epd, "TurnOnDisplay") as refresh:
+            epd.display(buffer)
+        command.assert_called_once_with(0x10)
+        self.assertEqual(data.call_count, 31 * 250)
+        refresh.assert_called_once_with()
 
 
 if __name__ == "__main__":
