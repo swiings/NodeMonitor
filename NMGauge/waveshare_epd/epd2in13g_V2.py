@@ -101,7 +101,8 @@ class EPD:
         self.ReadBusy()
         
     def init(self):
-        if (epdconfig.module_init() != 0):
+        module_init = getattr(epdconfig, "module_init_g_v2", epdconfig.module_init)
+        if (module_init() != 0):
             return -1
         # EPD hardware init start
 
@@ -122,7 +123,8 @@ class EPD:
         return 0
     
     def init_Fast(self):
-        if (epdconfig.module_init() != 0):
+        module_init = getattr(epdconfig, "module_init_g_v2", epdconfig.module_init)
+        if (module_init() != 0):
             return -1
         # EPD hardware init start
 

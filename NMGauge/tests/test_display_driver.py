@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 import json
 import sys
@@ -115,6 +116,18 @@ class GV2DriverTests(unittest.TestCase):
         self.assertEqual(data.call_args_list,
                          [mock.call(x) for x in (0x00, 0x7C, 0x00, 0xFA, 0x01)])
 
+    def test_v2_initializers_use_special_gpio_setup_when_available(self):
+        self.config.module_init = mock.Mock()
+        self.config.module_init_g_v2 = mock.Mock(return_value=-1)
+        try:
+            epd = self.driver.EPD()
+            self.assertEqual(epd.init(), -1)
+            self.assertEqual(epd.init_Fast(), -1)
+            self.assertEqual(self.config.module_init_g_v2.call_count, 2)
+            self.config.module_init.assert_not_called()
+        finally:
+            del self.config.module_init_g_v2
+
     def test_four_color_buffer_for_portrait_and_landscape(self):
         epd = self.driver.EPD()
         for size in ((122, 250), (250, 122)):
@@ -136,6 +149,40 @@ class GV2DriverTests(unittest.TestCase):
         command.assert_called_once_with(0x10)
         self.assertEqual(data.call_count, 31 * 250)
         refresh.assert_called_once_with()
+
+
+class RaspberryPiWakeupTests(unittest.TestCase):
+    def test_wakeup_only_for_g_v2(self):
+        config_path = GAUGE_DIR / "waveshare_epd" / "epdconfig.py"
+        tree = ast.parse(config_path.read_text())
+        pi_class = next(node for node in tree.body
+                        if isinstance(node, ast.ClassDef) and node.name == "RaspberryPi")
+        namespace = {}
+        exec(compile(ast.Module(body=[pi_class], type_ignores=[]), str(config_path), "exec"), namespace)
+        pi = namespace["RaspberryPi"].__new__(namespace["RaspberryPi"])
+        pi.GPIO_PWR_PIN = mock.Mock()
+        pi.GPIO_RST_PIN = mock.Mock()
+        pi.GPIO_DC_PIN = mock.Mock()
+        original_busy = mock.Mock()
+        pi.GPIO_BUSY_PIN = original_busy
+        pi.SPI = mock.Mock()
+        pi.delay_ms = mock.Mock()
+        gpiozero = types.ModuleType("gpiozero")
+        gpiozero.LED = mock.Mock()
+        gpiozero.Button = mock.Mock()
+
+        with mock.patch.dict(sys.modules, {"gpiozero": gpiozero}):
+            self.assertEqual(pi.module_init(), 0)
+            gpiozero.LED.assert_not_called()
+            self.assertEqual(pi.module_init_g_v2(), 0)
+
+        original_busy.close.assert_called_once_with()
+        gpiozero.LED.assert_called_once_with(pi.BUSY_PIN)
+        gpiozero.LED.return_value.on.assert_called_once_with()
+        gpiozero.LED.return_value.close.assert_called_once_with()
+        pi.delay_ms.assert_called_once_with(20)
+        gpiozero.Button.assert_called_once_with(pi.BUSY_PIN, pull_up=False)
+        self.assertIs(pi.GPIO_BUSY_PIN, gpiozero.Button.return_value)
 
 
 if __name__ == "__main__":
