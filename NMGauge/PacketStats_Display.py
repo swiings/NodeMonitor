@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""NodeMonitor renderer for the Waveshare 2.13-inch e-Paper HAT V4.
+"""NodeMonitor renderer for the Waveshare 2.13-inch e-Paper HAT.
+
+Works with the 2-color V4 and the 4-color G panels; display_driver picks
+the right driver (auto-detect or NMGsettings.json override) and exposes
+IS_COLOR / DISPLAY_COLORS plus the BLACK/WHITE/RED/YELLOW fill values.
 
 Dependencies:
   sudo apt install python3-pil python3-numpy fonts-dejavu-core
@@ -11,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
-from waveshare_epd import epd2in13_V4
+import display_driver
 
 WIDTH = 250
 HEIGHT = 122
@@ -57,13 +61,14 @@ def draw_rate_card(draw, x, w, label, value):
     draw.rounded_rectangle((x, 26, x + w, 68), radius=10, outline=BLACK, width=1)
     label_font = font(BOLD_ITALIC_FONT, 11)
     value_font = fit_font(draw, value, BOLD_FONT, 25, 43)
-    centered_text(draw, (x + 2, 29, x + w, 42), label, label_font)
+    centered_text(draw, (x + 2, 29, x + w, 42), label, label_font, fill=display_driver.RED)
     centered_text(draw, (x + 2, 40, x + w, 67), value, value_font)
 
 
 def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
-    """Return a 250x122 1-bit PIL image without touching the display."""
-    image = Image.new("1", (WIDTH, HEIGHT), WHITE)
+    """Return a 250x122 PIL image (1-bit, or RGB on the 4-color panel)
+    without touching the display."""
+    image = Image.new(display_driver.IMAGE_MODE, (WIDTH, HEIGHT), display_driver.WHITE)
     draw = ImageDraw.Draw(image)
 
     FONTDIR = '/usr/share/fonts/truetype/dejavu/'   # sudo apt install fonts-dejavu-core
@@ -96,7 +101,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
     draw.text((250, 0), now_string, font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
 
-    draw.text((3, 17), "PACKETS", font=packet_label_font, fill=BLACK)
+    draw.text((3, 17), "PACKETS", font=packet_label_font, fill=display_driver.RED)
     centered_text(draw, (0, 34, 134, 71), PacketCount, packet_font)
     draw_rate_card(draw, 135, 53, "MINUTE", PPM)
     draw_rate_card(draw, 197, 49, "HOUR", PPH)
@@ -112,7 +117,7 @@ def make_frame(PacketCount, PPM, PPH, UpTime, PacketRate):
         bar_height = 0 if peak == 0 or value == 0 else max(1, round((value / peak) * 40))
         if bar_height:
             x = 4 + index * 8
-            draw.rectangle((x, 118 - bar_height, x + 4, 117), fill=BLACK)
+            draw.rectangle((x, 118 - bar_height, x + 4, 117), fill=display_driver.RED)
 
     return image
 
@@ -163,10 +168,10 @@ def load_packet_stats(now=None, data_dir=None):
 
 
 def render_display(PacketCount, PPM, PPH, UpTime, PacketRate, epd=None):
-    """Draw the values and send one full refresh to an initialized or new V4 display."""
+    """Draw the values and send one full refresh to an initialized or new display."""
     owns_driver = epd is None
     if owns_driver:
-        epd = epd2in13_V4.EPD()
+        epd = display_driver.init_display()
         epd.init()
 
     image = make_frame(PacketCount, PPM, PPH, UpTime, PacketRate)
@@ -177,10 +182,10 @@ def render_display(PacketCount, PPM, PPH, UpTime, PacketRate, epd=None):
 if __name__ == "__main__":
     stats = load_packet_stats()
 
-    display = epd2in13_V4.EPD()
+    display = display_driver.init_display()
     try:
         display.init()
         render_display(**stats, epd=display)
         display.sleep()
     except KeyboardInterrupt:
-        epd2in13_V4.epdconfig.module_exit(cleanup=True)
+        display.module_exit(cleanup=True)

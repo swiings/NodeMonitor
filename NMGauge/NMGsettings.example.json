@@ -2,5 +2,6 @@
   "update_secs": 60,
   "page_secs": 10,
   "clean_hour": 3,
-  "screen_rotation": 270
+  "screen_rotation": 270,
+  "display_type": "auto"
 }

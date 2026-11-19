@@ -2,22 +2,24 @@
 import os, sys, time, signal, logging, socket, shutil, json, math, sqlite3
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
-    
-from waveshare_epd import epd2in13_V4
+
+import display_driver
 import PacketStats_Display as packet_stats
 
 UPDATE_SECS = 60
 PAGE_SECS   = 5
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
 SCREEN_ROTATION   = 270     # 270 puts Pi0 interface ports on top, 90 puts them on the bottom
+DISPLAY_TYPE      = 'auto'  # 'auto' (BUSY-pin detect), 'v4' (2-color), or 'g' (4-color)
 
 # Per-device overrides for the defaults above (untracked; see NMGsettings.example.json)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NMGsettings.json')
 SETTINGS = {
-    'update_secs':     ('UPDATE_SECS',     lambda v: v > 0),
-    'page_secs':       ('PAGE_SECS',       lambda v: v > 0),
-    'clean_hour':      ('CLEAN_HOUR',      lambda v: 0 <= v <= 23),
-    'screen_rotation': ('SCREEN_ROTATION', lambda v: v in (0, 90, 180, 270)),
+    'update_secs':     ('UPDATE_SECS',     int, lambda v: v > 0),
+    'page_secs':       ('PAGE_SECS',       int, lambda v: v > 0),
+    'clean_hour':      ('CLEAN_HOUR',      int, lambda v: 0 <= v <= 23),
+    'screen_rotation': ('SCREEN_ROTATION', int, lambda v: v in (0, 90, 180, 270)),
+    'display_type':    ('DISPLAY_TYPE',    str, lambda v: v in ('auto', 'v4', 'g')),
 }
 
 def load_settings(path=SETTINGS_FILE):
@@ -37,8 +39,8 @@ def load_settings(path=SETTINGS_FILE):
         if key not in SETTINGS:
             logging.warning("unknown setting '%s' ignored", key)
             continue
-        name, valid = SETTINGS[key]
-        if type(value) is not int or not valid(value):
+        name, expected, valid = SETTINGS[key]
+        if type(value) is not expected or not valid(value):
             logging.warning("invalid value for '%s' ignored: %r", key, value)
             continue
         globals()[name] = value
@@ -63,19 +65,21 @@ font40b  = ImageFont.truetype(BOLD, 40)
 font50b  = ImageFont.truetype(BOLD, 50)   
 
 # --- drawing functions for the e-paper display
+# display_driver.RED / YELLOW are real colors on the 4-color panel and fall
+# back to black on the 2-color panel, so these pages render on both.
 def draw_metrics(draw, m):
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=display_driver.RED, anchor='mt')
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## node count and packet count in bigest font used on the screen
     draw.text((62.5, 15), "NODE COUNT", font=font12c, fill=0, anchor='mt')
     draw.text((187.5, 15), "PACKET COUNT", font=font12c, fill=0, anchor='mt')
-    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font23b, fill=0, anchor='mm')
+    draw.text((62.5, 39), m['total'] + "/" + m['act'] + "/" + m['dir'], font=font23b, fill=display_driver.RED, anchor='mm')
     draw.text((62.5, 54), "TOTAL / ACT / DIR", font=font14c, fill=0, anchor='mt')
-    draw.text((187.5, 39), m['packets'], font=font25b, fill=0, anchor='mm')
+    draw.text((187.5, 39), m['packets'], font=font25b, fill=display_driver.RED, anchor='mm')
     draw.text((187.5, 53), m['permin'] + "/m   " + m['perhour'] + "/h", font=font14c, fill=0, anchor='mt')
     ## horizontal line separating node/packet counts from other metrics
     draw.line((0, 67, 250, 67), fill=0)  
@@ -182,16 +186,16 @@ def draw_page7(draw, m):
     ## top row title, with a timestamp
     draw.text((0, 0), "MESHTASTIC", font=font10c, fill=0, anchor='lt')
     draw.line((0, 10, 63, 10), fill=0) 
-    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=0, anchor='mt')
+    draw.text((125, 0), "NODEMONITOR", font=font15c, fill=display_driver.RED, anchor='mt')
     draw.text((250, 0), m['datetime'], font=font11c, fill=0, anchor='rt')
     draw.line((185, 10, 250, 10), fill=0) 
     ## packet count / rate
     draw.text((125, 21), "PACKETS", font=font15c, fill=0, anchor='mt')
-    draw.text((128, 50), m['packets'], font=font30b, fill=0, anchor='rm')
+    draw.text((128, 50), m['packets'], font=font30b, fill=display_driver.RED, anchor='rm')
     draw.text((132, 50), m['permin'] + "/m " + m['perhour'] + "/h ", font=font20c, fill=0, anchor='lm')
     ## node count 
     draw.text((125, 72), "NODES (ALL / ACTIVE / DIRECT)", font=font15c, fill=0, anchor='mt')
-    draw.text((125, 93), m['total'] + " / " + m['act'] + " / " + m['dir'], font=font30b, fill=0, anchor='mt')
+    draw.text((125, 93), m['total'] + " / " + m['act'] + " / " + m['dir'], font=font30b, fill=display_driver.RED, anchor='mt')
 
 
 # --- PiSugar battery via pisugar-server (TCP 8423)
@@ -233,7 +237,7 @@ def render(m, draw_page=draw_metrics):
     if draw_page is packet_stats.make_frame:
         img = packet_stats.make_frame(**m['packet_stats'])
     else:
-        img = base.copy()
+        img = base.convert(display_driver.IMAGE_MODE)   # copy in the panel's drawing mode
         draw_page(ImageDraw.Draw(img), m)
     return img.rotate(SCREEN_ROTATION, expand=True)     # 270 has Pi0 ports on top, 90 has them on the bottom
 
@@ -403,42 +407,49 @@ def get_metrics():
     return m
 
 def main():
-    epd = epd2in13_V4.EPD()
+    epd = display_driver.init_display(DISPLAY_TYPE)
 
     def shutdown(*_):
         epd.sleep()                     # image stays on the panel unpowered
-        epd2in13_V4.epdconfig.module_exit(cleanup=True)
+        epd.module_exit(cleanup=True)
         sys.exit(0)
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
     epd.init()
 
     # Clear the display initially
-    # epd.Clear(0xFF);
+    # epd.Clear();
 
     # img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
     # epd.displayPartial(epd.getbuffer(img))
 
-    # Display the initial sequence of Haxx Labs images
-    img = Image.open('haxxlabsooo1.png').resize((250, 122)).convert('1')
-    epd.displayPartBaseImage(epd.getbuffer(img))
-    # time.sleep(1)
+    if display_driver.IS_COLOR:
+        # The 4-color panel has no partial refresh and every write is a slow
+        # full flash, so show a single splash instead of the animation.
+        img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(SCREEN_ROTATION, expand=True)
+        epd.display(epd.getbuffer(img))
+        time.sleep(2)
+    else:
+        # Display the initial sequence of Haxx Labs images
+        img = Image.open('haxxlabsooo1.png').resize((250, 122)).convert('1')
+        epd.displayPartBaseImage(epd.getbuffer(img))
+        # time.sleep(1)
 
-    img = Image.open('haxxlabsooo2.png').resize((250, 122)).convert('1')
-    epd.displayPartial(epd.getbuffer(img))         
-    # time.sleep(1)
-                
-    img = Image.open('haxxlabsooo3.png').resize((250, 122)).convert('1')
-    epd.displayPartial(epd.getbuffer(img))
-    time.sleep(3)
-                
-    # Clear the display before showing the "eat sleep" image 
-    img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
-    epd.displayPartBaseImage(epd.getbuffer(img))
+        img = Image.open('haxxlabsooo2.png').resize((250, 122)).convert('1')
+        epd.displayPartial(epd.getbuffer(img))
+        # time.sleep(1)
 
-    img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(SCREEN_ROTATION, expand=True)
-    epd.displayPartial(epd.getbuffer(img))
-    time.sleep(2)
+        img = Image.open('haxxlabsooo3.png').resize((250, 122)).convert('1')
+        epd.displayPartial(epd.getbuffer(img))
+        time.sleep(3)
+
+        # Clear the display before showing the "eat sleep" image
+        img = Image.open('allwhitebackground.png').resize((250, 122)).convert('1')
+        epd.displayPartBaseImage(epd.getbuffer(img))
+
+        img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(SCREEN_ROTATION, expand=True)
+        epd.displayPartial(epd.getbuffer(img))
+        time.sleep(2)
 
     # pages = (draw_metrics, packet_stats.make_frame)
     pages = (draw_metrics, packet_stats.make_frame)
@@ -450,9 +461,12 @@ def main():
     
     last_bytes = img.tobytes()
     last_clean = datetime.now().date()
-    
+
+    # 4-color: no partial refresh, so cycle pages at the slower update interval
+    page_secs = UPDATE_SECS if display_driver.IS_COLOR else 12
+
     while True:
-        time.sleep(12)
+        time.sleep(page_secs)
         update = int(time.time() // UPDATE_SECS)
         if update != last_update:
             metrics = get_metrics()
@@ -466,7 +480,7 @@ def main():
             epd.displayPartBaseImage(epd.getbuffer(img))
             last_clean = now.date()
         elif img.tobytes() != last_bytes:
-            epd.displayPartial(epd.getbuffer(img))        # no flash
+            epd.displayPartial(epd.getbuffer(img))        # no flash (full refresh on 4-color)
         last_bytes = img.tobytes()
 
 if __name__ == '__main__':
