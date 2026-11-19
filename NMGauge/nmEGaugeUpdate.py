@@ -484,6 +484,6 @@ def main():
         last_bytes = img.tobytes()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
     load_settings()
     main()
