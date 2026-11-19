@@ -341,7 +341,7 @@ class GaugePageTests(unittest.TestCase):
 
 
 class GaugeSettingsTests(unittest.TestCase):
-    NAMES = ("UPDATE_SECS", "PAGE_SECS", "CLEAN_HOUR", "SCREEN_ROTATION")
+    NAMES = ("UPDATE_SECS", "PAGE_SECS", "CLEAN_HOUR", "SCREEN_ROTATION", "DISPLAY_TYPE")
 
     def setUp(self):
         saved = {name: getattr(gauge, name) for name in self.NAMES}
@@ -372,7 +372,18 @@ class GaugeSettingsTests(unittest.TestCase):
         self.assertEqual(warnings, [])
         self.assertEqual(self.current(), {
             "UPDATE_SECS": 30, "PAGE_SECS": 5, "CLEAN_HOUR": 0, "SCREEN_ROTATION": 90,
+            "DISPLAY_TYPE": self.defaults["DISPLAY_TYPE"],
         })
+
+    def test_selects_display_type_and_rejects_invalid_values(self):
+        self.load(json.dumps({"display_type": "g"}))
+        self.assertEqual(gauge.DISPLAY_TYPE, "g")
+        for value in ("invalid", None, 4):
+            with self.subTest(value=value):
+                self.path.write_text(json.dumps({"display_type": value}))
+                with self.assertRaisesRegex(ValueError, "Invalid display_type"):
+                    gauge.load_settings(str(self.path))
+                self.assertEqual(gauge.DISPLAY_TYPE, "g")
 
     def test_partial_settings_override_only_given_keys(self):
         self.load(json.dumps({"screen_rotation": 90}))
@@ -386,12 +397,13 @@ class GaugeSettingsTests(unittest.TestCase):
         self.assertEqual(self.current(), self.defaults)
         self.assertEqual(len(warnings), 5)
 
-    def test_malformed_file_is_ignored_with_warning(self):
+    def test_malformed_file_fails_instead_of_selecting_wrong_driver(self):
         for content in ("{not json", "[90]"):
             with self.subTest(content=content):
-                warnings = self.load(content)
+                self.path.write_text(content)
+                with self.assertRaises(ValueError):
+                    gauge.load_settings(str(self.path))
                 self.assertEqual(self.current(), self.defaults)
-                self.assertEqual(len(warnings), 1)
 
     def test_rotation_setting_is_used_when_rendering(self):
         metrics = dict.fromkeys(

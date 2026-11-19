@@ -2,7 +2,7 @@
 """Driver selection for the Waveshare 2.13-inch e-Paper HAT.
 
 Supports the 2-color V4 panel (epd2in13_V4) and the 4-color "G" panel
-(epd2in13g), auto-detecting which one is attached.  After init_display()
+(epd2in13g), selected in NMGsettings.json. After init_display()
 (or configure()) the module globals describe the active panel:
 
     DISPLAY_TYPE    'epd2in13_V4' (2-color) or 'epd2in13g' (4-color)
@@ -14,17 +14,13 @@ Supports the 2-color V4 panel (epd2in13_V4) and the 4-color "G" panel
                     back to BLACK on the 2-color panel so the same drawing
                     code renders sensibly on both
 
-Detection works because the two panels have opposite BUSY polarity: the
-V4 (SSD1680) BUSY line idles LOW while the G panel (UC8151-family) idles
-HIGH, so after a hardware reset one read of the BUSY pin identifies the
-panel.  Set "display_type": "v4" or "g" in NMGsettings.json to skip
-detection and force a driver.
+Set "display_type": "v4" or "g" in NMGsettings.json. BUSY polarity is not
+a reliable way to identify a panel; it can also reflect a wiring fault.
 """
 
 import json
 import logging
 import os
-import time
 
 WIDTH, HEIGHT = 250, 122
 
@@ -58,49 +54,17 @@ def configure(kind):
 
 
 def settings_display_type(path=SETTINGS_FILE):
-    """Return the validated 'display_type' override from settings, or 'auto'."""
+    """Read the selected panel, defaulting to V4 if the setting is absent."""
     try:
         with open(path) as f:
-            value = json.load(f).get('display_type', 'auto')
-    except (OSError, ValueError, AttributeError):
-        return 'auto'
-    if value == 'auto' or value in _KINDS:
-        return value
-    logging.warning("invalid display_type %r ignored; using auto-detect", value)
-    return 'auto'
-
-
-def detect_display():
-    """Identify the attached panel by its BUSY level after a hardware reset.
-
-    The V4 (SSD1680) BUSY line is active-high and idles LOW; the 4-color G
-    panel (UC8151-family) BUSY line is active-low and idles HIGH.
-    """
-    from waveshare_epd import epdconfig
-    if epdconfig.module_init() != 0:
-        raise RuntimeError('e-paper module init failed')
-    try:
-        epdconfig.digital_write(epdconfig.RST_PIN, 1)
-        epdconfig.delay_ms(50)
-        epdconfig.digital_write(epdconfig.RST_PIN, 0)
-        epdconfig.delay_ms(5)
-        epdconfig.digital_write(epdconfig.RST_PIN, 1)
-        # Sample until BUSY holds steady so boot-time toggling can't fool us.
-        level, stable_since = None, time.monotonic()
-        deadline = time.monotonic() + 3.0
-        while time.monotonic() < deadline:
-            current = 1 if epdconfig.digital_read(epdconfig.BUSY_PIN) else 0
-            if current != level:
-                level, stable_since = current, time.monotonic()
-            elif time.monotonic() - stable_since >= 0.5:
-                break
-            epdconfig.delay_ms(10)
-    finally:
-        epdconfig.module_exit()     # the chosen driver re-inits cleanly
-    kind = 'epd2in13g' if level else 'epd2in13_V4'
-    logging.info("auto-detected e-paper panel: %s (%s)",
-                 kind, '4-color' if level else '2-color')
-    return kind
+            settings = json.load(f)
+    except FileNotFoundError:
+        return 'v4'
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Cannot read display settings from {path}: {error}") from error
+    if not isinstance(settings, dict):
+        raise ValueError(f"Display settings in {path} must be a JSON object")
+    return settings.get('display_type', 'v4')
 
 
 class Display:
@@ -123,7 +87,12 @@ class Display:
         self.colors = DISPLAY_COLORS
 
     def init(self):
-        return self.epd.init()
+        logging.info("Initializing display driver %s", self.driver.__name__)
+        result = self.epd.init()
+        if result != 0:
+            raise RuntimeError(f"Display driver {self.driver.__name__} initialization failed: {result}")
+        logging.info("Display driver initialized: %s", self.driver.__name__)
+        return result
 
     def getbuffer(self, image):
         return self.epd.getbuffer(image)
@@ -155,11 +124,16 @@ class Display:
         self.epdconfig.module_exit(cleanup=cleanup)
 
 
-def init_display(kind='auto'):
-    """Resolve the driver (settings override, else BUSY-pin auto-detect),
-    set this module's globals, and return an uninitialized Display."""
-    if kind in (None, '', 'auto'):
+def init_display(kind=None):
+    """Select the configured driver and return an uninitialized Display."""
+    if kind is None:
         kind = settings_display_type()
+    if kind == 'b':
+        raise ValueError("display_type 'b' is not supported yet: identify the B panel version first")
     if kind == 'auto':
-        kind = detect_display()
+        raise ValueError("display_type 'auto' is no longer supported; set it to 'v4' or 'g'")
+    if not isinstance(kind, str) or kind not in _KINDS:
+        raise ValueError(f"Invalid display_type {kind!r}; choose 'v4', 'g', or 'b'")
+    logging.info("Selected display: %s (%s colors), configured as %r",
+                 _KINDS[kind], 4 if _KINDS[kind] == 'epd2in13g' else 2, kind)
     return Display(kind)

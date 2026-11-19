@@ -10,7 +10,7 @@ UPDATE_SECS = 60
 PAGE_SECS   = 5
 CLEAN_HOUR  = 3             # daily full refresh (the only flash) at 03:00
 SCREEN_ROTATION   = 270     # 270 puts Pi0 interface ports on top, 90 puts them on the bottom
-DISPLAY_TYPE      = 'auto'  # 'auto' (BUSY-pin detect), 'v4' (2-color), or 'g' (4-color)
+DISPLAY_TYPE      = 'v4'    # 'v4' (2-color), 'g' (4-color), or 'b' (future 3-color)
 
 # Per-device overrides for the defaults above (untracked; see NMGsettings.example.json)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NMGsettings.json')
@@ -19,28 +19,30 @@ SETTINGS = {
     'page_secs':       ('PAGE_SECS',       int, lambda v: v > 0),
     'clean_hour':      ('CLEAN_HOUR',      int, lambda v: 0 <= v <= 23),
     'screen_rotation': ('SCREEN_ROTATION', int, lambda v: v in (0, 90, 180, 270)),
-    'display_type':    ('DISPLAY_TYPE',    str, lambda v: v in ('auto', 'v4', 'g')),
+    'display_type':    ('DISPLAY_TYPE',    str, lambda v: v in ('auto', 'v4', 'g', 'b')),
 }
 
 def load_settings(path=SETTINGS_FILE):
-    """Apply valid overrides from the settings file; keep defaults for anything missing or invalid."""
+    """Apply settings; do not select a display from an unreadable settings file."""
     try:
         with open(path) as f:
             overrides = json.load(f)
     except FileNotFoundError:
+        logging.info("No settings file at %s; using defaults", path)
         return
     except (OSError, ValueError) as e:
-        logging.warning("settings file %s ignored: %s", path, e)
-        return
+        raise ValueError(f"Cannot read settings file {path}: {e}") from e
     if not isinstance(overrides, dict):
-        logging.warning("settings file %s ignored: expected a JSON object", path)
-        return
+        raise ValueError(f"Settings file {path} must contain a JSON object")
+    logging.info("Loaded settings file %s", path)
     for key, value in overrides.items():
         if key not in SETTINGS:
             logging.warning("unknown setting '%s' ignored", key)
             continue
         name, expected, valid = SETTINGS[key]
         if type(value) is not expected or not valid(value):
+            if key == 'display_type':
+                raise ValueError(f"Invalid display_type {value!r}; choose 'v4', 'g', or 'b'")
             logging.warning("invalid value for '%s' ignored: %r", key, value)
             continue
         globals()[name] = value
@@ -427,7 +429,9 @@ def main():
         # The 4-color panel has no partial refresh and every write is a slow
         # full flash, so show a single splash instead of the animation.
         img = Image.open('eatsleep2.png').resize((250, 122)).convert('1').rotate(SCREEN_ROTATION, expand=True)
+        logging.info("Sending initial splash to 4-color display")
         epd.display(epd.getbuffer(img))
+        logging.info("Initial splash refresh completed")
         time.sleep(2)
     else:
         # Display the initial sequence of Haxx Labs images

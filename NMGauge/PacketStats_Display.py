@@ -2,7 +2,7 @@
 """NodeMonitor renderer for the Waveshare 2.13-inch e-Paper HAT.
 
 Works with the 2-color V4 and the 4-color G panels; display_driver picks
-the right driver (auto-detect or NMGsettings.json override) and exposes
+the configured driver from NMGsettings.json and exposes
 IS_COLOR / DISPLAY_COLORS plus the BLACK/WHITE/RED/YELLOW fill values.
 
 Dependencies:
@@ -180,6 +180,7 @@ def render_display(PacketCount, PPM, PPH, UpTime, PacketRate, epd=None):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     stats = load_packet_stats()
 
     display = display_driver.init_display()

@@ -29,6 +29,7 @@
 #
 
 import logging
+import time
 from . import epdconfig
 
 import PIL
@@ -84,7 +85,13 @@ class EPD:
     def ReadBusy(self):
         logger.debug("e-Paper busy H")
         epdconfig.delay_ms(100)
+        deadline = time.monotonic() + 120
         while(epdconfig.digital_read(self.busy_pin) == 0):      # 0: idle, 1: busy
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    "epd2in13g BUSY stayed low for 120 seconds; "
+                    "check the panel model, power, GPIO 24, and connections"
+                )
             epdconfig.delay_ms(5)
         logger.debug("e-Paper busy release")
         
@@ -239,4 +246,3 @@ class EPD:
         epdconfig.delay_ms(2000)
         epdconfig.module_exit()
 ### END OF FILE ###
-
