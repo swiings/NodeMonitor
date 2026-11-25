@@ -49,12 +49,14 @@ const NMTelemetry = (() => {
     return _PORTNUM_COLORS[portnum] || null;
   }
 
+  // AIRCRAFT/VEHICLE are derived server-side and always arrive as strings,
+  // so they don't belong in the int map.
   const _ROLE_INT_MAP = {
     "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",
     "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
     "6": "CLIENT_TRACKER", "7": "SENSOR", "8": "TAK", "9": "CLIENT_HIDDEN",
     "10": "LOST_AND_FOUND_TRACKER", "11": "SENSOR_MQTT", "12": "REPEATER",
-    "13": "ROUTER_LATE", "14": "AIRCRAFT", "15": "VEHICLE"
+    "13": "ROUTER_LATE",
   };
 
   function _emojiForRole(role) {

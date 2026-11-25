@@ -625,27 +625,53 @@ def get_hardware_breakdown(conn) -> list[dict]:
     return [{"hardware_model": row["hw"], "count": row["cnt"]} for row in rows]
 
 
+# Effective role, derived the same way _enrich_node does it: AIRCRAFT and
+# VEHICLE are transient display roles computed at query time, never stored
+# in the nodes table (the db keeps the Meshtastic-reported base role).
+_DERIVED_ROLE_SQL = """
+    CASE
+        WHEN {alias}altitude_m IS NOT NULL AND {alias}altitude_m >= :air_alt THEN 'AIRCRAFT'
+        WHEN {alias}last_motion_ts IS NOT NULL AND (:now - {alias}last_motion_ts) < :veh_timeout THEN 'VEHICLE'
+        ELSE COALESCE({alias}role, 'Unknown')
+    END
+"""
+
+
+def _derived_role_params(now: int | None = None) -> dict:
+    return {
+        "now": now if now is not None else int(time.time()),
+        "air_alt": _AIRCRAFT_ALTITUDE_M,
+        "veh_timeout": _VEHICLE_TIMEOUT_S,
+    }
+
+
 def get_role_breakdown(conn) -> list[dict]:
-    """Return node counts grouped by role, sorted by count descending."""
-    now = int(time.time())
+    """Return node counts grouped by effective role (incl. derived
+    AIRCRAFT/VEHICLE), sorted by count descending."""
+    role_expr = _DERIVED_ROLE_SQL.format(alias="")
     try:
         rows = conn.execute(
-            """
-            SELECT
-                CASE
-                    WHEN last_motion_ts IS NOT NULL AND (? - last_motion_ts) < ? THEN 'VEHICLE'
-                    ELSE COALESCE(role, 'Unknown')
-                END AS role,
-                COUNT(*) AS cnt
-            FROM nodes
-            GROUP BY role
+            f"""
+            SELECT derived_role AS role, COUNT(*) AS cnt
+            FROM (SELECT {role_expr} AS derived_role FROM nodes)
+            GROUP BY derived_role
             ORDER BY cnt DESC
-            """
-            ,
-            (now, _VEHICLE_TIMEOUT_S),
+            """,
+            _derived_role_params(),
         ).fetchall()
     except sqlite3.OperationalError:
-        return []
+        # Older session DBs may lack altitude_m / last_motion_ts.
+        try:
+            rows = conn.execute(
+                """
+                SELECT COALESCE(role, 'Unknown') AS role, COUNT(*) AS cnt
+                FROM nodes
+                GROUP BY COALESCE(role, 'Unknown')
+                ORDER BY cnt DESC
+                """
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
     return [{"role": row["role"], "count": row["cnt"]} for row in rows]
 
 
@@ -680,8 +706,16 @@ def get_filtered_traffic(conn, by: str, value, limit: int = 200, my_node_id=None
             sql = base + "WHERE COALESCE(n.hardware_model, 'Unknown') = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
             rows = conn.execute(sql, {"value": str(value), "excl": excl, "limit": limit}).fetchall()
         elif by == "role":
-            sql = base + "WHERE COALESCE(n.role, 'Unknown') = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
-            rows = conn.execute(sql, {"value": str(value), "excl": excl, "limit": limit}).fetchall()
+            role_expr = _DERIVED_ROLE_SQL.format(alias="n.")
+            sql = base + f"WHERE {role_expr} = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
+            params = {"value": str(value), "excl": excl, "limit": limit}
+            params.update(_derived_role_params())
+            try:
+                rows = conn.execute(sql, params).fetchall()
+            except sqlite3.OperationalError:
+                # Older session DBs may lack altitude_m / last_motion_ts.
+                sql = base + "WHERE COALESCE(n.role, 'Unknown') = :value AND NOT (p.portnum = 'TELEMETRY_APP' AND p.from_node_id = :excl) ORDER BY p.rx_time DESC LIMIT :limit"
+                rows = conn.execute(sql, {"value": str(value), "excl": excl, "limit": limit}).fetchall()
         elif by == "node":
             sql = base + "WHERE p.from_node_id = ? ORDER BY p.rx_time DESC LIMIT ?"
             rows = conn.execute(sql, (int(value), limit)).fetchall()

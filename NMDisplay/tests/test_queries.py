@@ -177,6 +177,80 @@ class PacketBreakdownTests(unittest.TestCase):
         self.assertEqual(len(role_rows), 1)
         self.assertEqual(role_rows[0]["from_node_id"], 987654321)
 
+    def test_role_breakdown_derives_aircraft_and_vehicle(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            now = 1_700_000_000
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, role TEXT, altitude_m REAL, last_motion_ts INTEGER)")
+            conn.executemany("INSERT INTO nodes VALUES (?, ?, ?, ?)", [
+                (1, "CLIENT", None, None),            # stays CLIENT
+                (2, "CLIENT", None, now - 100),       # recent motion -> VEHICLE
+                (3, "ROUTER", 7000.0, None),          # above threshold -> AIRCRAFT
+                (4, "ROUTER", 7000.0, now - 100),     # AIRCRAFT wins over VEHICLE
+                (5, None, None, now - 999_999),       # stale motion -> Unknown
+                (6, "ROUTER", 100.0, None),           # low altitude stays ROUTER
+            ])
+            conn.commit()
+
+            real_time = queries.time.time
+            queries.time.time = lambda: now
+            try:
+                rows = queries.get_role_breakdown(conn)
+            finally:
+                queries.time.time = real_time
+        finally:
+            conn.close()
+
+        counts = {r["role"]: r["count"] for r in rows}
+        self.assertEqual(counts, {
+            "AIRCRAFT": 2, "VEHICLE": 1, "CLIENT": 1, "ROUTER": 1, "Unknown": 1,
+        })
+
+    def test_role_breakdown_falls_back_without_motion_columns(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, role TEXT)")
+            conn.execute("INSERT INTO nodes VALUES (1, 'CLIENT')")
+            conn.execute("INSERT INTO nodes VALUES (2, NULL)")
+            conn.commit()
+            rows = queries.get_role_breakdown(conn)
+        finally:
+            conn.close()
+
+        counts = {r["role"]: r["count"] for r in rows}
+        self.assertEqual(counts, {"CLIENT": 1, "Unknown": 1})
+
+    def test_traffic_filter_matches_derived_roles(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
+            now = 1_700_000_000
+            conn.execute("CREATE TABLE packets (id INTEGER, rx_time INTEGER, from_node_id INTEGER, to_node_id INTEGER, portnum TEXT, rx_rssi INTEGER, rx_snr REAL, hop_limit INTEGER, hop_start INTEGER)")
+            conn.execute("CREATE TABLE nodes (node_id INTEGER, short_name TEXT, long_name TEXT, hardware_model TEXT, role TEXT, packet_source TEXT, altitude_m REAL, last_motion_ts INTEGER)")
+            conn.execute("CREATE TABLE positions (packet_id INTEGER, lat REAL, lon REAL, altitude_m REAL, source TEXT, sats INTEGER, precision_bits INTEGER)")
+            conn.execute("INSERT INTO nodes VALUES (1, 'P', 'Plane', 'Heltec V4', 'CLIENT', 'Over the Air', 7000.0, NULL)")
+            conn.execute("INSERT INTO nodes VALUES (2, 'C', 'Car', 'Heltec V4', 'CLIENT', 'Over the Air', NULL, ?)", (now - 100,))
+            conn.execute("INSERT INTO packets VALUES (1, ?, 1, NULL, 'POSITION_APP', -60, 3.0, 3, 3)", (now - 10,))
+            conn.execute("INSERT INTO packets VALUES (2, ?, 2, NULL, 'POSITION_APP', -55, 4.0, 3, 3)", (now - 9,))
+            conn.commit()
+
+            real_time = queries.time.time
+            queries.time.time = lambda: now
+            try:
+                air_rows = queries.get_filtered_traffic(conn, "role", "AIRCRAFT", limit=10)
+                veh_rows = queries.get_filtered_traffic(conn, "role", "VEHICLE", limit=10)
+                client_rows = queries.get_filtered_traffic(conn, "role", "CLIENT", limit=10)
+            finally:
+                queries.time.time = real_time
+        finally:
+            conn.close()
+
+        self.assertEqual([r["from_node_id"] for r in air_rows], [1])
+        self.assertEqual([r["from_node_id"] for r in veh_rows], [2])
+        self.assertEqual(client_rows, [])
+
     def test_node_list_exposes_position_source_and_sats(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row

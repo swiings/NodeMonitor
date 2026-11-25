@@ -117,13 +117,14 @@ const NMGauges = (() => {
   }
 
   // Role → emoji (mirrors map.js mapping)
+  // AIRCRAFT/VEHICLE are derived server-side and always arrive as strings,
+  // so they don't belong in the int map.
   const _GAUGE_ROLE_INT_MAP = {
     "0": "CLIENT", "1": "CLIENT_MUTE", "2": "ROUTER",
     "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
     "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
-    "11": "AIRCRAFT", "12": "VEHICLE",
   };
-  
+
   function _roleEmoji(role) {
     const r = (_GAUGE_ROLE_INT_MAP[String(role ?? "0")] || String(role || "CLIENT")).toUpperCase();
     if (r === "AIRCRAFT") return "✈️";
@@ -602,6 +603,7 @@ const NMGauges = (() => {
     "TAK_TRACKER":   "🐾 TAK_TRACKER",
     "SENSOR":        "📊 SENSOR",
     "VEHICLE":       "🚙 VEHICLE",
+    "AIRCRAFT":      "✈️ AIRCRAFT",
   };
 
   function _updateRoleBreakdown(rows) {
