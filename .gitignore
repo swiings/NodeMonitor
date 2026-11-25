@@ -13,6 +13,7 @@ NMData/*.db-wal
 analysis data/**/*.db
 analysis data/**/*.db-shm
 analysis data/**/*.db-wal
+Data Cache/
 nodemonitor.db
 nodemonitor.db-shm
 nodemonitor.db-wal
