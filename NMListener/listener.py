@@ -8,6 +8,7 @@ Call unregister() before closing the interface and reconnecting.
 import json
 import logging
 import os
+from platform import node
 import threading
 import time
 
@@ -103,9 +104,10 @@ def _on_connected(interface, topic=pub.AUTO_TOPIC) -> None:
         seeder.seed_nodes(interface, _repo, _node_store)
     elif _repo is not None:
         log.info("Seeding disabled for this session — relying on live packets")
-    
-    if _repo is not None:
-        node_requester.start(interface, _repo, _node_store, seed_on_connect=_seed_on_connect)
+
+    # removed the automatic node requester start. Have to do it manually if needed.
+    # if _repo is not None:
+    #     node_requester.start(interface, _repo, _node_store, seed_on_connect=_seed_on_connect)
 
     _request_reference_position(interface, my_node_id)
 

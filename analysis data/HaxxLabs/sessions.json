@@ -1,0 +1,77 @@
+[
+  {
+    "id": "default_1791341800",
+    "name": "Default",
+    "db": "default_1791341800.db",
+    "connection": {
+      "type": "serial"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1791341800,
+    "last_active": 1791341800
+  },
+  {
+    "id": "snax_and_yellow_in_the_kit_1791342381",
+    "name": "snax and yellow in the kit",
+    "db": "snax_and_yellow_in_the_kit_1791342381.db",
+    "connection": {
+      "type": "serial",
+      "device": "/dev/ttyACM0"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1791342381,
+    "last_active": 1791342381
+  },
+  {
+    "id": "after_nodedb_reset_1790622687",
+    "name": "after nodeDB reset",
+    "db": "after_nodedb_reset_1790622687.db",
+    "connection": {
+      "type": "serial"
+    },
+    "seed_on_connect": false,
+    "save_packet_data": true,
+    "created": 1790622687,
+    "last_active": 1792078577
+  },
+  {
+    "id": "first_after_pi0_nmg_1792083836",
+    "name": "first after pi0 nmg",
+    "db": "first_after_pi0_nmg_1792083836.db",
+    "connection": {
+      "type": "serial",
+      "device": "/dev/ttyACM0"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1792083836,
+    "last_active": 1792083836
+  },
+  {
+    "id": "fresh_thursday_1_30pm_1792085294",
+    "name": "fresh Thursday 1:30pm",
+    "db": "fresh_thursday_1_30pm_1792085294.db",
+    "connection": {
+      "type": "serial",
+      "device": "/dev/ttyACM0"
+    },
+    "seed_on_connect": false,
+    "save_packet_data": true,
+    "created": 1792085294,
+    "last_active": 1792085294
+  },
+  {
+    "id": "hl_with_nmg_1_1792107348",
+    "name": "HL with NMG #1",
+    "db": "hl_with_nmg_1_1792107348.db",
+    "connection": {
+      "type": "serial"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1792107348,
+    "last_active": 1792107348
+  }
+]

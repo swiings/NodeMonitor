@@ -1,0 +1,26 @@
+[
+  {
+    "id": "hl_with_nmg_1_1792107348",
+    "name": "HL with NMG #1",
+    "db": "hl_with_nmg_1_1792107348.db",
+    "connection": {
+      "type": "serial"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1792107348,
+    "last_active": 1792107348
+  },
+  {
+    "id": "test_again1_1795617723",
+    "name": "test again1",
+    "db": "test_again1_1795617723.db",
+    "connection": {
+      "type": "serial"
+    },
+    "seed_on_connect": true,
+    "save_packet_data": true,
+    "created": 1795617723,
+    "last_active": 1795617723
+  }
+]

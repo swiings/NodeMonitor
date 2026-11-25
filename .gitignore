@@ -10,6 +10,9 @@ __pycache__/
 NMData/*.db
 NMData/*.db-shm
 NMData/*.db-wal
+analysis data/**/*.db
+analysis data/**/*.db-shm
+analysis data/**/*.db-wal
 nodemonitor.db
 nodemonitor.db-shm
 nodemonitor.db-wal
