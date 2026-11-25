@@ -726,6 +726,7 @@ const NMMap = (() => {
     "0": "CLIENT", "1": "CLIENT_MUTE",  "2": "ROUTER",
     "3": "ROUTER_CLIENT", "4": "CLIENT_HIDDEN", "5": "LOST_AND_FOUND",
     "6": "SENSOR", "7": "TAK", "8": "TAK_TRACKER", "9": "REPEATER", "10": "TRACKER",
+    "11": "AIRCRAFT", "12": "VEHICLE"
   };
 
   // Role → { color, emoji } for marker display
